@@ -10,7 +10,7 @@ import {
   Phone, MessageSquare, Briefcase, Star, ShoppingCart, Info, X, Activity,
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
   ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
-  FileSpreadsheet, Download, ChevronDown, List, Grid
+  FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer
 } from 'lucide-react';
 import { generateEngineeringAdvice } from './services/geminiService';
 
@@ -87,80 +87,221 @@ const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => (
 );
 
 const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (log: OperatorLog) => void }) => {
+    // Stage 1: Auth, Stage 2: Log Entry
+    const [authStep, setAuthStep] = useState(true);
+    const [credentials, setCredentials] = useState({
+        employeeId: '',
+        pin: ''
+    });
+    
     const [formData, setFormData] = useState({
         machineId: '',
-        hours: '',
+        startHours: '',
+        endHours: '',
         fuel: '',
         location: '',
-        notes: ''
+        notes: '',
+        checklist: {
+            tires: false,
+            oil: false,
+            hydraulics: false,
+            brakes: false
+        }
     });
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        if(credentials.employeeId && credentials.pin) {
+            setAuthStep(false);
+        } else {
+            alert("Please enter valid credentials.");
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const start = parseFloat(formData.startHours) || 0;
+        const end = parseFloat(formData.endHours) || 0;
+        
+        if (end < start) {
+            alert("End hours cannot be less than start hours.");
+            return;
+        }
+
         const newLog: OperatorLog = {
             id: `LOG-${Date.now()}`,
             machineId: formData.machineId,
-            operatorName: 'Current User', // Mocked
+            operatorName: credentials.employeeId, // Using Employee ID as name for this demo
             date: new Date().toISOString().split('T')[0],
-            startTime: '08:00',
+            startTime: '08:00', // Mocked for simplicity
             endTime: '17:00',
-            endOdometer: parseInt(formData.hours) || 0,
-            fuelAddedLiters: parseInt(formData.fuel) || 0,
+            startOdometer: start,
+            endOdometer: end,
+            fuelAddedLiters: parseFloat(formData.fuel) || 0,
             location: formData.location,
-            checklist: { tires: true, oil: true, hydraulics: true, brakes: true },
+            checklist: formData.checklist,
             notes: formData.notes
         };
         onSubmit(newLog);
         onBack();
     };
 
+    const toggleCheck = (key: keyof typeof formData.checklist) => {
+        setFormData(prev => ({
+            ...prev,
+            checklist: { ...prev.checklist, [key]: !prev.checklist[key] }
+        }));
+    };
+
+    if (authStep) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+                <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-10 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500"></div>
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
+                            <UserCheck className="text-yellow-500" size={32} />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white">Operator Identification</h2>
+                        <p className="text-slate-400 text-sm">Please verify your credentials to access the fleet log.</p>
+                    </div>
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Employee ID / Badge No.</label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-3 text-slate-500" size={18} />
+                                <input 
+                                    required 
+                                    className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded text-white focus:border-yellow-500 outline-none transition-colors" 
+                                    placeholder="e.g. OP-2024-892"
+                                    value={credentials.employeeId}
+                                    onChange={e => setCredentials({...credentials, employeeId: e.target.value})}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Secure PIN</label>
+                            <div className="relative">
+                                <Key className="absolute left-3 top-3 text-slate-500" size={18} />
+                                <input 
+                                    required 
+                                    type="password"
+                                    className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded text-white focus:border-yellow-500 outline-none transition-colors" 
+                                    placeholder="••••••"
+                                    value={credentials.pin}
+                                    onChange={e => setCredentials({...credentials, pin: e.target.value})}
+                                />
+                            </div>
+                        </div>
+                        <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded hover:bg-yellow-400 transition-all flex items-center justify-center">
+                            Verify Identity <ArrowRight size={18} className="ml-2"/>
+                        </button>
+                    </form>
+                    <button onClick={onBack} className="w-full text-center text-slate-500 text-sm mt-6 hover:text-slate-300">Cancel & Return</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
-                <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-bold text-white">Operator Log Entry</h2>
-                    <button onClick={onBack}><X className="text-slate-400 hover:text-white"/></button>
+            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-white flex items-center"><ClipboardCheck className="mr-2 text-yellow-500"/> Daily Operation Log</h2>
+                        <div className="flex items-center gap-4 text-xs text-slate-400 mt-1">
+                            <span className="flex items-center"><User size={12} className="mr-1"/> {credentials.employeeId}</span>
+                            <span className="flex items-center"><Clock size={12} className="mr-1"/> {new Date().toLocaleTimeString()}</span>
+                        </div>
+                    </div>
+                    <button onClick={onBack} className="text-slate-400 hover:text-white"><X size={24}/></button>
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="text-slate-500 text-xs font-bold uppercase">Machine ID / Plate</label>
-                        <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mt-1" 
-                            onChange={e => setFormData({...formData, machineId: e.target.value})}
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+                
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                    {/* Machine Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="text-slate-500 text-xs font-bold uppercase">End Hours/Odo</label>
-                            <input required type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mt-1" 
-                                onChange={e => setFormData({...formData, hours: e.target.value})}
+                            <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Machine ID / Plate</label>
+                            <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none" 
+                                placeholder="e.g. KCD 892J"
+                                onChange={e => setFormData({...formData, machineId: e.target.value})}
                             />
                         </div>
                         <div>
-                            <label className="text-slate-500 text-xs font-bold uppercase">Fuel Added (L)</label>
-                            <input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mt-1" 
-                                onChange={e => setFormData({...formData, fuel: e.target.value})}
+                            <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Site Location</label>
+                            <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none" 
+                                placeholder="e.g. Athi River Cement Factory"
+                                onChange={e => setFormData({...formData, location: e.target.value})}
                             />
                         </div>
                     </div>
-                    <div>
-                        <label className="text-slate-500 text-xs font-bold uppercase">Site Location</label>
-                        <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mt-1" 
-                            onChange={e => setFormData({...formData, location: e.target.value})}
-                        />
+
+                    {/* Telemetry */}
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                        <h3 className="text-white font-bold text-sm mb-4 flex items-center"><Activity size={16} className="mr-2 text-blue-500"/> Telemetry Data</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">Start Hours/Odo</label>
+                                <input required type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    onChange={e => setFormData({...formData, startHours: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">End Hours/Odo</label>
+                                <input required type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    onChange={e => setFormData({...formData, endHours: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">Fuel Added (L)</label>
+                                <input type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    onChange={e => setFormData({...formData, fuel: e.target.value})}
+                                />
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Safety Checklist */}
                     <div>
-                        <label className="text-slate-500 text-xs font-bold uppercase">Shift Notes</label>
-                        <textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mt-1 h-24" 
+                        <h3 className="text-white font-bold text-sm mb-4 flex items-center"><ShieldCheck size={16} className="mr-2 text-green-500"/> Pre-Start Safety Check</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[
+                                { k: 'tires', l: 'Tires/Tracks', i: DiscIcon }, // Placeholder icon logic below
+                                { k: 'oil', l: 'Engine Oil', i: Droplet },
+                                { k: 'hydraulics', l: 'Hydraulics', i: Activity },
+                                { k: 'brakes', l: 'Brakes', i: AlertTriangle }
+                            ].map((item) => (
+                                <button 
+                                    key={item.k}
+                                    type="button"
+                                    onClick={() => toggleCheck(item.k as any)}
+                                    className={`p-3 rounded border flex flex-col items-center justify-center transition-all ${formData.checklist[item.k as keyof typeof formData.checklist] ? 'bg-green-500/20 border-green-500 text-green-500' : 'bg-slate-950 border-slate-700 text-slate-500 hover:border-slate-500'}`}
+                                >
+                                    <item.i size={20} className="mb-2" />
+                                    <span className="text-xs font-bold">{item.l}</span>
+                                    <div className={`w-3 h-3 rounded-full mt-2 ${formData.checklist[item.k as keyof typeof formData.checklist] ? 'bg-green-500' : 'bg-slate-800'}`}></div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Operational Notes / Incidents</label>
+                        <textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none h-24 text-sm" 
+                            placeholder="Report any faults, noises, or delays..."
                             onChange={e => setFormData({...formData, notes: e.target.value})}
                         />
                     </div>
-                    <div className="pt-4">
-                        <label className="flex items-center text-slate-400 text-sm mb-4">
-                            <input type="checkbox" required className="mr-2" />
-                            I certify that I have completed the daily safety checklist.
+
+                    <div className="pt-4 border-t border-slate-800">
+                        <label className="flex items-start text-slate-400 text-xs mb-6 cursor-pointer">
+                            <input type="checkbox" required className="mr-3 mt-0.5" />
+                            <span>
+                                I certify that the above information is true and that I have conducted the required pre-start safety checks in accordance with company policy and DOSHS regulations.
+                            </span>
                         </label>
-                        <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded hover:bg-yellow-400">
-                            Submit Log
+                        <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded hover:bg-yellow-400 shadow-lg hover:shadow-yellow-500/20 transition-all flex items-center justify-center">
+                            <FileBadge className="mr-2" size={20}/> Submit Daily Log
                         </button>
                     </div>
                 </form>
@@ -168,6 +309,11 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
         </div>
     );
 };
+
+// Helper component for icon consistency
+const DiscIcon = ({ size, className }: { size?: number, className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+);
 
 const ERPDashboard = ({ hasAccess, onSubscribe, logs }: { hasAccess: boolean, onSubscribe: () => void, logs: OperatorLog[] }) => {
     if (!hasAccess) {
