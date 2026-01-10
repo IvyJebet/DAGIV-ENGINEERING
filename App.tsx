@@ -9,7 +9,8 @@ import {
   Search, Filter, Lock, AlertTriangle, User, FileText, Droplet, 
   Phone, MessageSquare, Briefcase, Star, ShoppingCart, Info, X, Activity,
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
-  ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2
+  ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
+  FileSpreadsheet, Download, ChevronDown, List, Grid
 } from 'lucide-react';
 import { generateEngineeringAdvice } from './services/geminiService';
 
@@ -738,18 +739,25 @@ const EquipmentPage = ({ setPage, onBookInspection }: { setPage: (p: PageView) =
 // --- SPARE PARTS MARKETPLACE PAGE ---
 const SparePartsPage = () => {
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [search, setSearch] = useState('');
     const [cart, setCart] = useState<{part: SparePart, qty: number}[]>([]);
     const [cartOpen, setCartOpen] = useState(false);
-    const [checkoutStep, setCheckoutStep] = useState(0); // 0: Cart, 1: Details, 2: Payment, 3: Success
+    const [checkoutStep, setCheckoutStep] = useState(0); 
 
     const categories = ['All', 'Hydraulics', 'Engine Parts', 'Undercarriage', 'Filters', 'Electrical', 'Ground Engaging Tools'];
-    const filteredParts = SPARE_PARTS.filter(p => selectedCategory === 'All' || p.category === selectedCategory);
+    const filteredParts = SPARE_PARTS.filter(p => {
+        const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
+        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
+                              p.partNumber.toLowerCase().includes(search.toLowerCase()) || 
+                              p.equipmentType.join(' ').toLowerCase().includes(search.toLowerCase());
+        return matchesCat && matchesSearch;
+    });
 
-    const addToCart = (part: SparePart) => {
+    const addToCart = (part: SparePart, qty: number = 1) => {
         setCart(prev => {
             const existing = prev.find(i => i.part.id === part.id);
-            if(existing) return prev.map(i => i.part.id === part.id ? {...i, qty: i.qty + 1} : i);
-            return [...prev, {part, qty: 1}];
+            if(existing) return prev.map(i => i.part.id === part.id ? {...i, qty: i.qty + qty} : i);
+            return [...prev, {part, qty}];
         });
         setCartOpen(true);
     };
@@ -758,27 +766,31 @@ const SparePartsPage = () => {
         setCart(prev => prev.filter(i => i.part.id !== id));
     };
 
+    // Reusing the CartDrawer from previous implementation logic but integrated here
     const CartDrawer = () => (
         <div className={`fixed inset-y-0 right-0 z-[70] w-full md:w-96 bg-slate-900 border-l border-slate-800 shadow-2xl transform transition-transform duration-300 ${cartOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-            <div className="h-full flex flex-col">
-                <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white flex items-center"><ShoppingCart className="mr-2"/> Your Cart ({cart.length})</h2>
+             <div className="h-full flex flex-col">
+                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                    <h2 className="text-lg font-bold text-white flex items-center"><ShoppingCart className="mr-2" size={18}/> RFQ / Cart ({cart.length})</h2>
                     <button onClick={() => setCartOpen(false)}><X className="text-slate-400 hover:text-white"/></button>
                 </div>
                 
                 {checkoutStep === 0 && (
                     <>
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {cart.length === 0 ? <p className="text-slate-500 text-center mt-10">Cart is empty.</p> : 
+                            {cart.length === 0 ? <p className="text-slate-500 text-center mt-10 text-sm">Cart is empty.</p> : 
                                 cart.map(item => (
-                                    <div key={item.part.id} className="flex gap-4 bg-slate-950 p-3 rounded border border-slate-800">
-                                        <img src={item.part.image} className="w-16 h-16 object-cover rounded" />
+                                    <div key={item.part.id} className="flex gap-3 bg-slate-950 p-2 rounded border border-slate-800">
+                                        <img src={item.part.image} className="w-12 h-12 object-cover rounded border border-slate-800" />
                                         <div className="flex-1">
-                                            <h4 className="text-white text-sm font-bold line-clamp-1">{item.part.name}</h4>
-                                            <p className="text-yellow-500 text-xs font-bold">KES {item.part.price.toLocaleString()}</p>
-                                            <div className="flex items-center justify-between mt-2">
-                                                <span className="text-xs text-slate-400">Qty: {item.qty}</span>
-                                                <button onClick={() => removeFromCart(item.part.id)} className="text-red-500 hover:text-red-400"><Trash2 size={14}/></button>
+                                            <h4 className="text-white text-xs font-bold line-clamp-1">{item.part.name}</h4>
+                                            <p className="text-slate-500 text-[10px] font-mono">{item.part.partNumber}</p>
+                                            <div className="flex items-center justify-between mt-1">
+                                                <p className="text-yellow-500 text-xs font-bold">KES {item.part.price.toLocaleString()}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-slate-400">Qty: {item.qty}</span>
+                                                    <button onClick={() => removeFromCart(item.part.id)} className="text-slate-500 hover:text-red-500"><Trash2 size={12}/></button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -786,112 +798,196 @@ const SparePartsPage = () => {
                             }
                         </div>
                         <div className="p-4 border-t border-slate-800 bg-slate-950">
-                            <div className="flex justify-between text-white font-bold mb-4">
-                                <span>Total:</span>
+                            <div className="flex justify-between text-white font-bold mb-4 text-sm">
+                                <span>Est. Total:</span>
                                 <span>KES {cart.reduce((a, c) => a + (c.part.price * c.qty), 0).toLocaleString()}</span>
                             </div>
-                            <button onClick={() => setCheckoutStep(1)} disabled={cart.length === 0} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded disabled:opacity-50">PROCEED TO CHECKOUT</button>
+                            <button onClick={() => setCheckoutStep(1)} disabled={cart.length === 0} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded text-sm disabled:opacity-50 hover:bg-yellow-400">PROCEED TO CHECKOUT</button>
                         </div>
                     </>
                 )}
-
-                {checkoutStep === 1 && (
+                 {checkoutStep === 1 && (
                     <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="text-white font-bold mb-4">Delivery Details</h3>
+                        <h3 className="text-white font-bold mb-4 text-sm">Shipping Information</h3>
                         <form className="space-y-3 flex-1" onSubmit={(e) => { e.preventDefault(); setCheckoutStep(2); }}>
-                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white" placeholder="Full Name" required />
-                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white" placeholder="Phone Number" required />
-                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white" placeholder="Delivery Location / Site" required />
+                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm" placeholder="Company / Name" required />
+                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm" placeholder="Phone Contact" required />
+                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm" placeholder="Shipping Address" required />
                             <div className="flex-1"></div>
-                            <button type="button" onClick={() => setCheckoutStep(0)} className="w-full border border-slate-700 text-white py-2 rounded mb-2">Back</button>
-                            <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded">Next: Payment</button>
+                            <button type="button" onClick={() => setCheckoutStep(0)} className="w-full border border-slate-700 text-white py-2 rounded mb-2 text-sm">Back</button>
+                            <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded text-sm hover:bg-yellow-400">Next: Payment</button>
                         </form>
                     </div>
                 )}
-
                 {checkoutStep === 2 && (
                     <div className="p-4 flex-1 flex flex-col text-center">
-                        <h3 className="text-white font-bold mb-6">Select Payment Method</h3>
+                        <h3 className="text-white font-bold mb-6 text-sm">Select Payment Method</h3>
                         <div className="space-y-4 mb-8">
-                            <button onClick={() => setCheckoutStep(3)} className="w-full bg-green-600 p-4 rounded text-white font-bold flex items-center justify-center hover:bg-green-500">
-                                M-PESA
+                            <button onClick={() => setCheckoutStep(3)} className="w-full bg-green-600 p-3 rounded text-white font-bold flex items-center justify-center hover:bg-green-500 text-sm">
+                                M-PESA Express
                             </button>
-                            <button onClick={() => setCheckoutStep(3)} className="w-full bg-slate-800 p-4 rounded text-white font-bold flex items-center justify-center hover:bg-slate-700">
-                                <CreditCard className="mr-2"/> VISA / MASTERCARD
+                            <button onClick={() => setCheckoutStep(3)} className="w-full bg-slate-800 p-3 rounded text-white font-bold flex items-center justify-center hover:bg-slate-700 text-sm">
+                                <CreditCard className="mr-2" size={16}/> Credit Card / EFT
                             </button>
                         </div>
-                        <button onClick={() => setCheckoutStep(1)} className="mt-auto text-slate-500">Back</button>
+                        <button onClick={() => setCheckoutStep(1)} className="mt-auto text-slate-500 text-sm">Back</button>
                     </div>
                 )}
-
                 {checkoutStep === 3 && (
                     <div className="p-4 flex-1 flex flex-col items-center justify-center text-center">
-                        <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white mb-4">
-                            <Check size={40} />
+                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white mb-4">
+                            <Check size={32} />
                         </div>
-                        <h3 className="text-white font-bold text-xl mb-2">Order Confirmed!</h3>
-                        <p className="text-slate-400 mb-6">Order #DAG-{Math.floor(Math.random()*10000)}. <br/> Delivery tracking details sent to your phone.</p>
-                        <button onClick={() => { setCart([]); setCheckoutStep(0); setCartOpen(false); }} className="bg-slate-800 text-white px-6 py-2 rounded">Close</button>
+                        <h3 className="text-white font-bold text-lg mb-2">Order Confirmed!</h3>
+                        <p className="text-slate-400 text-sm mb-6">Order #DAG-{Math.floor(Math.random()*10000)}. <br/> Invoice sent to your email.</p>
+                        <button onClick={() => { setCart([]); setCheckoutStep(0); setCartOpen(false); }} className="bg-slate-800 text-white px-6 py-2 rounded text-sm hover:bg-slate-700">Close</button>
                     </div>
                 )}
-            </div>
+             </div>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-950 py-12 px-4">
-            <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-10">
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-2">Spare Parts Market</h2>
-                        <p className="text-slate-400">Genuine parts for Caterpillar, Komatsu, Isuzu & more.</p>
-                    </div>
-                    <button onClick={() => setCartOpen(true)} className="relative bg-slate-900 p-3 rounded-full text-white border border-slate-700 hover:border-yellow-500 transition-colors">
-                        <ShoppingCart size={24} />
-                        {cart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">{cart.reduce((a,c)=>a+c.qty,0)}</span>}
-                    </button>
-                </div>
-
-                <div className="flex gap-2 overflow-x-auto pb-6 mb-4">
-                    {categories.map(cat => (
-                        <button 
-                            key={cat} 
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-yellow-500 text-slate-900' : 'bg-slate-900 text-slate-300 border border-slate-700 hover:border-slate-500'}`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {filteredParts.map(part => (
-                        <div key={part.id} className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden group hover:border-yellow-500/50 transition-all">
-                            <div className="h-48 overflow-hidden relative">
-                                <img src={part.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute top-2 right-2 bg-black/60 backdrop-blur px-2 py-1 rounded text-xs font-bold text-white">
-                                    {part.stock > 0 ? `${part.stock} in stock` : 'Out of Stock'}
-                                </div>
-                            </div>
-                            <div className="p-4">
-                                <div className="text-xs text-slate-500 uppercase mb-1">{part.category}</div>
-                                <h3 className="text-white font-bold mb-1 line-clamp-1" title={part.name}>{part.name}</h3>
-                                <p className="text-slate-400 text-xs mb-3">{part.partNumber}</p>
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <p className="text-xs text-slate-500">Price</p>
-                                        <p className="text-yellow-500 font-bold">KES {part.price.toLocaleString()}</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => addToCart(part)}
-                                        className="bg-slate-800 hover:bg-white hover:text-slate-900 text-white p-2 rounded transition-colors"
-                                    >
-                                        <ShoppingCart size={18} />
-                                    </button>
-                                </div>
-                            </div>
+        <div className="min-h-screen bg-slate-950 font-sans text-slate-200">
+            {/* Top Search & Action Bar */}
+            <div className="bg-slate-900 border-b border-slate-800 sticky top-20 z-40 shadow-lg">
+                <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <div className="relative flex-1 md:w-96">
+                            <input 
+                                type="text" 
+                                placeholder="Search Part Number, Keyword, or Manufacturer..." 
+                                className="w-full bg-slate-950 border border-slate-700 text-white pl-10 pr-4 py-2 rounded focus:outline-none focus:border-yellow-500 text-sm"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            <Search className="absolute left-3 top-2.5 text-slate-500 w-4 h-4" />
                         </div>
-                    ))}
+                        <button className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-4 py-2 rounded font-bold text-sm flex items-center gap-2 whitespace-nowrap">
+                            <Search size={16}/> Search
+                        </button>
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                         <button className="text-slate-300 hover:text-white text-xs font-bold flex items-center border border-slate-700 px-3 py-2 rounded bg-slate-950">
+                            <FileSpreadsheet size={14} className="mr-2 text-green-500"/> Upload BOM
+                         </button>
+                         <button onClick={() => setCartOpen(true)} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded flex items-center gap-2 text-sm relative border border-slate-700">
+                            <ShoppingCart size={16} />
+                            <span className="font-bold">{cart.length} Item(s)</span>
+                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
+                {/* Left Sidebar - Categories */}
+                <div className="w-full md:w-64 flex-shrink-0">
+                    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden sticky top-40">
+                        <div className="bg-slate-950 p-3 border-b border-slate-800 font-bold text-white text-sm flex items-center">
+                            <List size={14} className="mr-2"/> Product Categories
+                        </div>
+                        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
+                            {categories.map(cat => (
+                                <button 
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`w-full text-left px-4 py-2.5 text-xs font-medium border-b border-slate-800/50 hover:bg-slate-800 transition-colors ${selectedCategory === cat ? 'bg-yellow-500/10 text-yellow-500 border-l-2 border-l-yellow-500' : 'text-slate-400 border-l-2 border-l-transparent'}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="p-4 bg-slate-950 border-t border-slate-800">
+                            <div className="text-xs font-bold text-slate-500 uppercase mb-2">Filters</div>
+                            <label className="flex items-center text-xs text-slate-300 mb-2 cursor-pointer">
+                                <input type="checkbox" className="mr-2 bg-slate-800 border-slate-600 rounded" defaultChecked />
+                                In Stock Only
+                            </label>
+                            <label className="flex items-center text-xs text-slate-300 mb-2 cursor-pointer">
+                                <input type="checkbox" className="mr-2 bg-slate-800 border-slate-600 rounded" />
+                                RoHS Compliant
+                            </label>
+                             <label className="flex items-center text-xs text-slate-300 cursor-pointer">
+                                <input type="checkbox" className="mr-2 bg-slate-800 border-slate-600 rounded" defaultChecked />
+                                Verified Supplier
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content - Product Grid */}
+                <div className="flex-1">
+                    <div className="mb-4 flex items-center justify-between">
+                         <h3 className="text-white font-bold flex items-center">
+                            {selectedCategory} <span className="text-slate-500 text-sm font-normal ml-2">({filteredParts.length} products)</span>
+                         </h3>
+                         <div className="flex items-center gap-2 text-sm text-slate-400">
+                             <span>Sort By:</span>
+                             <select className="bg-slate-900 border border-slate-700 rounded text-white text-xs p-1 focus:outline-none">
+                                 <option>Relevance</option>
+                                 <option>Price: Low to High</option>
+                                 <option>Price: High to Low</option>
+                                 <option>Newest Arrival</option>
+                             </select>
+                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+                        {filteredParts.map(part => (
+                            <div key={part.id} className="bg-slate-900 border border-slate-800 rounded-lg hover:border-yellow-500/50 transition-all flex flex-col group relative overflow-hidden">
+                                {/* Supplier Badge */}
+                                {part.supplier.verified && (
+                                    <div className="absolute top-0 right-0 bg-blue-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl shadow-sm z-10 flex items-center">
+                                        <BadgeCheck size={10} className="mr-1"/> Verified
+                                    </div>
+                                )}
+                                
+                                <div className="p-3 flex gap-4 border-b border-slate-800/50">
+                                    <div className="w-20 h-20 bg-white rounded-md overflow-hidden flex-shrink-0 border border-slate-700 p-1">
+                                        <img src={part.image} className="w-full h-full object-contain" alt={part.name} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-wider mb-0.5">{part.supplier.name}</div>
+                                        <h4 className="text-white font-bold text-sm leading-tight mb-1 line-clamp-2 hover:text-yellow-500 cursor-pointer" title={part.name}>{part.name}</h4>
+                                        <div className="font-mono text-xs text-slate-400 bg-slate-950 inline-block px-1 rounded border border-slate-800 mb-1">{part.partNumber}</div>
+                                    </div>
+                                </div>
+
+                                <div className="p-3 flex-1 flex flex-col text-xs">
+                                     <div className="grid grid-cols-2 gap-y-1 gap-x-2 mb-3 text-slate-400">
+                                        {Object.entries(part.specs).slice(0,4).map(([k,v]) => (
+                                            <div key={k} className="flex flex-col">
+                                                <span className="text-[10px] text-slate-500 uppercase">{k}</span>
+                                                <span className="text-slate-300 font-medium truncate" title={v}>{v}</span>
+                                            </div>
+                                        ))}
+                                     </div>
+
+                                     <div className="mt-auto flex items-end justify-between">
+                                         <div>
+                                            <div className="text-[10px] text-slate-500 mb-0.5">Unit Price</div>
+                                            <div className="text-lg font-bold text-yellow-500">KES {part.price.toLocaleString()}</div>
+                                            <div className="flex items-center text-[10px] text-green-500 font-bold mt-1">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></div>
+                                                {part.stock} In Stock
+                                            </div>
+                                         </div>
+                                         <div className="flex flex-col items-end gap-2">
+                                             <a href="#" className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center hover:underline">
+                                                 <FileText size={10} className="mr-1"/> Datasheet
+                                             </a>
+                                             <button 
+                                                onClick={() => addToCart(part)}
+                                                className="bg-slate-800 hover:bg-yellow-500 hover:text-slate-900 text-white border border-slate-700 font-bold py-1.5 px-3 rounded flex items-center transition-colors shadow-sm"
+                                             >
+                                                <ShoppingCart size={14} className="mr-1.5"/> Add
+                                             </button>
+                                         </div>
+                                     </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
             <CartDrawer />
