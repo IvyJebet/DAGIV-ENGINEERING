@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar, Footer } from './components/Layout';
-import { PageView, UserRole, OperatorLog, EquipmentItem, SparePart, MaintenanceTask, Alert, ProfessionalProfile } from './types';
+import { PageView, UserRole, OperatorLog, EquipmentItem, SparePart, MaintenanceTask, Alert, ProfessionalProfile, ServiceDetail } from './types';
 import { EQUIPMENT_DATA, SERVICES_CONTENT, SPARE_PARTS, PROFESSIONALS } from './constants';
 import { CostChart, FleetStatusChart, UptimeChart } from './components/Widgets';
 import { 
@@ -38,61 +37,181 @@ const INITIAL_MAINTENANCE_TASKS = [
     { id: 'MT-3', machine: 'Komatsu Dozer', task: 'Undercarriage Inspection', status: 'Completed', date: '2023-10-15', priority: 'Low' },
 ];
 
-// --- MISSING COMPONENT IMPLEMENTATIONS ---
+// --- COMPONENTS ---
 
-const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => (
-  <div className="min-h-screen bg-slate-950 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-white mb-4">Our Engineering Services</h2>
-              <p className="text-slate-400 max-w-2xl mx-auto">From procurement to maintenance, we handle the entire lifecycle of your heavy machinery.</p>
-          </div>
-          <div className="space-y-20">
-              {SERVICES_CONTENT.map((service, idx) => {
-                  const Icon = service.icon;
-                  return (
-                      <div key={service.id} className={`flex flex-col ${idx % 2 === 1 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 items-center`}>
-                          <div className="flex-1">
-                              <img src={service.image} alt={service.title} className="rounded-xl shadow-2xl border border-slate-800" />
-                          </div>
-                          <div className="flex-1 space-y-6">
-                              <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center text-yellow-500 border border-slate-700">
-                                  <Icon size={32} />
-                              </div>
-                              <h3 className="text-3xl font-bold text-white">{service.title}</h3>
-                              <p className="text-slate-300 text-lg leading-relaxed">{service.fullDesc}</p>
-                              
-                              <div className="bg-slate-900 p-6 rounded-lg border border-slate-800">
-                                  <h4 className="text-yellow-500 font-bold uppercase text-xs mb-4">Our Process</h4>
-                                  <div className="grid grid-cols-2 gap-4">
-                                      {service.process.map((step, i) => (
-                                          <div key={i} className="flex items-center text-slate-400 text-sm">
-                                              <span className="w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold mr-3 border border-slate-700">{i+1}</span>
-                                              {step}
-                                          </div>
-                                      ))}
-                                  </div>
-                              </div>
-                              
-                              <button onClick={() => setPage(PageView.CONSULT)} className="px-8 py-3 bg-white text-slate-900 font-bold rounded hover:bg-slate-200">
-                                  Request Service
-                              </button>
-                          </div>
-                      </div>
-                  );
-              })}
-          </div>
-      </div>
-  </div>
-);
+// Service Request Modal Component
+const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onClose: () => void }) => {
+    const [status, setStatus] = useState<'IDLE' | 'SENDING' | 'SUCCESS'>('IDLE');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setStatus('SENDING');
+        // Simulate API call / Email sending
+        setTimeout(() => {
+            setStatus('SUCCESS');
+        }, 2000);
+    };
+
+    if (status === 'SUCCESS') {
+        return (
+            <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
+                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.2)]">
+                        <CheckCircle className="text-green-500" size={40} />
+                    </div>
+                    <h3 className="text-2xl font-black text-white mb-2">Request Received</h3>
+                    <p className="text-slate-400 mb-8 leading-relaxed">
+                        We have successfully logged your inquiry regarding <span className="text-yellow-500 font-bold">{service.title}</span>. 
+                        <br/><br/>
+                        Our engineering team has been notified and will contact you via email shortly.
+                    </p>
+                    <button onClick={onClose} className="bg-slate-800 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-700 transition-colors w-full border border-slate-700 hover:border-slate-600">
+                        Close & Return to Services
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+                {/* Header */}
+                <div className="px-8 py-6 border-b border-slate-800 bg-slate-950/50 flex justify-between items-start">
+                    <div>
+                        <div className="text-yellow-500 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Service Request
+                        </div>
+                        <h3 className="text-2xl font-black text-white leading-tight">{service.title}</h3>
+                    </div>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full"><X size={20}/></button>
+                </div>
+
+                {/* Form */}
+                <div className="p-8 overflow-y-auto custom-scrollbar">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="block text-slate-500 text-xs font-bold uppercase">Full Name</label>
+                                <div className="relative group">
+                                    <User className="absolute left-3 top-3.5 text-slate-600 group-focus-within:text-yellow-500 transition-colors" size={16}/>
+                                    <input required className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" placeholder="John Doe" />
+                                </div>
+                            </div>
+                             <div className="space-y-2">
+                                <label className="block text-slate-500 text-xs font-bold uppercase">Company (Optional)</label>
+                                <div className="relative group">
+                                    <Briefcase className="absolute left-3 top-3.5 text-slate-600 group-focus-within:text-yellow-500 transition-colors" size={16}/>
+                                    <input className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" placeholder="Acme Construction Ltd" />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <label className="block text-slate-500 text-xs font-bold uppercase">Email Address</label>
+                            <input type="email" required className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" placeholder="john@example.com" />
+                        </div>
+
+                         <div className="space-y-2">
+                            <label className="block text-slate-500 text-xs font-bold uppercase">Phone Number</label>
+                            <input type="tel" required className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" placeholder="+254 700 000 000" />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="block text-slate-500 text-xs font-bold uppercase">Project Details / Requirements</label>
+                            <textarea required className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors h-32 resize-none placeholder:text-slate-700 font-medium text-sm leading-relaxed" placeholder="Please describe your site location, equipment needs, or specific maintenance issues..."></textarea>
+                        </div>
+
+                        <div className="pt-4">
+                            <button type="submit" disabled={status === 'SENDING'} className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded-lg hover:bg-yellow-400 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] disabled:opacity-70 disabled:shadow-none">
+                                {status === 'SENDING' ? (
+                                    <span className="flex items-center"><RefreshCw className="animate-spin mr-3" /> Processing Request...</span>
+                                ) : (
+                                    <span className="flex items-center">Submit Service Request <ArrowRight size={18} className="ml-2"/></span>
+                                )}
+                            </button>
+                            <p className="text-center text-slate-600 text-xs mt-6">
+                                By submitting this form, you request a formal quotation from DAGIV Engineering. <br/>We respect your privacy and will not share your data.
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
+  const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
+
+  return (
+    <div className="min-h-screen bg-slate-950 py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+                <h2 className="text-4xl font-bold text-white mb-4">Our Engineering Services</h2>
+                <p className="text-slate-400 max-w-2xl mx-auto">From procurement to maintenance, we handle the entire lifecycle of your heavy machinery.</p>
+            </div>
+            <div className="space-y-20">
+                {SERVICES_CONTENT.map((service, idx) => {
+                    const Icon = service.icon;
+                    return (
+                        <div key={service.id} className={`flex flex-col ${idx % 2 === 1 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 items-center`}>
+                            <div className="flex-1">
+                                <img src={service.image} alt={service.title} className="rounded-xl shadow-2xl border border-slate-800" />
+                            </div>
+                            <div className="flex-1 space-y-6">
+                                <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center text-yellow-500 border border-slate-700 shadow-inner">
+                                    <Icon size={32} />
+                                </div>
+                                <h3 className="text-3xl font-bold text-white">{service.title}</h3>
+                                <p className="text-slate-300 text-lg leading-relaxed">{service.fullDesc}</p>
+                                
+                                <div className="bg-slate-900 p-6 rounded-lg border border-slate-800">
+                                    <h4 className="text-yellow-500 font-bold uppercase text-xs mb-4 tracking-wider">Our Process</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {service.process.map((step, i) => (
+                                            <div key={i} className="flex items-center text-slate-400 text-sm">
+                                                <span className="w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center text-xs font-bold mr-3 border border-slate-700 text-slate-500">{i+1}</span>
+                                                {step}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    onClick={() => setSelectedService(service)} 
+                                    className="px-8 py-3 bg-white text-slate-900 font-bold rounded hover:bg-slate-200 hover:scale-105 transition-all shadow-[0_4px_0_0_rgba(15,23,42,1)]"
+                                >
+                                    Request Service
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+
+        {/* Modal Overlay */}
+        {selectedService && (
+            <ServiceRequestModal 
+                service={selectedService} 
+                onClose={() => setSelectedService(null)} 
+            />
+        )}
+    </div>
+  );
+};
 
 const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (log: OperatorLog) => void }) => {
     // Stage 1: Auth, Stage 2: Log Entry
     const [authStep, setAuthStep] = useState(true);
     const [credentials, setCredentials] = useState({
-        employeeId: '',
-        pin: ''
+        username: '',
+        password: ''
     });
+    const [token, setToken] = useState(''); // Store JWT here
+    const [isLoading, setIsLoading] = useState(false);
     
     const [formData, setFormData] = useState({
         machineId: '',
@@ -109,16 +228,37 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
         }
     });
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(credentials.employeeId && credentials.pin) {
-            setAuthStep(false);
-        } else {
-            alert("Please enter valid credentials.");
+        setIsLoading(true);
+        try {
+            // Call the Python API Login Endpoint
+            const response = await fetch('http://localhost:8000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setToken(data.access_token); // Save Token
+                setAuthStep(false);
+            } else {
+                alert(data.detail || "Login failed. Check your credentials.");
+            }
+        } catch (error) {
+            console.error("Login Error:", error);
+            alert("Connection error. Is the server running?");
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const start = parseFloat(formData.startHours) || 0;
         const end = parseFloat(formData.endHours) || 0;
@@ -131,9 +271,9 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
         const newLog: OperatorLog = {
             id: `LOG-${Date.now()}`,
             machineId: formData.machineId,
-            operatorName: credentials.employeeId, // Using Employee ID as name for this demo
+            operatorName: credentials.username, 
             date: new Date().toISOString().split('T')[0],
-            startTime: '08:00', // Mocked for simplicity
+            startTime: '08:00', 
             endTime: '17:00',
             startOdometer: start,
             endOdometer: end,
@@ -142,8 +282,33 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
             checklist: formData.checklist,
             notes: formData.notes
         };
-        onSubmit(newLog);
-        onBack();
+
+        try {
+            // SECURE REQUEST: Include the Token in Headers
+            const response = await fetch('http://localhost:8000/api/operator-logs', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // <--- THE KEY
+                },
+                body: JSON.stringify(newLog)
+            });
+            
+            if (!response.ok) {
+                const err = await response.json();
+                console.error("Failed to sync log:", err);
+                alert("Failed to submit log: " + (err.detail || "Unknown Error"));
+                return;
+            }
+            
+            // If successful
+            onSubmit(newLog);
+            onBack();
+            
+        } catch (error) {
+            console.error("Server error:", error);
+            alert("Network error. Log could not be sent.");
+        }
     };
 
     const toggleCheck = (key: keyof typeof formData.checklist) => {
@@ -162,25 +327,25 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                         <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-700">
                             <UserCheck className="text-yellow-500" size={32} />
                         </div>
-                        <h2 className="text-2xl font-bold text-white">Operator Identification</h2>
-                        <p className="text-slate-400 text-sm">Please verify your credentials to access the fleet log.</p>
+                        <h2 className="text-2xl font-bold text-white">Operator Login</h2>
+                        <p className="text-slate-400 text-sm">Enter credentials provided by Admin.</p>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Employee ID / Badge No.</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Username</label>
                             <div className="relative">
                                 <User className="absolute left-3 top-3 text-slate-500" size={18} />
                                 <input 
                                     required 
                                     className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded text-white focus:border-yellow-500 outline-none transition-colors" 
-                                    placeholder="e.g. OP-2024-892"
-                                    value={credentials.employeeId}
-                                    onChange={e => setCredentials({...credentials, employeeId: e.target.value})}
+                                    placeholder="e.g. operator1"
+                                    value={credentials.username}
+                                    onChange={e => setCredentials({...credentials, username: e.target.value})}
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Secure PIN</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Password</label>
                             <div className="relative">
                                 <Key className="absolute left-3 top-3 text-slate-500" size={18} />
                                 <input 
@@ -188,13 +353,13 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                                     type="password"
                                     className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded text-white focus:border-yellow-500 outline-none transition-colors" 
                                     placeholder="••••••"
-                                    value={credentials.pin}
-                                    onChange={e => setCredentials({...credentials, pin: e.target.value})}
+                                    value={credentials.password}
+                                    onChange={e => setCredentials({...credentials, password: e.target.value})}
                                 />
                             </div>
                         </div>
-                        <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded hover:bg-yellow-400 transition-all flex items-center justify-center">
-                            Verify Identity <ArrowRight size={18} className="ml-2"/>
+                        <button type="submit" disabled={isLoading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded hover:bg-yellow-400 transition-all flex items-center justify-center disabled:opacity-50">
+                            {isLoading ? "Verifying..." : "Secure Login"} <ArrowRight size={18} className="ml-2"/>
                         </button>
                     </form>
                     <button onClick={onBack} className="w-full text-center text-slate-500 text-sm mt-6 hover:text-slate-300">Cancel & Return</button>
@@ -210,8 +375,8 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center"><ClipboardCheck className="mr-2 text-yellow-500"/> Daily Operation Log</h2>
                         <div className="flex items-center gap-4 text-xs text-slate-400 mt-1">
-                            <span className="flex items-center"><User size={12} className="mr-1"/> {credentials.employeeId}</span>
-                            <span className="flex items-center"><Clock size={12} className="mr-1"/> {new Date().toLocaleTimeString()}</span>
+                            <span className="flex items-center"><User size={12} className="mr-1"/> {credentials.username}</span>
+                            <span className="flex items-center"><ShieldCheck size={12} className="mr-1 text-green-500"/> Authenticated</span>
                         </div>
                     </div>
                     <button onClick={onBack} className="text-slate-400 hover:text-white"><X size={24}/></button>
@@ -224,6 +389,7 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                             <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Machine ID / Plate</label>
                             <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none" 
                                 placeholder="e.g. KCD 892J"
+                                value={formData.machineId}
                                 onChange={e => setFormData({...formData, machineId: e.target.value})}
                             />
                         </div>
@@ -231,6 +397,7 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                             <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Site Location</label>
                             <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none" 
                                 placeholder="e.g. Athi River Cement Factory"
+                                value={formData.location}
                                 onChange={e => setFormData({...formData, location: e.target.value})}
                             />
                         </div>
@@ -243,18 +410,21 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                             <div>
                                 <label className="text-slate-500 text-xs mb-1 block">Start Hours/Odo</label>
                                 <input required type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    value={formData.startHours}
                                     onChange={e => setFormData({...formData, startHours: e.target.value})}
                                 />
                             </div>
                             <div>
                                 <label className="text-slate-500 text-xs mb-1 block">End Hours/Odo</label>
                                 <input required type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    value={formData.endHours}
                                     onChange={e => setFormData({...formData, endHours: e.target.value})}
                                 />
                             </div>
                             <div>
                                 <label className="text-slate-500 text-xs mb-1 block">Fuel Added (L)</label>
                                 <input type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    value={formData.fuel}
                                     onChange={e => setFormData({...formData, fuel: e.target.value})}
                                 />
                             </div>
@@ -266,7 +436,7 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                         <h3 className="text-white font-bold text-sm mb-4 flex items-center"><ShieldCheck size={16} className="mr-2 text-green-500"/> Pre-Start Safety Check</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {[
-                                { k: 'tires', l: 'Tires/Tracks', i: DiscIcon }, // Placeholder icon logic below
+                                { k: 'tires', l: 'Tires/Tracks', i: DiscIcon }, 
                                 { k: 'oil', l: 'Engine Oil', i: Droplet },
                                 { k: 'hydraulics', l: 'Hydraulics', i: Activity },
                                 { k: 'brakes', l: 'Brakes', i: AlertTriangle }
@@ -289,6 +459,7 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
                         <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Operational Notes / Incidents</label>
                         <textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none h-24 text-sm" 
                             placeholder="Report any faults, noises, or delays..."
+                            value={formData.notes}
                             onChange={e => setFormData({...formData, notes: e.target.value})}
                         />
                     </div>
@@ -516,7 +687,7 @@ const HomePage = ({ setPage, onBookInspection }: { setPage: (p: PageView) => voi
                 </div>
             </div>
 
-            <div className="bg-slate-950 rounded-2xl p-8 md:p-12 border border-slate-800 flex flex-col md:flex-row gap-12 items-center">
+            <div className="bg-slate-900 rounded-2xl p-8 md:p-12 border border-slate-800 flex flex-col md:flex-row gap-12 items-center">
                 <div className="flex-1">
                     <h3 className="text-2xl font-bold text-white mb-6 flex items-center"><ShieldCheck className="text-yellow-500 mr-3" /> Trust & Compliance</h3>
                     <ul className="space-y-4">
@@ -1322,6 +1493,40 @@ const ConsultPage = () => {
 const InspectionBookingPage = ({ onComplete }: { onComplete: () => void }) => {
     const [step, setStep] = useState(1);
     
+    // --- NEW: Added State to capture form data ---
+    const [bookingData, setBookingData] = useState({
+        machineType: 'Excavator',
+        location: '',
+        contactPerson: '',
+        phone: '',
+        date: ''
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setBookingData({...bookingData, [e.target.name]: e.target.value});
+    };
+
+    // --- NEW: Added Submit Logic ---
+    const submitBooking = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/api/book-inspection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bookingData)
+            });
+            
+            if (response.ok) {
+                // Success - move to next step (Success Screen)
+                setStep(3); 
+            } else {
+                alert("Failed to book inspection. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Server error. Is the backend running?");
+        }
+    };
+    
     return (
         <div className="min-h-screen bg-slate-950 py-16 px-4">
             <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
@@ -1335,14 +1540,26 @@ const InspectionBookingPage = ({ onComplete }: { onComplete: () => void }) => {
                         <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2">Step 1: Machine Details</h3>
                         <div>
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Machine Type</label>
-                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4">
+                            <select 
+                                name="machineType"
+                                value={bookingData.machineType}
+                                onChange={handleChange}
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4"
+                            >
                                 <option>Excavator</option>
                                 <option>Truck</option>
                                 <option>Generator</option>
                                 <option>Other</option>
                             </select>
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Location of Machine</label>
-                            <input type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Athi River Site" />
+                            <input 
+                                name="location"
+                                value={bookingData.location}
+                                onChange={handleChange}
+                                type="text" 
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" 
+                                placeholder="e.g. Athi River Site" 
+                            />
                         </div>
                         <button onClick={() => setStep(2)} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded">Next</button>
                     </div>
@@ -1351,12 +1568,32 @@ const InspectionBookingPage = ({ onComplete }: { onComplete: () => void }) => {
                 {step === 2 && (
                     <div className="p-8 space-y-6">
                         <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2">Step 2: Contact Info</h3>
-                        <input type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Contact Person" />
-                        <input type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Phone Number" />
-                        <input type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" />
+                        <input 
+                            name="contactPerson"
+                            value={bookingData.contactPerson}
+                            onChange={handleChange}
+                            type="text" 
+                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" 
+                            placeholder="Contact Person" 
+                        />
+                        <input 
+                            name="phone"
+                            value={bookingData.phone}
+                            onChange={handleChange}
+                            type="text" 
+                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" 
+                            placeholder="Phone Number" 
+                        />
+                        <input 
+                            name="date"
+                            value={bookingData.date}
+                            onChange={handleChange}
+                            type="date" 
+                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" 
+                        />
                         <div className="flex gap-4">
                             <button onClick={() => setStep(1)} className="flex-1 bg-slate-800 text-white font-bold py-3 rounded">Back</button>
-                            <button onClick={() => setStep(3)} className="flex-1 bg-yellow-500 text-slate-900 font-bold py-3 rounded">Book Now</button>
+                            <button onClick={submitBooking} className="flex-1 bg-yellow-500 text-slate-900 font-bold py-3 rounded">Book Now</button>
                         </div>
                     </div>
                 )}
