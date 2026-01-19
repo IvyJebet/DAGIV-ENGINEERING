@@ -1,7 +1,8 @@
-
+// constants.ts
 import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail } from './types';
 import { SearchCheck, Truck, Wrench, Flame } from 'lucide-react';
 
+// --- EQUIPMENT DATA (Expanded Categories) ---
 export const EQUIPMENT_DATA: EquipmentItem[] = [
   // --- A. HEAVY PLANT EQUIPMENT ---
   // Generators
@@ -13,7 +14,7 @@ export const EQUIPMENT_DATA: EquipmentItem[] = [
     specs: { 'Prime Power': '500 kVA', 'Engine': 'Perkins 6 Cylinder', 'Alternator': 'Stamford', 'Control': 'Deep Sea' },
     description: 'Heavy duty industrial diesel engine generator (D.E.G). Soundproof canopy included. Ideal for factories.'
   },
-  // Concrete Systems (Expanded based on Machineryline)
+  // Concrete Systems
   {
     id: 'h3', name: 'JS 500 Concrete Mixer', category: 'Heavy Plant Equipment', subCategory: 'Concrete Systems',
     brand: 'SANY', model: 'JS 500', year: 2022, condition: 'New', listingType: 'Sale',
@@ -244,6 +245,7 @@ export const EQUIPMENT_DATA: EquipmentItem[] = [
   }
 ];
 
+// --- SPARE PARTS (Supplier Ratings & Verified Reviews) ---
 export const SPARE_PARTS: SparePart[] = [
   { 
     id: 'p1', name: 'Hydraulic Main Pump (K3V112)', partNumber: 'K3V112DT', category: 'Hydraulics', equipmentType: ['Excavator'],
@@ -303,15 +305,106 @@ export const SPARE_PARTS: SparePart[] = [
   }
 ];
 
+// --- PROFESSIONALS PROFILES (Portfolio & Badge System) ---
 export const PROFESSIONALS: ProfessionalProfile[] = [
-  { id: 'pr1', name: 'Eng. Juma Ochieng', role: 'Engineer', rating: 4.9, location: 'Nairobi', verified: true },
-  { id: 'pr2', name: 'David Kamau', role: 'Welder', rating: 4.7, location: 'Thika', verified: true },
-  { id: 'pr3', name: 'Samuel Kiplagat', role: 'Mechanic', rating: 4.8, location: 'Eldoret', verified: true },
-  { id: 'pr4', name: 'Dagiv Fab Team', role: 'Fabricator', rating: 5.0, location: 'Industrial Area', verified: true },
-  { id: 'pr5', name: 'Michael Otieno', role: 'Operator', rating: 4.6, location: 'Mombasa', verified: true },
-  { id: 'pr6', name: 'Peter Njoroge', role: 'Drivers', rating: 4.9, location: 'Nakuru', verified: true },
+  { 
+    id: 'pr1', name: 'Eng. Juma Ochieng', role: 'Civil Engineer', specialization: 'Structural & Concrete',
+    rating: 4.9, location: 'Nairobi', verified: true,
+    image: 'https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&w=200&q=80',
+    bio: 'EBK Registered Professional Engineer with 12 years of experience in high-rise structural design and concrete forensics. Expert in calculating load-bearing capacities for industrial warehouses.',
+    yearsExperience: 12,
+    certifications: ['EBK A2341', 'NCA Lead'],
+    portfolio: [
+        'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&q=80',
+        'https://images.unsplash.com/photo-1590642916589-592bfa3d2766?auto=format&fit=crop&w=400&q=80'
+    ],
+    reviews: [
+        { id: 'r1', user: 'Mombasa Cement', rating: 5, comment: 'Eng. Juma saved us millions by optimizing our steel structure design.', date: '2023-09-10', verifiedClient: true }
+    ]
+  },
+  { 
+    id: 'pr7', name: 'Eng. Alice Muthoni', role: 'Structural Engineer', specialization: 'Steel Frameworks',
+    rating: 4.8, location: 'Nakuru', verified: true,
+    image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
+    bio: 'Specialist in steel structure fabrication drawings and load testing. 8 years experience with mining infrastructure.',
+    yearsExperience: 8,
+    certifications: ['EBK B5521', 'AutoCAD Pro'],
+    portfolio: [
+        'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=400&q=80'
+    ],
+    reviews: [
+         { id: 'r8', user: 'Steel Structures Ltd', rating: 5, comment: 'Very precise drawings.', date: '2023-11-05', verifiedClient: true }
+    ]
+  },
+  { 
+    id: 'pr8', name: 'Eng. Kevin Maalim', role: 'Mechanical Engineer', specialization: 'Hydraulics & Heavy Plant',
+    rating: 4.9, location: 'Mombasa', verified: true,
+    image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
+    bio: 'Expert in caterpillar engine overhauls and hydraulic pump diagnostics. 15 years servicing mining fleets.',
+    yearsExperience: 15,
+    certifications: ['CAT Certified', 'Hydraulic Systems L3'],
+    portfolio: [
+        'https://images.unsplash.com/photo-1581092335397-9583eb92d232?auto=format&fit=crop&w=400&q=80'
+    ],
+    reviews: [
+         { id: 'r9', user: 'Logistics Manager', rating: 5, comment: 'Fixed the transmission issue no one else could solve.', date: '2023-10-20', verifiedClient: true }
+    ]
+  },
+  { 
+    id: 'pr2', name: 'Sarah Wanjiku', role: 'Software Engineer', specialization: 'Industrial IoT & Automation',
+    rating: 5.0, location: 'Remote / Nairobi', verified: true,
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+    bio: 'Full stack developer specializing in SCADA systems and Fleet Management integrations. I build custom dashboards for factory machine monitoring.',
+    yearsExperience: 6,
+    certifications: ['AWS Certified', 'Python Expert'],
+    portfolio: [
+        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80'
+    ],
+    reviews: [
+        { id: 'r2', user: 'Dagiv Fleet Mgr', rating: 5, comment: 'Excellent work on the fuel monitoring module.', date: '2023-10-05', verifiedClient: true }
+    ]
+  },
+  { 
+    id: 'pr3', name: 'David Kamau', role: 'Welder', specialization: 'TIG/MIG High Pressure',
+    rating: 4.7, location: 'Thika', verified: true,
+    image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=200&q=80',
+    bio: 'Specialist in pipeline welding and excavator bucket hard-facing. I restore broken boom arms to factory strength.',
+    yearsExperience: 15,
+    certifications: ['Grade 1 Welder', 'Safety Pass'],
+    portfolio: [
+        'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80'
+    ],
+    reviews: [
+        { id: 'r3', user: 'John (Operator)', rating: 4, comment: 'Strong welds, but took a bit longer than expected.', date: '2023-08-22', verifiedClient: true },
+        { id: 'r4', user: 'Site Manager', rating: 5, comment: 'Fixed our crusher jaw overnight.', date: '2023-11-01', verifiedClient: false }
+    ]
+  },
+  {
+    id: 'pr4', name: 'Peter Njoroge', role: 'Driver', specialization: 'Heavy Haulage / Low Bed', 
+    rating: 4.8, location: 'Mombasa', verified: true,
+    image: 'https://images.unsplash.com/photo-1600486913747-55e5470d6f40?auto=format&fit=crop&w=200&q=80',
+    bio: 'Long-distance heavy commercial driver with 20 years experience. Specializes in low-bed transport of excavators and abnormal loads across East Africa.',
+    yearsExperience: 20,
+    certifications: ['Class CE License', 'Defensive Driving'],
+    portfolio: [],
+    reviews: [
+         { id: 'r5', user: 'Logistics Coord', rating: 5, comment: 'Delivered the D8 Dozer to Turkana safely.', date: '2023-12-15', verifiedClient: true }
+    ]
+  },
+  // Placeholder to ensure the Mechanic tab is not empty
+  { 
+    id: 'pr5', name: 'Samuel Kiplagat', role: 'Mechanic', specialization: 'Diesel Engine Overhaul', 
+    rating: 4.8, location: 'Eldoret', verified: true, image: '', 
+    bio: 'Diesel Engine expert.', yearsExperience: 8, certifications: [], portfolio: [], reviews: [] 
+  },
+  // Placeholder for Operator
+  { 
+    id: 'pr6', name: 'Michael Otieno', role: 'Operator', specialization: 'Heavy Crane', 
+    rating: 4.6, location: 'Mombasa', verified: true, image: '', 
+    bio: 'Certified Crane Operator.', yearsExperience: 10, certifications: [], portfolio: [], reviews: [] 
+  }
 ];
-
+// --- SERVICES CONTENT (With Smart IDs for Ordering) ---
 export const SERVICES_CONTENT: ServiceDetail[] = [
   {
     id: 'srv1',

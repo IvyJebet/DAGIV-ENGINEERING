@@ -1,26 +1,30 @@
-import { GoogleGenAI } from "@google/genai";
+// services/geminiService.ts
 
-const getAiClient = () => {
-    // In a real app, ensure process.env.API_KEY is defined. 
-    // For this demo, we assume the environment is set up correctly.
-    // Use the user-provided key if available in a full implementation.
-    const apiKey = process.env.API_KEY || 'YOUR_MOCK_KEY_FOR_BUILD'; 
-    return new GoogleGenAI({ apiKey });
-};
-
+/**
+ * Sends the engineering query to the secure DAGIV Backend.
+ * The backend handles the actual communication with Google Gemini.
+ */
 export const generateEngineeringAdvice = async (prompt: string): Promise<string> => {
   try {
-    const ai = getAiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        systemInstruction: "You are a senior mechanical engineer at DAGIV ENGINEERING in Kenya. You provide brief, technical, and safety-conscious advice about heavy machinery, maintenance, and industrial equipment. Keep answers under 100 words. Be professional and authoritative.",
-      }
+    const response = await fetch('http://localhost:8000/api/ai-consultant', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
     });
-    return response.text || "I apologize, I cannot provide advice at this moment. Please contact our engineers directly.";
+
+    if (!response.ok) {
+      throw new Error(`Server Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // The backend returns { status: "success", response: "..." }
+    return data.response || "No response received from the engineering server.";
+
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "System offline. Please try consulting a human engineer via our contact page.";
+    console.error("AI Service Error:", error);
+    return "Connection to DAGIV Server failed. Please check your internet connection or contact support.";
   }
 };
