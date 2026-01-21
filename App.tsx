@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar, Footer } from './components/Layout';
-import { PageView, UserRole, OperatorLog, EquipmentItem, SparePart, MaintenanceTask, Alert, ProfessionalProfile, ServiceDetail } from './types';
-import { EQUIPMENT_DATA, SERVICES_CONTENT, SPARE_PARTS, PROFESSIONALS } from './constants';
+import { PageView, UserRole, OperatorLog, EquipmentItem, SparePart, MaintenanceTask, Alert, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
+import { EQUIPMENT_DATA, SERVICES_CONTENT, SPARE_PARTS, PROFESSIONALS, MARKETPLACE_ITEMS, CATEGORY_STRUCTURE } from './constants';
 import { CostChart, FleetStatusChart, UptimeChart } from './components/Widgets';
 import { 
   CheckCircle, ChevronRight, Truck, Wrench, ShieldCheck, MapPin, 
@@ -9,7 +9,7 @@ import {
   Phone, MessageSquare, Briefcase, Star, ShoppingCart, Info, X, Activity,
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
   ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
-  FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer
+  FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer, PlusCircle, Heart, ChevronLeft, UploadCloud, Camera
 } from 'lucide-react';
 
 
@@ -31,7 +31,313 @@ const INITIAL_LOGS: OperatorLog[] = [
     }
 ];
 
-// --- COMPONENTS ---
+// --- NEW COMPONENT: Sell Item Wizard (The "Professional" Flow) ---
+const SellItemModal = ({ onClose }: { onClose: () => void }) => {
+    const [step, setStep] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Form State
+    const [formData, setFormData] = useState({
+        sellerName: '',
+        sellerPhone: '',
+        sellerLocation: '',
+        category: 'Heavy Plant and Equipment',
+        subCategory: '',
+        brand: '',
+        model: '',
+        year: '',
+        hours: '',
+        condition: 'Used - Good',
+        price: '',
+        currency: 'KES'
+    });
+
+    const categories = Object.keys(CATEGORY_STRUCTURE);
+    // @ts-ignore
+    const subCategories = formData.category ? CATEGORY_STRUCTURE[formData.category].equipment : [];
+
+    const handleNext = () => setStep(step + 1);
+    const handleBack = () => setStep(step - 1);
+
+    const handleSubmit = () => {
+        setIsSubmitting(true);
+        // Simulate API call / Verification Process
+        setTimeout(() => {
+            setIsSubmitting(false);
+            setStep(5); // Move to Success Step
+        }, 2000);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                
+                {/* Header */}
+                <div className="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center">
+                    <div>
+                        <div className="text-yellow-500 text-xs font-bold uppercase tracking-widest mb-1">Seller Portal</div>
+                        <h2 className="text-xl font-bold text-white">List Your Equipment</h2>
+                    </div>
+                    <button onClick={onClose} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="h-1 bg-slate-800 w-full">
+                    <div className="h-full bg-yellow-500 transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }}></div>
+                </div>
+
+                {/* Content Area */}
+                <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
+                    
+                    {/* STEP 1: Seller Identity (Security Layer) */}
+                    {step === 1 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4">
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500 border border-blue-500/20">
+                                    <User size={32}/>
+                                </div>
+                                <h3 className="text-white font-bold text-lg">Merchant Profile</h3>
+                                <p className="text-slate-400 text-sm">Tell us who is selling this equipment. This helps build trust with buyers.</p>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Company / Seller Name</label>
+                                    <input 
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                        value={formData.sellerName}
+                                        onChange={(e) => setFormData({...formData, sellerName: e.target.value})}
+                                        placeholder="e.g. Mombasa Cement Fleet"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Phone Number</label>
+                                        <input 
+                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                            value={formData.sellerPhone}
+                                            onChange={(e) => setFormData({...formData, sellerPhone: e.target.value})}
+                                            placeholder="+254 7..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Yard Location</label>
+                                        <input 
+                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                            value={formData.sellerLocation}
+                                            onChange={(e) => setFormData({...formData, sellerLocation: e.target.value})}
+                                            placeholder="e.g. Athi River"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 2: Item Categorization (Structured Data) */}
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4">
+                            <div className="text-center mb-8">
+                                <h3 className="text-white font-bold text-lg">What are you selling?</h3>
+                                <p className="text-slate-400 text-sm">Categorize your asset correctly to ensure it appears in the right filters.</p>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Main Category</label>
+                                    <select 
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                        value={formData.category}
+                                        onChange={(e) => setFormData({...formData, category: e.target.value, subCategory: ''})}
+                                    >
+                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Sub-Category</label>
+                                    <select 
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                        value={formData.subCategory}
+                                        onChange={(e) => setFormData({...formData, subCategory: e.target.value})}
+                                    >
+                                        <option value="">-- Select Type --</option>
+                                        {subCategories.map((sc: string) => <option key={sc} value={sc}>{sc}</option>)}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Brand / Make</label>
+                                        <input 
+                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                            placeholder="e.g. Caterpillar"
+                                            value={formData.brand}
+                                            onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Model</label>
+                                        <input 
+                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                            placeholder="e.g. 336D2"
+                                            value={formData.model}
+                                            onChange={(e) => setFormData({...formData, model: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 3: Specs & Pricing */}
+                    {step === 3 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4">
+                            <h3 className="text-white font-bold text-lg mb-6">Condition & Specs</h3>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Year of Mfg</label>
+                                    <input 
+                                        type="number"
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                        placeholder="2018"
+                                        value={formData.year}
+                                        onChange={(e) => setFormData({...formData, year: e.target.value})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Hours / Mileage</label>
+                                    <input 
+                                        type="number"
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
+                                        placeholder="5000"
+                                        value={formData.hours}
+                                        onChange={(e) => setFormData({...formData, hours: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Condition</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {['New', 'Used - Like New', 'Used - Good', 'Refurbished'].map(c => (
+                                        <button 
+                                            key={c}
+                                            onClick={() => setFormData({...formData, condition: c})}
+                                            className={`p-3 rounded text-sm font-bold border transition-all ${formData.condition === c ? 'bg-yellow-500 text-slate-900 border-yellow-500' : 'bg-slate-950 text-slate-400 border-slate-700'}`}
+                                        >
+                                            {c}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="border-t border-slate-800 pt-6">
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Selling Price</label>
+                                <div className="flex gap-2">
+                                    <select className="bg-slate-950 border border-slate-700 rounded p-3 text-white font-bold">
+                                        <option>KES</option>
+                                        <option>USD</option>
+                                    </select>
+                                    <input 
+                                        type="number"
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none font-bold text-lg"
+                                        placeholder="0.00"
+                                        value={formData.price}
+                                        onChange={(e) => setFormData({...formData, price: e.target.value})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 4: Review & Trust Contract */}
+                    {step === 4 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4">
+                            <div className="bg-yellow-500/10 p-6 rounded-xl border border-yellow-500/30 text-center">
+                                <ShieldCheck className="w-12 h-12 text-yellow-500 mx-auto mb-3"/>
+                                <h3 className="text-white font-bold text-lg">Verification Policy</h3>
+                                <p className="text-slate-400 text-sm mt-2">
+                                    To maintain the integrity of the DAGIV Marketplace, all equipment must be physically verified by our engineers before the listing goes live.
+                                </p>
+                            </div>
+
+                            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 text-sm space-y-2">
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Seller:</span>
+                                    <span className="text-white font-bold">{formData.sellerName}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Asset:</span>
+                                    <span className="text-white font-bold">{formData.brand} {formData.model}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">Listed Price:</span>
+                                    <span className="text-yellow-500 font-bold">KES {Number(formData.price).toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <label className="flex items-start gap-3 p-4 bg-slate-900 rounded border border-slate-700 cursor-pointer hover:bg-slate-800 transition-colors">
+                                <input type="checkbox" className="mt-1 w-4 h-4 rounded bg-slate-700 border-slate-600 text-yellow-500 focus:ring-yellow-500" />
+                                <div className="text-sm text-slate-300">
+                                    I agree to the <span className="text-white font-bold underline">Terms of Service</span>. I understand that DAGIV Engineering charges a <strong>2.5% commission</strong> upon successful sale of this asset.
+                                </div>
+                            </label>
+                        </div>
+                    )}
+
+                    {/* STEP 5: Success (The fluid ending) */}
+                    {step === 5 && (
+                        <div className="text-center py-10 animate-in zoom-in-95 duration-300">
+                            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
+                                <Check size={40} className="text-white"/>
+                            </div>
+                            <h2 className="text-3xl font-black text-white mb-4">Listing Submitted!</h2>
+                            <p className="text-slate-400 mb-8 max-w-md mx-auto">
+                                Your listing reference is <span className="text-yellow-500 font-bold">#LST-{Math.floor(Math.random()*10000)}</span>. 
+                                <br/><br/>
+                                Our verification team has been notified. We will contact you at <strong>{formData.sellerPhone}</strong> within 24 hours to schedule an inspection.
+                            </p>
+                            <button onClick={onClose} className="bg-slate-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-slate-700 border border-slate-700">
+                                Return to Marketplace
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Controls */}
+                {step < 5 && (
+                    <div className="bg-slate-950 p-6 border-t border-slate-800 flex justify-between">
+                        {step > 1 ? (
+                            <button onClick={handleBack} className="text-slate-400 hover:text-white font-bold flex items-center px-4 py-2">
+                                <ChevronLeft size={18} className="mr-2"/> Back
+                            </button>
+                        ) : ( <div></div> )}
+
+                        {step < 4 ? (
+                            <button 
+                                onClick={handleNext} 
+                                disabled={
+                                    (step === 1 && !formData.sellerName) || 
+                                    (step === 2 && !formData.category)
+                                }
+                                className="bg-white text-slate-900 font-bold py-3 px-8 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            >
+                                Next Step <ArrowRight size={18} className="ml-2"/>
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={handleSubmit} 
+                                disabled={isSubmitting}
+                                className="bg-yellow-500 text-slate-900 font-bold py-3 px-8 rounded hover:bg-yellow-400 shadow-lg disabled:opacity-70 flex items-center"
+                            >
+                                {isSubmitting ? <RefreshCw className="animate-spin mr-2"/> : <CheckCircle className="mr-2"/>}
+                                Submit for Review
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // Service Request Modal Component
 const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onClose: () => void }) => {
@@ -277,8 +583,344 @@ const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
   );
 };
 
+// --- NEW COMPONENT: Seller CTA (Become a Seller) ---
+const SellerCTA = ({ onSellClick }: { onSellClick: () => void }) => (
+  <div className="bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-lg p-1 text-slate-900 mb-6">
+    <div className="bg-slate-950/20 backdrop-blur-sm p-4 rounded flex justify-between items-center text-white">
+      <div>
+        <h3 className="font-bold text-lg">Have machinery lying idle?</h3>
+        <p className="text-sm opacity-90">Turn your equipment into cash. Sell or Lease on DAGIV.</p>
+      </div>
+      <button 
+        onClick={onSellClick} 
+        className="bg-white text-slate-900 px-6 py-2 rounded font-bold hover:bg-slate-100 transition-colors shadow-lg whitespace-nowrap"
+      >
+        Start Selling
+      </button>
+    </div>
+  </div>
+);
+// --- NEW COMPONENT: Marketplace Item Card (Jumia Style) ---
+// FIXED: Explicitly typed as React.FC to allow 'key' prop in loops without TypeScript errors
+const MarketplaceCard: React.FC<{ item: MarketItem; onClick: () => void }> = ({ item, onClick }) => {
+  return (
+    <div 
+      onClick={onClick}
+      className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden hover:shadow-xl hover:border-yellow-500/50 transition-all cursor-pointer group flex flex-col h-full relative"
+    >
+      {/* Badges */}
+      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+        {item.promoted && <span className="bg-yellow-500 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Ad</span>}
+        {item.verifiedByDagiv && <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center"><ShieldCheck size={10} className="mr-1"/> Inspected</span>}
+      </div>
+
+      <div className="h-48 overflow-hidden relative bg-slate-950">
+        <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+        {item.listingType === 'Rent' && (
+           <div className="absolute bottom-0 right-0 bg-blue-600 text-white px-3 py-1 text-xs font-bold rounded-tl-lg">
+             FOR RENT
+           </div>
+        )}
+      </div>
+
+      <div className="p-3 flex-1 flex flex-col">
+        <div className="text-xs text-slate-500 mb-1 truncate">{item.brand} {item.model}</div>
+        <h3 className="text-sm font-bold text-white mb-2 leading-tight line-clamp-2 h-10">{item.title}</h3>
+        
+        <div className="mt-auto">
+          <div className="flex items-baseline gap-1 mb-1">
+             <span className="text-xs text-yellow-500 font-bold">{item.currency}</span>
+             <span className="text-lg font-bold text-white">{item.price.toLocaleString()}</span>
+             {item.listingType === 'Rent' && <span className="text-xs text-slate-400">/{item.priceUnit?.replace('per ', '')}</span>}
+          </div>
+          
+          <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
+             <div className="flex items-center text-[10px] text-slate-400">
+               <MapPin size={10} className="mr-1"/> {item.location}
+             </div>
+             {item.condition === 'New' ? 
+                <span className="text-[10px] bg-green-900/30 text-green-400 px-1.5 py-0.5 rounded border border-green-900">New</span> :
+                <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">{item.condition}</span>
+             }
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN PAGE COMPONENT: MarketplaceLayout ---
+const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT', setPage: (p: PageView) => void, onSellClick: () => void }) => {
+  const [selectedMainCat, setSelectedMainCat] = useState<string>('All');
+  const [selectedSubCat, setSelectedSubCat] = useState<string>('All');
+  const [search, setSearch] = useState('');
+  const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
+
+  // Filter Data Logic
+  const filteredItems = MARKETPLACE_ITEMS.filter(item => {
+    // 1. Mode Filter (Buy vs Rent)
+    // Buy Tab shows: Sales
+    // Rent Tab shows: Rentals
+    // Spare Parts are usually Sale only, shown in Buy tab or their own tab
+    const modeMatch = mode === 'BUY' ? item.listingType === 'Sale' : item.listingType === 'Rent';
+    
+    // 2. Category Filter
+    const catMatch = selectedMainCat === 'All' || item.category === selectedMainCat;
+    const subCatMatch = selectedSubCat === 'All' || item.subCategory === selectedSubCat;
+    
+    // 3. Search
+    const searchMatch = item.title.toLowerCase().includes(search.toLowerCase()) || 
+                        item.brand.toLowerCase().includes(search.toLowerCase());
+
+    return modeMatch && catMatch && subCatMatch && searchMatch;
+  });
+
+  // Derived subcategories for sidebar
+  const activeSubCategories = selectedMainCat !== 'All' 
+    // @ts-ignore - Dynamic key access
+    ? (CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.equipment || []).concat(CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.parts || [])
+    : [];
+
+  return (
+    <div className="min-h-screen bg-slate-950 pb-20">
+      {/* Jumia-style Top Bar */}
+      <div className="bg-slate-900 border-b border-slate-800 sticky top-20 z-40 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+                {/* Search Bar */}
+                <div className="flex-1 w-full flex relative">
+                   <input 
+                      type="text" 
+                      placeholder={mode === 'BUY' ? "Search for excavators, parts, trucks..." : "Search for cranes, pumps, generators to rent..."}
+                      className="w-full bg-slate-950 border-y border-l border-slate-700 rounded-l text-white pl-4 pr-10 py-3 focus:outline-none focus:border-yellow-500"
+                      onChange={(e) => setSearch(e.target.value)}
+                   />
+                   <button className="bg-yellow-500 text-slate-900 font-bold px-8 py-3 rounded-r hover:bg-yellow-400 transition-colors uppercase text-sm tracking-wide">
+                      Search
+                   </button>
+                </div>
+
+                {/* Post Ad Button (UPDATED) */}
+                <button 
+                    onClick={onSellClick}
+                    className="hidden md:flex bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded font-bold items-center shadow-lg transition-transform hover:scale-105"
+                >
+                    <PlusCircle className="mr-2" size={18}/> {mode === 'BUY' ? 'SELL NOW' : 'LIST FOR RENT'}
+                </button>
+            </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
+        {/* SIDEBAR FILTERS */}
+        <div className="w-full lg:w-64 flex-shrink-0 space-y-6">
+            <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+                <div className="p-4 border-b border-slate-800 bg-slate-950 font-bold text-white flex items-center">
+                    <Filter size={16} className="mr-2 text-yellow-500"/> Categories
+                </div>
+                
+                {/* Main Categories */}
+                <div className="p-2">
+                    <button 
+                         onClick={() => { setSelectedMainCat('All'); setSelectedSubCat('All'); }}
+                         className={`w-full text-left px-3 py-2 rounded text-sm mb-1 ${selectedMainCat === 'All' ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        All Categories
+                    </button>
+                    {Object.keys(CATEGORY_STRUCTURE).map(cat => (
+                        <button 
+                            key={cat}
+                            onClick={() => { setSelectedMainCat(cat); setSelectedSubCat('All'); }}
+                            className={`w-full text-left px-3 py-2 rounded text-sm mb-1 flex justify-between items-center group ${selectedMainCat === cat ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+                        >
+                            <span className="truncate">{cat}</span>
+                            {selectedMainCat === cat && <ChevronRight size={14} className="text-yellow-500"/>}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Sub Categories (Show if Main selected) */}
+                {selectedMainCat !== 'All' && (
+                    <div className="border-t border-slate-800 p-2 bg-slate-950/50 animate-in slide-in-from-left-2">
+                        <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1">Sub-Categories</div>
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                           <button 
+                                onClick={() => setSelectedSubCat('All')}
+                                className={`w-full text-left px-3 py-1.5 rounded text-xs mb-1 ${selectedSubCat === 'All' ? 'text-yellow-500 font-bold' : 'text-slate-400'}`}
+                           >
+                               View All
+                           </button>
+                           {activeSubCategories.map((sub: string) => (
+                               <button 
+                                   key={sub}
+                                   onClick={() => setSelectedSubCat(sub)}
+                                   className={`w-full text-left px-3 py-1.5 rounded text-xs mb-1 truncate ${selectedSubCat === sub ? 'text-yellow-500 font-bold bg-yellow-500/10' : 'text-slate-400 hover:text-white'}`}
+                               >
+                                   {sub}
+                               </button>
+                           ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Price Filter (Mock) */}
+            <div className="bg-slate-900 rounded-lg border border-slate-800 p-4">
+                <div className="font-bold text-white mb-3 text-sm">Price Range ({mode === 'BUY' ? 'KES' : 'KES/Day'})</div>
+                <div className="flex gap-2 mb-3">
+                    <input className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Min" />
+                    <input className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Max" />
+                </div>
+                <button className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2 rounded border border-slate-700">Apply Filter</button>
+            </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className="flex-1">
+            {/* UPDATED SELLER CTA */}
+            <SellerCTA onSellClick={onSellClick} />
+            
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">
+                    {selectedSubCat !== 'All' ? selectedSubCat : selectedMainCat !== 'All' ? selectedMainCat : mode === 'BUY' ? 'Latest Machinery For Sale' : 'Latest Machinery For Rent'}
+                </h2>
+                <div className="text-sm text-slate-400">
+                    {filteredItems.length} results found
+                </div>
+            </div>
+
+            {filteredItems.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredItems.map(item => (
+                        <MarketplaceCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-slate-900 rounded-lg border border-slate-800 p-12 text-center">
+                    <Search className="w-16 h-16 text-slate-700 mx-auto mb-4"/>
+                    <h3 className="text-white font-bold text-lg mb-2">No items found</h3>
+                    <p className="text-slate-500">Try adjusting your category filters or search terms.</p>
+                </div>
+            )}
+        </div>
+      </div>
+
+      {/* ITEM DETAIL MODAL (Enhanced Trust) */}
+      {selectedItem && (
+          <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur flex justify-end">
+              <div className="w-full lg:w-[600px] h-full bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right-10">
+                  {/* Header */}
+                  <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                      <div className="flex gap-2">
+                        {selectedItem.verifiedByDagiv && <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded flex items-center"><ShieldCheck size={12} className="mr-1"/> VERIFIED BY DAGIV</span>}
+                      </div>
+                      <button onClick={() => setSelectedItem(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
+                  </div>
+
+                  {/* Scrollable Content */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                      {/* Image */}
+                      <div className="h-64 bg-black relative">
+                          <img src={selectedItem.images[0]} className="w-full h-full object-contain" />
+                      </div>
+
+                      <div className="p-6">
+                          <div className="text-yellow-500 text-xs font-bold uppercase mb-2">{selectedItem.category} &gt; {selectedItem.subCategory}</div>
+                          <h2 className="text-2xl font-bold text-white mb-2">{selectedItem.title}</h2>
+                          <div className="flex items-center gap-4 text-sm text-slate-400 mb-6 border-b border-slate-800 pb-6">
+                              <span className="flex items-center"><MapPin size={14} className="mr-1"/> {selectedItem.location}</span>
+                              <span>•</span>
+                              <span>{selectedItem.condition}</span>
+                          </div>
+
+                          {/* Price Block */}
+                          <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 mb-6 flex justify-between items-center">
+                              <div>
+                                  <div className="text-xs text-slate-500 uppercase font-bold">Price</div>
+                                  <div className="text-2xl font-bold text-white">
+                                      {selectedItem.currency} {selectedItem.price.toLocaleString()}
+                                      {selectedItem.listingType === 'Rent' && <span className="text-sm font-normal text-slate-400">/{selectedItem.priceUnit?.replace('per ','')}</span>}
+                                  </div>
+                              </div>
+                              {selectedItem.negotiable && <span className="text-xs bg-slate-700 text-white px-2 py-1 rounded">Negotiable</span>}
+                          </div>
+
+                          {/* Seller Info */}
+                          <div className="mb-6">
+                              <h3 className="font-bold text-white mb-3">Sold By</h3>
+                              <div className="flex items-center gap-3 bg-slate-800 p-3 rounded-lg">
+                                  <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-slate-400 font-bold">
+                                      {selectedItem.seller.name.charAt(0)}
+                                  </div>
+                                  <div className="flex-1">
+                                      <div className="text-white font-bold text-sm flex items-center">
+                                          {selectedItem.seller.name}
+                                          {selectedItem.seller.verified && <BadgeCheck size={14} className="text-blue-500 ml-1" />}
+                                      </div>
+                                      <div className="text-xs text-slate-500">Member since {selectedItem.seller.joinedDate} • {selectedItem.seller.location}</div>
+                                  </div>
+                                  <div className="text-yellow-500 flex items-center text-sm font-bold">
+                                      {selectedItem.seller.rating} <Star size={12} fill="currentColor" className="ml-1"/>
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Trust Badges */}
+                          <div className="grid grid-cols-2 gap-3 mb-6">
+                              <div className="bg-slate-950 p-3 rounded border border-slate-800 text-center">
+                                  <ShieldCheck size={24} className="mx-auto text-green-500 mb-2"/>
+                                  <div className="text-white font-bold text-xs">Escrow Protected</div>
+                                  <div className="text-[10px] text-slate-500">Funds held until you approve</div>
+                              </div>
+                              <div className="bg-slate-950 p-3 rounded border border-slate-800 text-center">
+                                  <Truck size={24} className="mx-auto text-blue-500 mb-2"/>
+                                  <div className="text-white font-bold text-xs">Logistics Support</div>
+                                  <div className="text-[10px] text-slate-500">We arrange transport</div>
+                              </div>
+                          </div>
+
+                          <div className="space-y-4">
+                              <h3 className="font-bold text-white">Specifications</h3>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                                      <span className="text-slate-500">Brand</span>
+                                      <span className="text-white">{selectedItem.brand}</span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                                      <span className="text-slate-500">Model</span>
+                                      <span className="text-white">{selectedItem.model}</span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                                      <span className="text-slate-500">Year</span>
+                                      <span className="text-white">{selectedItem.yom || 'N/A'}</span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-slate-800 pb-1">
+                                      <span className="text-slate-500">Hours</span>
+                                      <span className="text-white">{selectedItem.hours || 'N/A'}</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Sticky Footer */}
+                  <div className="p-4 bg-slate-950 border-t border-slate-800 grid grid-cols-2 gap-4">
+                       <button className="bg-slate-800 text-white font-bold py-3 rounded hover:bg-slate-700 border border-slate-700 flex items-center justify-center">
+                           <Phone size={18} className="mr-2"/> Show Contact
+                       </button>
+                       <button className="bg-green-600 text-white font-bold py-3 rounded hover:bg-green-500 shadow-lg flex items-center justify-center">
+                           <ShoppingCart size={18} className="mr-2"/> {selectedItem.listingType === 'Sale' ? 'Make Offer' : 'Book Rental'}
+                       </button>
+                  </div>
+              </div>
+          </div>
+      )}
+    </div>
+  );
+};
+
 // --- HOME PAGE (REFACTORED) ---
-const HomePage = ({ setPage, onBookInspection }: { setPage: (p: PageView) => void, onBookInspection: () => void }) => {
+const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: PageView) => void, onBookInspection: () => void, onSellClick: () => void }) => {
   const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
 
   return (
@@ -312,14 +954,15 @@ const HomePage = ({ setPage, onBookInspection }: { setPage: (p: PageView) => voi
         
         {/* NEW: QUICK ACTION GRID */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            {/* BUTTON 1: SELL MACHINERY (Updated) */}
             <button 
-                onClick={() => setPage(PageView.EQUIPMENT)}
+                onClick={onSellClick}
                 className="bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:border-yellow-500 p-6 rounded-xl flex flex-col items-center justify-center group transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
                 <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:bg-yellow-500 group-hover:text-slate-900 transition-colors">
                     <ShoppingCart size={24} />
                 </div>
-                <span className="text-white font-bold text-sm">Buy / Sell Machinery</span>
+                <span className="text-white font-bold text-sm">Sell Machinery</span>
             </button>
 
             <button 
@@ -333,7 +976,7 @@ const HomePage = ({ setPage, onBookInspection }: { setPage: (p: PageView) => voi
             </button>
 
             <button 
-                onClick={() => setPage(PageView.EQUIPMENT)}
+                onClick={() => setPage(PageView.MARKETPLACE_RENT)}
                 className="bg-slate-900/80 backdrop-blur-md border border-slate-700 hover:border-yellow-500 p-6 rounded-xl flex flex-col items-center justify-center group transition-all hover:-translate-y-1 hover:shadow-2xl"
             >
                 <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mb-3 group-hover:bg-yellow-500 group-hover:text-slate-900 transition-colors">
@@ -698,789 +1341,6 @@ const ContactPage = () => (
         </div>
     </div>
 );
-
-// --- MAIN APP COMPONENT ---
-const App = () => {
-  const [page, setPage] = useState<PageView>(PageView.HOME);
-  const [erpAccess, setErpAccess] = useState(false);
-  const [operatorLogs, setOperatorLogs] = useState<OperatorLog[]>(INITIAL_LOGS);
-  const [showOperatorPortal, setShowOperatorPortal] = useState(false);
-  const [inspectionMode, setInspectionMode] = useState(false);
-
-  // Helper to handle log submission from portal
-  const handleLogSubmit = (newLog: OperatorLog) => {
-    setOperatorLogs([newLog, ...operatorLogs]);
-  };
-
-  if (showOperatorPortal) {
-    return (
-      <OperatorPortal 
-        onBack={() => setShowOperatorPortal(false)} 
-        onSubmit={handleLogSubmit} 
-      />
-    );
-  }
-
-  if (inspectionMode) {
-      return <InspectionBookingPage onComplete={() => { setInspectionMode(false); setPage(PageView.HOME); }} />
-  }
-
-  const renderContent = () => {
-    switch (page) {
-      case PageView.HOME:
-        return <HomePage setPage={setPage} onBookInspection={() => setInspectionMode(true)} />;
-      case PageView.EQUIPMENT:
-        return <EquipmentPage setPage={setPage} onBookInspection={() => setInspectionMode(true)} />;
-      case PageView.SPARE_PARTS:
-        return <SparePartsPage />;
-      case PageView.SERVICES:
-        return <ServicesPage setPage={setPage} />;
-      case PageView.ERP:
-        return <ERPDashboard hasAccess={erpAccess} onSubscribe={() => setErpAccess(true)} logs={operatorLogs} />;
-      case PageView.PROFESSIONALS:
-        return <ProfessionalsPage />;
-      case PageView.CONSULT:
-        return <ConsultPage />;
-      case PageView.CONTACT:
-        return <ContactPage />;
-      default:
-        return <HomePage setPage={setPage} onBookInspection={() => setInspectionMode(true)} />;
-    }
-  };
-
-  return (
-    <div className="bg-slate-950 min-h-screen flex flex-col font-sans text-slate-200 selection:bg-yellow-500 selection:text-slate-900">
-      <Navbar 
-        currentPage={page} 
-        setPage={setPage} 
-        onLoginClick={() => setShowOperatorPortal(true)} 
-      />
-      <div className="flex-1">
-        {renderContent()}
-      </div>
-      <Footer setPage={setPage} />
-    </div>
-  );
-};
-
-// --- OPERATOR PORTAL (Moved to end for clarity) ---
-const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (log: OperatorLog) => void }) => {
-    // Stage 1: Auth, Stage 2: Log Entry
-    const [authStep, setAuthStep] = useState(true);
-    const [credentials, setCredentials] = useState({ username: '', password: '' });
-    const [token, setToken] = useState(''); 
-    const [isLoading, setIsLoading] = useState(false);
-    
-    const [formData, setFormData] = useState({
-        machineId: '',
-        startTime: '', // Changed to Time String
-        endTime: '',   // Changed to Time String
-        currentReading: '', // New: The cumulative meter reading
-        readingUnit: 'Kilometers (km)', // New: Unit selector
-        fuel: '',
-        location: '',
-        notes: '',
-        checklist: { tires: false, oil: false, hydraulics: false, brakes: false }
-    });
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        try {
-            const response = await fetch('http://localhost:8000/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(credentials)
-            });
-            const data = await response.json();
-            if (response.ok) { setToken(data.access_token); setAuthStep(false); } 
-            else { alert(data.detail || "Login failed."); }
-        } catch (error) { alert("Connection error."); } 
-        finally { setIsLoading(false); }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // Validation
-        if (!formData.startTime || !formData.endTime) { alert("Please enter start and end times."); return; }
-        
-        const payload = {
-            id: `LOG-${Date.now()}`,
-            machineId: formData.machineId,
-            operatorName: credentials.username, 
-            date: new Date().toISOString().split('T')[0],
-            startTime: formData.startTime, 
-            endTime: formData.endTime,
-            // We use 'startOdometer' field to send the CURRENT cumulative reading
-            startOdometer: parseFloat(formData.currentReading) || 0, 
-            // We use 'endOdometer' to send the Unit type (hack to avoid changing DB schema too much)
-            // ideally we send a new field, but let's stick to the structure or send it as a note
-            endOdometer: 0, 
-            fuelAddedLiters: parseFloat(formData.fuel) || 0,
-            location: formData.location,
-            checklist: formData.checklist,
-            // We append the unit to notes so backend can parse it safely
-            notes: `${formData.notes} [UNIT:${formData.readingUnit}]` 
-        };
-
-        try {
-            const response = await fetch('http://localhost:8000/api/operator-logs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
-            });
-            
-            if (response.ok) { onSubmit(payload as any); onBack(); } 
-            else { alert("Failed to submit log."); }
-        } catch (error) { alert("Network error."); }
-    };
-
-    const toggleCheck = (key: keyof typeof formData.checklist) => {
-        setFormData(prev => ({ ...prev, checklist: { ...prev.checklist, [key]: !prev.checklist[key] } }));
-    };
-
-    if (authStep) {
-        // ... (Login UI remains the same as before)
-        return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-                {/* Same Login UI Code from previous step... just simpler here for brevity */}
-                <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-10 shadow-2xl">
-                    <h2 className="text-2xl font-bold text-white mb-6 text-center">Operator Login</h2>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Username" onChange={e=>setCredentials({...credentials, username: e.target.value})}/>
-                        <input type="password" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Password" onChange={e=>setCredentials({...credentials, password: e.target.value})}/>
-                        <button disabled={isLoading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded">Login</button>
-                    </form>
-                    <button onClick={onBack} className="w-full text-center text-slate-500 mt-4">Cancel</button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-                <div className="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white flex items-center"><ClipboardCheck className="mr-2 text-yellow-500"/> Daily Log</h2>
-                    <button onClick={onBack} className="text-slate-400 hover:text-white"><X size={24}/></button>
-                </div>
-                
-                <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                    {/* Machine Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Machine ID / Plate</label>
-                            <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500" 
-                                placeholder="e.g. KCD 892J" value={formData.machineId} onChange={e => setFormData({...formData, machineId: e.target.value})} />
-                        </div>
-                        <div>
-                            <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Site Location</label>
-                            <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500" 
-                                placeholder="e.g. Athi River" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
-                        </div>
-                    </div>
-
-                    {/* NEW: Time & Meter Reading */}
-                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                        <h3 className="text-white font-bold text-sm mb-4 flex items-center"><Activity size={16} className="mr-2 text-blue-500"/> Time & Meter Reading</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="text-slate-500 text-xs mb-1 block">Start Time</label>
-                                <input required type="time" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
-                                    value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
-                            </div>
-                            <div>
-                                <label className="text-slate-500 text-xs mb-1 block">End Time</label>
-                                <input required type="time" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
-                                    value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="text-slate-500 text-xs mb-1 block">Current Meter Reading</label>
-                                <input required type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white font-bold" 
-                                    placeholder="e.g. 12500" value={formData.currentReading} onChange={e => setFormData({...formData, currentReading: e.target.value})} />
-                            </div>
-                            <div>
-                                <label className="text-slate-500 text-xs mb-1 block">Reading Unit</label>
-                                <select className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white"
-                                    value={formData.readingUnit} onChange={e => setFormData({...formData, readingUnit: e.target.value})}>
-                                    <option value="km">Kilometers (km)</option>
-                                    <option value="mi">Miles (mi)</option>
-                                    <option value="hrs">Engine Hours (hrs)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-slate-500 text-xs mb-1 block">Fuel Added (L)</label>
-                                <input type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
-                                    value={formData.fuel} onChange={e => setFormData({...formData, fuel: e.target.value})} />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Safety Checklist */}
-                    <div>
-                        <h3 className="text-white font-bold text-sm mb-4 flex items-center"><ShieldCheck size={16} className="mr-2 text-green-500"/> Pre-Start Safety Check</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {['Tires/Tracks', 'Engine Oil', 'Hydraulics', 'Brakes'].map((label, i) => {
-                                const key = Object.keys(formData.checklist)[i] as keyof typeof formData.checklist;
-                                return (
-                                    <button key={key} type="button" onClick={() => toggleCheck(key)}
-                                        className={`p-3 rounded border flex flex-col items-center justify-center transition-all ${formData.checklist[key] ? 'bg-green-500/20 border-green-500 text-green-500' : 'bg-slate-950 border-slate-700 text-slate-500'}`}>
-                                        <span className="text-xs font-bold">{label}</span>
-                                        <div className={`w-3 h-3 rounded-full mt-2 ${formData.checklist[key] ? 'bg-green-500' : 'bg-slate-800'}`}></div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Operational Notes</label>
-                        <textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-20 text-sm" 
-                            placeholder="Issues, delays, or maintenance requests..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-800">
-                        <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded hover:bg-yellow-400 shadow-lg flex items-center justify-center">
-                            <FileBadge className="mr-2" size={20}/> Submit Daily Log
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-// ... (Rest of existing components like EquipmentPage, SparePartsPage etc remain unchanged for now)
-const EquipmentPage = ({ setPage, onBookInspection }: { setPage: (p: PageView) => void, onBookInspection: () => void }) => {
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [filterSubCategory, setFilterSubCategory] = useState('All');
-  const [filterType, setFilterType] = useState('All'); // Sale, Lease
-  const [search, setSearch] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<EquipmentItem | null>(null);
-  
-  const categories = ['All', 'Heavy Plant Equipment', 'Light Plant Equipment', 'Automotive & Heavy Machinery', 'Light Automobiles'];
-
-  // Reset subcategory when main category changes
-  useEffect(() => {
-    setFilterSubCategory('All');
-  }, [filterCategory]);
-
-  const filteredData = EQUIPMENT_DATA.filter(item => {
-    const matchesCategory = filterCategory === 'All' || item.category === filterCategory;
-    const matchesSubCategory = filterSubCategory === 'All' || item.subCategory === filterSubCategory;
-    const matchesType = filterType === 'All' || 
-                        (filterType === 'Sale' && (item.listingType === 'Sale' || item.listingType === 'Both')) ||
-                        (filterType === 'Lease' && (item.listingType === 'Lease' || item.listingType === 'Both'));
-    const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) || 
-                          item.brand.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSubCategory && matchesSearch && matchesType;
-  });
-
-  // Calculate available subcategories based on current Category selection
-  const availableSubCategories = ['All', ...Array.from(new Set(EQUIPMENT_DATA
-    .filter(item => filterCategory === 'All' || item.category === filterCategory)
-    .map(item => item.subCategory)))];
-
-  const EquipmentModal = () => {
-      if(!selectedItem) return null;
-      return (
-          <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur overflow-y-auto p-4 sm:p-8 flex items-center justify-center">
-              <div className="bg-slate-900 w-full max-w-5xl rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
-                  <button onClick={() => setSelectedItem(null)} className="absolute top-4 right-4 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-red-500 transition-colors"><X size={24}/></button>
-                  
-                  {/* Left: Image */}
-                  <div className="w-full md:w-1/2 bg-slate-950 relative">
-                      <img src={selectedItem.image} alt={selectedItem.name} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-4 left-4 flex gap-2">
-                          {/* Simulated Gallery Thumbs */}
-                          <div className="w-16 h-16 rounded border-2 border-yellow-500 overflow-hidden cursor-pointer"><img src={selectedItem.image} className="w-full h-full object-cover"/></div>
-                          <div className="w-16 h-16 rounded border border-slate-500 bg-slate-800 flex items-center justify-center text-slate-500 text-xs cursor-pointer">Rear</div>
-                          <div className="w-16 h-16 rounded border border-slate-500 bg-slate-800 flex items-center justify-center text-slate-500 text-xs cursor-pointer">Cab</div>
-                      </div>
-                  </div>
-
-                  {/* Right: Details */}
-                  <div className="w-full md:w-1/2 p-8 overflow-y-auto max-h-[90vh]">
-                      <div className="mb-6">
-                          <span className="text-yellow-500 text-xs font-bold uppercase tracking-widest">{selectedItem.brand} • {selectedItem.year}</span>
-                          <h2 className="text-3xl font-bold text-white mb-2">{selectedItem.name}</h2>
-                          <div className="flex items-center gap-3 text-sm text-slate-400">
-                              <span className="flex items-center"><MapPin size={14} className="mr-1"/> {selectedItem.location}</span>
-                              <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                              <span>{selectedItem.hoursUsed ? `${selectedItem.hoursUsed} Hours` : 'New'}</span>
-                          </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 mb-6">
-                          {Object.entries(selectedItem.specs).map(([k, v]) => (
-                              <div key={k} className="bg-slate-800 p-3 rounded">
-                                  <div className="text-xs text-slate-500 uppercase">{k}</div>
-                                  <div className="text-white font-bold text-sm">{v}</div>
-                              </div>
-                          ))}
-                      </div>
-
-                      <div className="mb-6">
-                          <h4 className="text-white font-bold mb-2">Condition Report</h4>
-                          <p className="text-slate-400 text-sm leading-relaxed">{selectedItem.description}</p>
-                      </div>
-
-                      <div className="border-t border-slate-800 pt-6 space-y-4">
-                          {selectedItem.priceSale && (
-                              <div className="flex justify-between items-center">
-                                  <span className="text-slate-400">Buy Price</span>
-                                  <span className="text-2xl font-bold text-white">KES {selectedItem.priceSale.toLocaleString()}</span>
-                              </div>
-                          )}
-                          {selectedItem.priceLease && (
-                              <div className="flex justify-between items-center">
-                                  <span className="text-slate-400">Lease Rate</span>
-                                  <span className="text-xl font-bold text-yellow-500">{selectedItem.priceLease}</span>
-                              </div>
-                          )}
-                          
-                          <div className="grid grid-cols-2 gap-4 mt-4">
-                              {(selectedItem.listingType === 'Sale' || selectedItem.listingType === 'Both') && 
-                                <button onClick={() => alert(`Purchase Inquiry for ${selectedItem.name} initiated. A sales rep will call you.`)} className="bg-green-600 text-white font-bold py-3 rounded hover:bg-green-500">Buy Now</button>
-                              }
-                              {(selectedItem.listingType === 'Lease' || selectedItem.listingType === 'Both') && 
-                                <button 
-                                    onClick={async () => {
-                                        const name = prompt("Enter your name:");
-                                        const phone = prompt("Enter your phone number:");
-                                        const dur = prompt("Duration (e.g. 3 days):");
-                                        if(name && phone) {
-                                            try {
-                                                await fetch('http://localhost:8000/api/lease-request', {
-                                                    method: 'POST',
-                                                    headers: {'Content-Type': 'application/json'},
-                                                    body: JSON.stringify({
-                                                        machineName: selectedItem.name,
-                                                        machineId: selectedItem.id,
-                                                        customerName: name,
-                                                        phone: phone,
-                                                        duration: dur || "Indefinite"
-                                                    })
-                                                });
-                                                alert("Lease inquiry sent to admin!");
-                                            } catch(e) {
-                                                alert("Failed to send inquiry. Server offline?");
-                                            }
-                                        }
-                                    }} 
-                                    className="bg-slate-700 text-white font-bold py-3 rounded hover:bg-slate-600"
-                                >
-                                    Lease
-                                </button>
-                              }
-                          </div>
-                          <button onClick={() => { setSelectedItem(null); onBookInspection(); }} className="w-full border-2 border-yellow-500 text-yellow-500 font-bold py-3 rounded hover:bg-yellow-500 hover:text-slate-900 transition-colors flex items-center justify-center">
-                              <Search size={18} className="mr-2"/> Request Physical Inspection
-                          </button>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-950 pt-8 pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header & Search */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-8 border-b border-slate-800 pb-8">
-          <div>
-            <h2 className="text-4xl font-bold text-white mb-2">Equipment Catalog</h2>
-            <p className="text-slate-400">Kenya's premier heavy machinery inventory.</p>
-          </div>
-          <div className="flex gap-4 mt-4 md:mt-0 w-full md:w-auto">
-             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden flex items-center px-4 py-2 bg-slate-900 border border-slate-700 rounded text-slate-300">
-                <Filter size={18} className="mr-2"/> Filters
-             </button>
-             <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-3 text-slate-500 w-5 h-5" />
-                <input 
-                  type="text" 
-                  placeholder="Search (e.g. Excavator)..." 
-                  className="bg-slate-900 border border-slate-700 text-white pl-10 pr-4 py-2.5 rounded focus:outline-none focus:border-yellow-500 w-full"
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-             </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-8">
-            {/* Filters Sidebar */}
-            <div className={`w-full md:w-64 flex-shrink-0 ${sidebarOpen ? 'block' : 'hidden md:block'}`}>
-                <div className="bg-slate-900 p-6 rounded-lg border border-slate-800 sticky top-24">
-                    <h3 className="text-white font-bold mb-4 flex items-center"><Filter size={16} className="mr-2 text-yellow-500"/> Filter Inventory</h3>
-                    
-                    <div className="mb-6">
-                        <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Acquisition Type</label>
-                        <div className="flex flex-col gap-2">
-                            {['All', 'Sale', 'Lease'].map(type => (
-                                <button 
-                                    key={type}
-                                    onClick={() => setFilterType(type)}
-                                    className={`text-left px-3 py-2 rounded text-sm ${filterType === type ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:bg-slate-800'}`}
-                                >
-                                    {type === 'All' ? 'All Listings' : `For ${type}`}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="mb-6">
-                        <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Categories</label>
-                        <div className="flex flex-col gap-2">
-                             {categories.map(cat => (
-                                <button 
-                                    key={cat}
-                                    onClick={() => setFilterCategory(cat)}
-                                    className={`text-left px-3 py-2 rounded text-sm ${filterCategory === cat ? 'bg-slate-800 text-white font-medium border-l-2 border-yellow-500' : 'text-slate-400 hover:text-white'}`}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Sub-Category Filter */}
-                    {availableSubCategories.length > 2 && (
-                      <div className="mb-6 animate-in fade-in slide-in-from-top-2">
-                          <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Sub-Categories</label>
-                          <div className="flex flex-col gap-1 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                              {availableSubCategories.map(sub => (
-                                  <button 
-                                      key={sub}
-                                      onClick={() => setFilterSubCategory(sub)}
-                                      className={`text-left px-3 py-1.5 rounded text-xs ${filterSubCategory === sub ? 'bg-yellow-500/20 text-yellow-500 font-bold border border-yellow-500/30' : 'text-slate-400 hover:text-white'}`}
-                                  >
-                                      {sub}
-                                  </button>
-                              ))}
-                          </div>
-                      </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Grid Results */}
-            <div className="flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredData.map(item => (
-                    <div key={item.id} className="bg-slate-900 rounded-lg overflow-hidden border border-slate-800 hover:border-yellow-500/50 transition-all group flex flex-col">
-                    <div className="relative h-48 overflow-hidden">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                             {item.listingType !== 'Sale' && <span className="bg-yellow-500 text-slate-900 px-2 py-1 rounded text-xs font-bold uppercase shadow-sm">Lease</span>}
-                             {item.listingType !== 'Lease' && <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold uppercase shadow-sm">For Sale</span>}
-                        </div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-slate-900 to-transparent p-4">
-                            <span className="text-white text-xs font-bold bg-slate-800/80 px-2 py-1 rounded backdrop-blur-sm">{item.year} • {item.hoursUsed ? item.hoursUsed + ' hrs' : 'New'}</span>
-                        </div>
-                    </div>
-                    <div className="p-5 flex-1 flex flex-col">
-                        <div className="text-xs text-yellow-500 font-bold uppercase mb-1">{item.brand} • {item.subCategory}</div>
-                        <h3 className="text-lg font-bold text-white mb-3 leading-tight">{item.name}</h3>
-                        <div className="space-y-2 mb-4 flex-1">
-                            {Object.entries(item.specs).slice(0, 3).map(([key, val]) => (
-                                <div key={key} className="flex justify-between text-sm border-b border-slate-800/50 pb-1">
-                                    <span className="text-slate-500">{key}</span>
-                                    <span className="text-slate-300 font-medium">{val}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-auto pt-4 border-t border-slate-800">
-                             {item.priceSale && (
-                                 <div className="flex justify-between items-center mb-1">
-                                     <span className="text-xs text-slate-500 uppercase">Buy Price</span>
-                                     <span className="text-white font-bold">KES {item.priceSale.toLocaleString()}</span>
-                                 </div>
-                             )}
-                             {item.priceLease && (
-                                 <div className="flex justify-between items-center">
-                                     <span className="text-xs text-slate-500 uppercase">Lease Rate</span>
-                                     <span className="text-yellow-500 font-bold">{item.priceLease}</span>
-                                 </div>
-                             )}
-                            <button onClick={() => setSelectedItem(item)} className="w-full mt-4 py-2 border border-slate-700 rounded text-sm font-bold text-slate-300 hover:bg-yellow-500 hover:border-yellow-500 hover:text-slate-900 transition-colors">
-                                View Details &rarr;
-                            </button>
-                        </div>
-                    </div>
-                    </div>
-                ))}
-                </div>
-            </div>
-        </div>
-      </div>
-      <EquipmentModal />
-    </div>
-  );
-};
-
-const SparePartsPage = () => {
-    const [selectedCategory, setSelectedCategory] = useState('All');
-    const [search, setSearch] = useState('');
-    const [cart, setCart] = useState<{part: SparePart, qty: number}[]>([]);
-    const [cartOpen, setCartOpen] = useState(false);
-    const [checkoutStep, setCheckoutStep] = useState(0); 
-
-    const categories = ['All', 'Hydraulics', 'Engine Parts', 'Undercarriage', 'Filters', 'Electrical', 'Ground Engaging Tools'];
-    const filteredParts = SPARE_PARTS.filter(p => {
-        const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
-        const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                              p.partNumber.toLowerCase().includes(search.toLowerCase()) || 
-                              p.equipmentType.join(' ').toLowerCase().includes(search.toLowerCase());
-        return matchesCat && matchesSearch;
-    });
-
-    const addToCart = (part: SparePart, qty: number = 1) => {
-        setCart(prev => {
-            const existing = prev.find(i => i.part.id === part.id);
-            if(existing) return prev.map(i => i.part.id === part.id ? {...i, qty: i.qty + qty} : i);
-            return [...prev, {part, qty}];
-        });
-        setCartOpen(true);
-    };
-
-    const removeFromCart = (id: string) => {
-        setCart(prev => prev.filter(i => i.part.id !== id));
-    };
-
-    // Reusing the CartDrawer from previous implementation logic but integrated here
-    const CartDrawer = () => (
-        <div className={`fixed inset-y-0 right-0 z-[70] w-full md:w-96 bg-slate-900 border-l border-slate-800 shadow-2xl transform transition-transform duration-300 ${cartOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-             <div className="h-full flex flex-col">
-                <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                    <h2 className="text-lg font-bold text-white flex items-center"><ShoppingCart className="mr-2" size={18}/> RFQ / Cart ({cart.length})</h2>
-                    <button onClick={() => setCartOpen(false)}><X className="text-slate-400 hover:text-white"/></button>
-                </div>
-                
-                {checkoutStep === 0 && (
-                    <>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {cart.length === 0 ? <p className="text-slate-500 text-center mt-10 text-sm">Cart is empty.</p> : 
-                                cart.map(item => (
-                                    <div key={item.part.id} className="flex gap-3 bg-slate-950 p-2 rounded border border-slate-800">
-                                        <img src={item.part.image} className="w-12 h-12 object-cover rounded border border-slate-800" />
-                                        <div className="flex-1">
-                                            <h4 className="text-white text-xs font-bold line-clamp-1">{item.part.name}</h4>
-                                            <p className="text-slate-500 text-[10px] font-mono">{item.part.partNumber}</p>
-                                            <div className="flex items-center justify-between mt-1">
-                                                <p className="text-yellow-500 text-xs font-bold">KES {item.part.price.toLocaleString()}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-slate-400">Qty: {item.qty}</span>
-                                                    <button onClick={() => removeFromCart(item.part.id)} className="text-slate-500 hover:text-red-500"><Trash2 size={12}/></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            }
-                        </div>
-                        <div className="p-4 border-t border-slate-800 bg-slate-950">
-                            <div className="flex justify-between text-white font-bold mb-4 text-sm">
-                                <span>Est. Total:</span>
-                                <span>KES {cart.reduce((a, c) => a + (c.part.price * c.qty), 0).toLocaleString()}</span>
-                            </div>
-                            <button onClick={() => setCheckoutStep(1)} disabled={cart.length === 0} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded text-sm disabled:opacity-50 hover:bg-yellow-400">PROCEED TO CHECKOUT</button>
-                        </div>
-                    </>
-                )}
-                 {checkoutStep === 1 && (
-                    <div className="p-4 flex-1 flex flex-col">
-                        <h3 className="text-white font-bold mb-4 text-sm">Shipping Information</h3>
-                        <form className="space-y-3 flex-1" onSubmit={(e) => { e.preventDefault(); setCheckoutStep(2); }}>
-                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm" placeholder="Company / Name" required />
-                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm" placeholder="Phone Contact" required />
-                            <input className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm" placeholder="Shipping Address" required />
-                            <div className="flex-1"></div>
-                            <button type="button" onClick={() => setCheckoutStep(0)} className="w-full border border-slate-700 text-white py-2 rounded mb-2 text-sm">Back</button>
-                            <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded text-sm hover:bg-yellow-400">Next: Payment</button>
-                        </form>
-                    </div>
-                )}
-                {checkoutStep === 2 && (
-                    <div className="p-4 flex-1 flex flex-col text-center">
-                        <h3 className="text-white font-bold mb-6 text-sm">Select Payment Method</h3>
-                        <div className="space-y-4 mb-8">
-                            <button onClick={() => setCheckoutStep(3)} className="w-full bg-green-600 p-3 rounded text-white font-bold flex items-center justify-center hover:bg-green-500 text-sm">
-                                M-PESA Express
-                            </button>
-                            <button onClick={() => setCheckoutStep(3)} className="w-full bg-slate-800 p-3 rounded text-white font-bold flex items-center justify-center hover:bg-slate-700 text-sm">
-                                <CreditCard className="mr-2" size={16}/> Credit Card / EFT
-                            </button>
-                        </div>
-                        <button onClick={() => setCheckoutStep(1)} className="mt-auto text-slate-500 text-sm">Back</button>
-                    </div>
-                )}
-                {checkoutStep === 3 && (
-                    <div className="p-4 flex-1 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white mb-4">
-                            <Check size={32} />
-                        </div>
-                        <h3 className="text-white font-bold text-lg mb-2">Order Confirmed!</h3>
-                        <p className="text-slate-400 text-sm mb-6">Order #DAG-{Math.floor(Math.random()*10000)}. <br/> Invoice sent to your email.</p>
-                        <button onClick={() => { setCart([]); setCheckoutStep(0); setCartOpen(false); }} className="bg-slate-800 text-white px-6 py-2 rounded text-sm hover:bg-slate-700">Close</button>
-                    </div>
-                )}
-             </div>
-        </div>
-    );
-
-    return (
-        <div className="min-h-screen bg-slate-950 font-sans text-slate-200">
-            {/* Top Search & Action Bar */}
-            <div className="bg-slate-900 border-b border-slate-800 sticky top-20 z-40 shadow-lg">
-                <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <div className="relative flex-1 md:w-96">
-                            <input 
-                                type="text" 
-                                placeholder="Search Part Number, Keyword, or Manufacturer..." 
-                                className="w-full bg-slate-950 border border-slate-700 text-white pl-10 pr-4 py-2 rounded focus:outline-none focus:border-yellow-500 text-sm"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                            <Search className="absolute left-3 top-2.5 text-slate-500 w-4 h-4" />
-                        </div>
-                        <button className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-4 py-2 rounded font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-                            <Search size={16}/> Search
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                         <button className="text-slate-300 hover:text-white text-xs font-bold flex items-center border border-slate-700 px-3 py-2 rounded bg-slate-950">
-                            <FileSpreadsheet size={14} className="mr-2 text-green-500"/> Upload BOM
-                         </button>
-                         <button onClick={() => setCartOpen(true)} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded flex items-center gap-2 text-sm relative border border-slate-700">
-                            <ShoppingCart size={16} />
-                            <span className="font-bold">{cart.length} Item(s)</span>
-                         </button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
-                {/* Left Sidebar - Categories */}
-                <div className="w-full md:w-64 flex-shrink-0">
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden sticky top-40">
-                        <div className="bg-slate-950 p-3 border-b border-slate-800 font-bold text-white text-sm flex items-center">
-                            <List size={14} className="mr-2"/> Product Categories
-                        </div>
-                        <div className="max-h-[70vh] overflow-y-auto custom-scrollbar">
-                            {categories.map(cat => (
-                                <button 
-                                    key={cat}
-                                    onClick={() => setSelectedCategory(cat)}
-                                    className={`w-full text-left px-4 py-2.5 text-xs font-medium border-b border-slate-800/50 hover:bg-slate-800 transition-colors ${selectedCategory === cat ? 'bg-yellow-500/10 text-yellow-500 border-l-2 border-l-yellow-500' : 'text-slate-400 border-l-2 border-l-transparent'}`}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="p-4 bg-slate-950 border-t border-slate-800">
-                            <div className="text-xs font-bold text-slate-500 uppercase mb-2">Filters</div>
-                            <label className="flex items-center text-xs text-slate-300 mb-2 cursor-pointer">
-                                <input type="checkbox" className="mr-2 bg-slate-800 border-slate-600 rounded" defaultChecked />
-                                In Stock Only
-                            </label>
-                            <label className="flex items-center text-xs text-slate-300 mb-2 cursor-pointer">
-                                <input type="checkbox" className="mr-2 bg-slate-800 border-slate-600 rounded" />
-                                RoHS Compliant
-                            </label>
-                             <label className="flex items-center text-xs text-slate-300 cursor-pointer">
-                                <input type="checkbox" className="mr-2 bg-slate-800 border-slate-600 rounded" defaultChecked />
-                                Verified Supplier
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Content - Product Grid */}
-                <div className="flex-1">
-                    <div className="mb-4 flex items-center justify-between">
-                         <h3 className="text-white font-bold flex items-center">
-                            {selectedCategory} <span className="text-slate-500 text-sm font-normal ml-2">({filteredParts.length} products)</span>
-                         </h3>
-                         <div className="flex items-center gap-2 text-sm text-slate-400">
-                             <span>Sort By:</span>
-                             <select className="bg-slate-900 border border-slate-700 rounded text-white text-xs p-1 focus:outline-none">
-                                 <option>Relevance</option>
-                                 <option>Price: Low to High</option>
-                                 <option>Price: High to Low</option>
-                                 <option>Newest Arrival</option>
-                             </select>
-                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
-                        {filteredParts.map(part => (
-                            <div key={part.id} className="bg-slate-900 border border-slate-800 rounded-lg hover:border-yellow-500/50 transition-all flex flex-col group relative overflow-hidden">
-                                {/* Supplier Badge */}
-                                {part.supplier.verified && (
-                                    <div className="absolute top-0 right-0 bg-blue-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl shadow-sm z-10 flex items-center">
-                                        <BadgeCheck size={10} className="mr-1"/> Verified
-                                    </div>
-                                )}
-                                
-                                <div className="p-3 flex gap-4 border-b border-slate-800/50">
-                                    <div className="w-20 h-20 bg-white rounded-md overflow-hidden flex-shrink-0 border border-slate-700 p-1">
-                                        <img src={part.image} className="w-full h-full object-contain" alt={part.name} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-wider mb-0.5">{part.supplier.name}</div>
-                                        <h4 className="text-white font-bold text-sm leading-tight mb-1 line-clamp-2 hover:text-yellow-500 cursor-pointer" title={part.name}>{part.name}</h4>
-                                        <div className="font-mono text-xs text-slate-400 bg-slate-950 inline-block px-1 rounded border border-slate-800 mb-1">{part.partNumber}</div>
-                                    </div>
-                                </div>
-
-                                <div className="p-3 flex-1 flex flex-col text-xs">
-                                     <div className="grid grid-cols-2 gap-y-1 gap-x-2 mb-3 text-slate-400">
-                                        {Object.entries(part.specs).slice(0,4).map(([k,v]) => (
-                                            <div key={k} className="flex flex-col">
-                                                <span className="text-[10px] text-slate-500 uppercase">{k}</span>
-                                                <span className="text-slate-300 font-medium truncate" title={v}>{v}</span>
-                                            </div>
-                                        ))}
-                                     </div>
-
-                                     <div className="mt-auto flex items-end justify-between">
-                                         <div>
-                                            <div className="text-[10px] text-slate-500 mb-0.5">Unit Price</div>
-                                            <div className="text-lg font-bold text-yellow-500">KES {part.price.toLocaleString()}</div>
-                                            <div className="flex items-center text-[10px] text-green-500 font-bold mt-1">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></div>
-                                                {part.stock} In Stock
-                                            </div>
-                                         </div>
-                                         <div className="flex flex-col items-end gap-2">
-                                             <a href="#" className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center hover:underline">
-                                                 <FileText size={10} className="mr-1"/> Datasheet
-                                             </a>
-                                             <button 
-                                                onClick={() => addToCart(part)}
-                                                className="bg-slate-800 hover:bg-yellow-500 hover:text-slate-900 text-white border border-slate-700 font-bold py-1.5 px-3 rounded flex items-center transition-colors shadow-sm"
-                                             >
-                                                <ShoppingCart size={14} className="mr-1.5"/> Add
-                                             </button>
-                                         </div>
-                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-            <CartDrawer />
-        </div>
-    );
-};
 
 // --- PROFESSIONALS PAGE (UPDATED) ---
 const ProfessionalsPage = () => {
@@ -1918,6 +1778,274 @@ const ERPDashboard = ({ hasAccess, onSubscribe, logs }: { hasAccess: boolean, on
             </div>
         </div>
     );
+};
+
+// --- OPERATOR PORTAL (Moved to end for clarity) ---
+const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (log: OperatorLog) => void }) => {
+    // Stage 1: Auth, Stage 2: Log Entry
+    const [authStep, setAuthStep] = useState(true);
+    const [credentials, setCredentials] = useState({ username: '', password: '' });
+    const [token, setToken] = useState(''); 
+    const [isLoading, setIsLoading] = useState(false);
+    
+    const [formData, setFormData] = useState({
+        machineId: '',
+        startTime: '', // Changed to Time String
+        endTime: '',   // Changed to Time String
+        currentReading: '', // New: The cumulative meter reading
+        readingUnit: 'Kilometers (km)', // New: Unit selector
+        fuel: '',
+        location: '',
+        notes: '',
+        checklist: { tires: false, oil: false, hydraulics: false, brakes: false }
+    });
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        try {
+            const response = await fetch('http://localhost:8000/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
+            });
+            const data = await response.json();
+            if (response.ok) { setToken(data.access_token); setAuthStep(false); } 
+            else { alert(data.detail || "Login failed."); }
+        } catch (error) { alert("Connection error."); } 
+        finally { setIsLoading(false); }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Validation
+        if (!formData.startTime || !formData.endTime) { alert("Please enter start and end times."); return; }
+        
+        const payload = {
+            id: `LOG-${Date.now()}`,
+            machineId: formData.machineId,
+            operatorName: credentials.username, 
+            date: new Date().toISOString().split('T')[0],
+            startTime: formData.startTime, 
+            endTime: formData.endTime,
+            // We use 'startOdometer' field to send the CURRENT cumulative reading
+            startOdometer: parseFloat(formData.currentReading) || 0, 
+            // We use 'endOdometer' to send the Unit type (hack to avoid changing DB schema too much)
+            // ideally we send a new field, but let's stick to the structure or send it as a note
+            endOdometer: 0, 
+            fuelAddedLiters: parseFloat(formData.fuel) || 0,
+            location: formData.location,
+            checklist: formData.checklist,
+            // We append the unit to notes so backend can parse it safely
+            notes: `${formData.notes} [UNIT:${formData.readingUnit}]` 
+        };
+
+        try {
+            const response = await fetch('http://localhost:8000/api/operator-logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) { onSubmit(payload as any); onBack(); } 
+            else { alert("Failed to submit log."); }
+        } catch (error) { alert("Network error."); }
+    };
+
+    const toggleCheck = (key: keyof typeof formData.checklist) => {
+        setFormData(prev => ({ ...prev, checklist: { ...prev.checklist, [key]: !prev.checklist[key] } }));
+    };
+
+    if (authStep) {
+        // ... (Login UI remains the same as before)
+        return (
+            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+                {/* Same Login UI Code from previous step... just simpler here for brevity */}
+                <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-10 shadow-2xl">
+                    <h2 className="text-2xl font-bold text-white mb-6 text-center">Operator Login</h2>
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Username" onChange={e=>setCredentials({...credentials, username: e.target.value})}/>
+                        <input type="password" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Password" onChange={e=>setCredentials({...credentials, password: e.target.value})}/>
+                        <button disabled={isLoading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded">Login</button>
+                    </form>
+                    <button onClick={onBack} className="w-full text-center text-slate-500 mt-4">Cancel</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-white flex items-center"><ClipboardCheck className="mr-2 text-yellow-500"/> Daily Log</h2>
+                    <button onClick={onBack} className="text-slate-400 hover:text-white"><X size={24}/></button>
+                </div>
+                
+                <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                    {/* Machine Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Machine ID / Plate</label>
+                            <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500" 
+                                placeholder="e.g. KCD 892J" value={formData.machineId} onChange={e => setFormData({...formData, machineId: e.target.value})} />
+                        </div>
+                        <div>
+                            <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Site Location</label>
+                            <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500" 
+                                placeholder="e.g. Athi River" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} />
+                        </div>
+                    </div>
+
+                    {/* NEW: Time & Meter Reading */}
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                        <h3 className="text-white font-bold text-sm mb-4 flex items-center"><Activity size={16} className="mr-2 text-blue-500"/> Time & Meter Reading</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">Start Time</label>
+                                <input required type="time" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">End Time</label>
+                                <input required type="time" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">Current Meter Reading</label>
+                                <input required type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white font-bold" 
+                                    placeholder="e.g. 12500" value={formData.currentReading} onChange={e => setFormData({...formData, currentReading: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">Reading Unit</label>
+                                <select className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white"
+                                    value={formData.readingUnit} onChange={e => setFormData({...formData, readingUnit: e.target.value})}>
+                                    <option value="km">Kilometers (km)</option>
+                                    <option value="mi">Miles (mi)</option>
+                                    <option value="hrs">Engine Hours (hrs)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-slate-500 text-xs mb-1 block">Fuel Added (L)</label>
+                                <input type="number" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-white" 
+                                    value={formData.fuel} onChange={e => setFormData({...formData, fuel: e.target.value})} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Safety Checklist */}
+                    <div>
+                        <h3 className="text-white font-bold text-sm mb-4 flex items-center"><ShieldCheck size={16} className="mr-2 text-green-500"/> Pre-Start Safety Check</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {['Tires/Tracks', 'Engine Oil', 'Hydraulics', 'Brakes'].map((label, i) => {
+                                const key = Object.keys(formData.checklist)[i] as keyof typeof formData.checklist;
+                                return (
+                                    <button key={key} type="button" onClick={() => toggleCheck(key)}
+                                        className={`p-3 rounded border flex flex-col items-center justify-center transition-all ${formData.checklist[key] ? 'bg-green-500/20 border-green-500 text-green-500' : 'bg-slate-950 border-slate-700 text-slate-500'}`}>
+                                        <span className="text-xs font-bold">{label}</span>
+                                        <div className={`w-3 h-3 rounded-full mt-2 ${formData.checklist[key] ? 'bg-green-500' : 'bg-slate-800'}`}></div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-slate-500 text-xs font-bold uppercase mb-2 block">Operational Notes</label>
+                        <textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-20 text-sm" 
+                            placeholder="Issues, delays, or maintenance requests..." value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-800">
+                        <button type="submit" className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded hover:bg-yellow-400 shadow-lg flex items-center justify-center">
+                            <FileBadge className="mr-2" size={20}/> Submit Daily Log
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// --- MAIN APP COMPONENT ---
+const App = () => {
+  const [page, setPage] = useState<PageView>(PageView.HOME);
+  const [erpAccess, setErpAccess] = useState(false);
+  const [operatorLogs, setOperatorLogs] = useState<OperatorLog[]>(INITIAL_LOGS);
+  const [showOperatorPortal, setShowOperatorPortal] = useState(false);
+  const [inspectionMode, setInspectionMode] = useState(false);
+  
+  // NEW STATE: Seller Wizard Visibility
+  const [isSelling, setIsSelling] = useState(false);
+
+  // Helper to handle log submission from portal
+  const handleLogSubmit = (newLog: OperatorLog) => {
+    setOperatorLogs([newLog, ...operatorLogs]);
+  };
+
+  if (showOperatorPortal) {
+    return (
+      <OperatorPortal 
+        onBack={() => setShowOperatorPortal(false)} 
+        onSubmit={handleLogSubmit} 
+      />
+    );
+  }
+
+  if (inspectionMode) {
+      return <InspectionBookingPage onComplete={() => { setInspectionMode(false); setPage(PageView.HOME); }} />
+  }
+
+  const renderContent = () => {
+    switch (page) {
+      case PageView.HOME:
+        return <HomePage 
+                  setPage={setPage} 
+                  onBookInspection={() => setInspectionMode(true)} 
+                  onSellClick={() => setIsSelling(true)} 
+               />;
+      case PageView.MARKETPLACE_BUY:
+        return <MarketplaceLayout mode="BUY" setPage={setPage} onSellClick={() => setIsSelling(true)} />;
+      case PageView.MARKETPLACE_RENT:
+        return <MarketplaceLayout mode="RENT" setPage={setPage} onSellClick={() => setIsSelling(true)} />;
+      case PageView.SPARE_PARTS:
+        return <MarketplaceLayout mode="BUY" setPage={setPage} onSellClick={() => setIsSelling(true)} />;
+      case PageView.SERVICES:
+        return <ServicesPage setPage={setPage} />;
+      case PageView.ERP:
+        return <ERPDashboard hasAccess={erpAccess} onSubscribe={() => setErpAccess(true)} logs={operatorLogs} />;
+      case PageView.PROFESSIONALS:
+        return <ProfessionalsPage />;
+      case PageView.CONSULT:
+        return <ConsultPage />;
+      case PageView.CONTACT:
+        return <ContactPage />;
+      default:
+        return <HomePage 
+                  setPage={setPage} 
+                  onBookInspection={() => setInspectionMode(true)} 
+                  onSellClick={() => setIsSelling(true)}
+               />;
+    }
+  };
+
+  return (
+    <div className="bg-slate-950 min-h-screen flex flex-col font-sans text-slate-200 selection:bg-yellow-500 selection:text-slate-900">
+      <Navbar 
+        currentPage={page} 
+        setPage={setPage} 
+        onLoginClick={() => setShowOperatorPortal(true)} 
+      />
+      <div className="flex-1">
+        {renderContent()}
+      </div>
+      <Footer setPage={setPage} />
+      {isSelling && <SellItemModal onClose={() => setIsSelling(false)} />}
+    </div>
+  );
 };
 
 export default App;

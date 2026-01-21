@@ -2,13 +2,15 @@
 
 export enum PageView {
   HOME = 'home',
-  EQUIPMENT = 'equipment',
+  MARKETPLACE_BUY = 'marketplace-buy', // Renamed from EQUIPMENT
+  MARKETPLACE_RENT = 'marketplace-rent', // New Dedicated Leasing Tab
   SPARE_PARTS = 'spare-parts',
   SERVICES = 'services',
   ERP = 'erp',
   PROFESSIONALS = 'professionals',
   CONSULT = 'consult',
-  CONTACT = 'contact'
+  CONTACT = 'contact',
+  SELLER_DASHBOARD = 'seller-dashboard' // New
 }
 
 export enum UserRole {
@@ -16,6 +18,57 @@ export enum UserRole {
   OPERATOR = 'operator',
   ADMIN = 'admin'
 }
+
+// NEW: Seller Profile for the Marketplace
+export interface SellerProfile {
+  id: string;
+  name: string;
+  type: 'Individual' | 'Company' | 'Dealer';
+  verified: boolean;
+  rating: number;
+  joinedDate: string;
+  location: string;
+  badges: string[]; // e.g., "Fast Responder", "Premium Seller"
+}
+
+// NEW: Unified Market Item (Replaces EquipmentItem for the new Marketplace)
+export interface MarketItem {
+  id: string;
+  title: string;
+  category: string; // The 4 main categories
+  subCategory: string; // The exhaustive list
+  type: 'Equipment' | 'Part';
+  listingType: 'Sale' | 'Rent'; 
+  
+  // Pricing
+  price: number;
+  currency: 'KES' | 'USD';
+  priceUnit?: 'per day' | 'per hour' | 'fixed'; // For rentals
+  negotiable: boolean;
+
+  // Asset Details
+  brand: string;
+  model: string;
+  yom?: number; // Year of Manufacture
+  hours?: number;
+  condition: 'New' | 'Used - Like New' | 'Used - Good' | 'Refurbished' | 'For Parts';
+  
+  // Media
+  images: string[];
+  
+  // Seller
+  sellerId: string;
+  seller: SellerProfile;
+  
+  // Location
+  location: string;
+  
+  // System
+  promoted: boolean; // "Boosted" ads
+  verifiedByDagiv: boolean; // Inspected by your engineers
+}
+
+// --- EXISTING INTERFACES (Retained for functionality) ---
 
 export interface OperatorLog {
   id: string;
@@ -37,6 +90,7 @@ export interface OperatorLog {
   notes: string;
 }
 
+// Legacy Interface 
 export interface EquipmentItem {
   id: string;
   name: string;
@@ -80,7 +134,6 @@ export interface SparePart {
   }[];
 }
 
-// NEW: Review Interface
 export interface Review {
   id: string;
   user: string;
@@ -90,7 +143,6 @@ export interface Review {
   verifiedClient: boolean;
 }
 
-// UPDATED: Professional Profile with Portfolio
 export interface ProfessionalProfile {
   id: string;
   name: string;

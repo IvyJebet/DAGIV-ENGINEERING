@@ -1,11 +1,214 @@
 // constants.ts
-import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail } from './types';
+import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
 import { SearchCheck, Truck, Wrench, Flame } from 'lucide-react';
 
-// --- EQUIPMENT DATA (Expanded Categories) ---
+// --- CATEGORY CONSTANTS ---
+export const CATEGORY_STRUCTURE = {
+  "Heavy Plant and Equipment": {
+    equipment: [
+      "Excavators", "Bulldozers", "Wheel loaders", "Motor graders", 
+      "Compactors / Rollers", "Backhoe loaders", "Scrapers", "Draglines", 
+      "Pile drivers", "Asphalt pavers", "Crushing plants", "Screening plants"
+    ],
+    parts: [
+      "Engines", "Hydraulic pumps", "Cylinders", "Track chains", 
+      "Bucket teeth", "Final drives", "Radiators", "Filters", 
+      "Control valves", "Undercarriage parts"
+    ]
+  },
+  "Heavy Construction Plant Machinery": {
+    equipment: [
+      "Tower cranes", "Mobile cranes", "Concrete batching plants", 
+      "Concrete mixers", "Concrete pumps", "Shotcrete machines", 
+      "Road milling machines", "Bitumen sprayers", "Soil stabilizers"
+    ],
+    parts: [
+      "Boom sections", "Wire ropes", "Bearings", "Gearboxes", 
+      "Control panels", "PLC units", "Sensors", "Conveyor belts"
+    ]
+  },
+  "Light Plant and Equipment": {
+    equipment: [
+      "Plate compactors", "Power trowels", "Vibrators", "Water pumps", 
+      "Air compressors", "Generators", "Welding machines", 
+      "Scaffolding systems", "Ladders", "Hand-guided rollers"
+    ],
+    parts: [
+      "Starter motors", "Alternators", "Belts", "Spark plugs", 
+      "Hoses", "Nozzles", "Switches", "Control boards"
+    ]
+  },
+  "Automotive": {
+    equipment: [
+      "Trucks", "Tippers", "Prime movers", "Trailers", 
+      "Tankers", "Service vans", "Pickups"
+    ],
+    parts: [
+      "Engines", "Gearboxes", "Axles", "Brake systems", 
+      "Suspension kits", "Tyres & rims", "ECUs", "Fuel systems", 
+      "Cooling systems"
+    ]
+  }
+};
+
+// --- MOCK SELLERS ---
+const SELLERS: Record<string, SellerProfile> = {
+  's1': { id: 's1', name: 'Mombasa Cement Fleet', type: 'Company', verified: true, rating: 4.8, joinedDate: '2021', location: 'Mombasa', badges: ['Premium', 'High Volume'] },
+  's2': { id: 's2', name: 'John Doe Equipments', type: 'Individual', verified: false, rating: 4.2, joinedDate: '2023', location: 'Nakuru', badges: [] },
+  's3': { id: 's3', name: 'DAGIV Certified Store', type: 'Dealer', verified: true, rating: 5.0, joinedDate: '2020', location: 'Nairobi', badges: ['Official Store', 'Warranty'] },
+  's4': { id: 's4', name: 'China Road & Bridge Corp', type: 'Company', verified: true, rating: 4.7, joinedDate: '2019', location: 'Nairobi HQ', badges: ['Verified Fleet'] },
+  's5': { id: 's5', name: 'Rift Valley Machineries', type: 'Dealer', verified: true, rating: 4.5, joinedDate: '2022', location: 'Eldoret', badges: [] },
+};
+
+// --- EXHAUSTIVE MARKETPLACE DATA ---
+export const MARKETPLACE_ITEMS: MarketItem[] = [
+  // --- 1. HEAVY PLANT AND EQUIPMENT ---
+  {
+    id: 'm1', title: 'Komatsu PC200-8 Excavator', category: 'Heavy Plant and Equipment', subCategory: 'Excavators',
+    type: 'Equipment', listingType: 'Sale', price: 8500000, currency: 'KES', negotiable: true,
+    brand: 'Komatsu', model: 'PC200-8', yom: 2018, hours: 6500, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1582035293672-025406d2d537?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's1', seller: SELLERS['s1'], location: 'Mombasa Yard', promoted: true, verifiedByDagiv: true
+  },
+  {
+    id: 'm2', title: 'CAT D8R Bulldozer', category: 'Heavy Plant and Equipment', subCategory: 'Bulldozers',
+    type: 'Equipment', listingType: 'Sale', price: 14200000, currency: 'KES', negotiable: false,
+    brand: 'Caterpillar', model: 'D8R', yom: 2015, hours: 12000, condition: 'Refurbished',
+    images: ['https://images.unsplash.com/photo-1519003300449-424ad0405076?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's3', seller: SELLERS['s3'], location: 'Nairobi HQ', promoted: true, verifiedByDagiv: true
+  },
+  {
+    id: 'm3', title: 'Caterpillar 140K Motor Grader', category: 'Heavy Plant and Equipment', subCategory: 'Motor graders',
+    type: 'Equipment', listingType: 'Rent', price: 45000, currency: 'KES', priceUnit: 'per day', negotiable: true,
+    brand: 'Caterpillar', model: '140K', yom: 2019, hours: 8000, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's4', seller: SELLERS['s4'], location: 'Kisumu', promoted: false, verifiedByDagiv: true
+  },
+  {
+    id: 'm4', title: 'JCB 3CX Backhoe Loader', category: 'Heavy Plant and Equipment', subCategory: 'Backhoe loaders',
+    type: 'Equipment', listingType: 'Sale', price: 7200000, currency: 'KES', negotiable: true,
+    brand: 'JCB', model: '3CX', yom: 2021, hours: 1500, condition: 'Used - Like New',
+    images: ['https://images.unsplash.com/photo-1533501705609-b6cb8d579601?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's5', seller: SELLERS['s5'], location: 'Eldoret', promoted: false, verifiedByDagiv: false
+  },
+  {
+    id: 'm5', title: 'Hamm 3411 Vibratory Roller', category: 'Heavy Plant and Equipment', subCategory: 'Compactors / Rollers',
+    type: 'Equipment', listingType: 'Rent', price: 22000, currency: 'KES', priceUnit: 'per day', negotiable: false,
+    brand: 'Hamm', model: '3411', yom: 2017, hours: 5000, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1590240226309-8736025340e5?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's2', seller: SELLERS['s2'], location: 'Nakuru', promoted: false, verifiedByDagiv: false
+  },
+  {
+    id: 'p1', title: 'Hydraulic Main Pump K3V112', category: 'Heavy Plant and Equipment', subCategory: 'Hydraulic pumps',
+    type: 'Part', listingType: 'Sale', price: 250000, currency: 'KES', negotiable: false,
+    brand: 'Kawasaki', model: 'K3V112DT', condition: 'New',
+    images: ['https://images.unsplash.com/photo-1518306065525-451631745428?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's3', seller: SELLERS['s3'], location: 'Industrial Area', promoted: false, verifiedByDagiv: true
+  },
+
+  // --- 2. HEAVY CONSTRUCTION PLANT MACHINERY ---
+  {
+    id: 'm6', title: 'SANY Mobile Crane 50T', category: 'Heavy Construction Plant Machinery', subCategory: 'Mobile cranes',
+    type: 'Equipment', listingType: 'Rent', price: 55000, currency: 'KES', priceUnit: 'per day', negotiable: true,
+    brand: 'SANY', model: 'STC500', yom: 2021, hours: 2000, condition: 'Used - Like New',
+    images: ['https://images.unsplash.com/photo-1588301728227-2c96c4df122d?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's1', seller: SELLERS['s1'], location: 'Nairobi Westlands', promoted: true, verifiedByDagiv: true
+  },
+  {
+    id: 'm7', title: 'Liebherr Concrete Batching Plant', category: 'Heavy Construction Plant Machinery', subCategory: 'Concrete batching plants',
+    type: 'Equipment', listingType: 'Sale', price: 12500000, currency: 'KES', negotiable: true,
+    brand: 'Liebherr', model: 'Mobilmix 2.5', yom: 2016, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1584467362398-3306b3a04294?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's4', seller: SELLERS['s4'], location: 'Athi River', promoted: false, verifiedByDagiv: true
+  },
+  {
+    id: 'm8', title: 'Putzmeister Concrete Pump', category: 'Heavy Construction Plant Machinery', subCategory: 'Concrete pumps',
+    type: 'Equipment', listingType: 'Rent', price: 35000, currency: 'KES', priceUnit: 'per day', negotiable: false,
+    brand: 'Putzmeister', model: 'BSA 14000', yom: 2018, hours: 4000, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1535154668108-f404d55b34ce?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's1', seller: SELLERS['s1'], location: 'Thika', promoted: false, verifiedByDagiv: true
+  },
+  {
+    id: 'm9', title: 'Wirtgen Cold Milling Machine', category: 'Heavy Construction Plant Machinery', subCategory: 'Road milling machines',
+    type: 'Equipment', listingType: 'Sale', price: 18000000, currency: 'KES', negotiable: true,
+    brand: 'Wirtgen', model: 'W 200', yom: 2019, hours: 3200, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1628109968779-7a0e24b423f4?auto=format&fit=crop&w=800&q=80'], // Reused bitumen image for roadwork context
+    sellerId: 's4', seller: SELLERS['s4'], location: 'Nairobi', promoted: true, verifiedByDagiv: true
+  },
+
+  // --- 3. LIGHT PLANT AND EQUIPMENT ---
+  {
+    id: 'm10', title: 'Perkins 100kVA Generator', category: 'Light Plant and Equipment', subCategory: 'Generators',
+    type: 'Equipment', listingType: 'Sale', price: 1800000, currency: 'KES', negotiable: true,
+    brand: 'Perkins', model: '1104C-44TAG2', yom: 2022, hours: 100, condition: 'New',
+    images: ['https://images.unsplash.com/photo-1496247749665-49cf5b1022e9?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's3', seller: SELLERS['s3'], location: 'Industrial Area', promoted: true, verifiedByDagiv: true
+  },
+  {
+    id: 'm11', title: 'Wacker Neuson Plate Compactor', category: 'Light Plant and Equipment', subCategory: 'Plate compactors',
+    type: 'Equipment', listingType: 'Sale', price: 150000, currency: 'KES', negotiable: false,
+    brand: 'Wacker Neuson', model: 'DPU 6555', yom: 2023, condition: 'New',
+    images: ['https://images.unsplash.com/photo-1628109968832-7206d2df2370?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's3', seller: SELLERS['s3'], location: 'Westlands', promoted: false, verifiedByDagiv: true
+  },
+  {
+    id: 'm12', title: 'Atlas Copco Air Compressor', category: 'Light Plant and Equipment', subCategory: 'Air compressors',
+    type: 'Equipment', listingType: 'Rent', price: 8000, currency: 'KES', priceUnit: 'per day', negotiable: true,
+    brand: 'Atlas Copco', model: 'XAS 186', yom: 2017, hours: 4500, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1579261272765-4b07fb582300?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's2', seller: SELLERS['s2'], location: 'Nakuru', promoted: false, verifiedByDagiv: false
+  },
+  {
+    id: 'm13', title: 'Honda Water Pump', category: 'Light Plant and Equipment', subCategory: 'Water pumps',
+    type: 'Equipment', listingType: 'Sale', price: 45000, currency: 'KES', negotiable: false,
+    brand: 'Honda', model: 'WB30XT', yom: 2023, condition: 'New',
+    images: ['https://images.unsplash.com/photo-1594926976920-43642345e821?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's5', seller: SELLERS['s5'], location: 'Eldoret', promoted: false, verifiedByDagiv: true
+  },
+
+  // --- 4. AUTOMOTIVE ---
+  {
+    id: 'a1', title: 'Sinotruk HOWO 6x4 Tipper', category: 'Automotive', subCategory: 'Tippers',
+    type: 'Equipment', listingType: 'Sale', price: 6800000, currency: 'KES', negotiable: true,
+    brand: 'Sinotruk', model: '371HP', yom: 2020, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1605218427306-635ba243971c?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's2', seller: SELLERS['s2'], location: 'Eldoret', promoted: false, verifiedByDagiv: false
+  },
+  {
+    id: 'a2', title: 'Mercedes Actros Prime Mover', category: 'Automotive', subCategory: 'Prime movers',
+    type: 'Equipment', listingType: 'Sale', price: 7500000, currency: 'KES', negotiable: true,
+    brand: 'Mercedes-Benz', model: '3340', yom: 2016, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1632598836423-f38392cb9117?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's1', seller: SELLERS['s1'], location: 'Mombasa', promoted: true, verifiedByDagiv: true
+  },
+  {
+    id: 'a3', title: 'Toyota Hilux Double Cab', category: 'Automotive', subCategory: 'Pickups',
+    type: 'Equipment', listingType: 'Rent', price: 10000, currency: 'KES', priceUnit: 'per day', negotiable: false,
+    brand: 'Toyota', model: 'Hilux GD6', yom: 2022, condition: 'Used - Like New',
+    images: ['https://images.unsplash.com/photo-1594917088927-4a00486c9d06?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's3', seller: SELLERS['s3'], location: 'Nairobi', promoted: false, verifiedByDagiv: true
+  },
+  {
+    id: 'a4', title: 'Fuel Tanker Trailer 40,000L', category: 'Automotive', subCategory: 'Tankers',
+    type: 'Equipment', listingType: 'Sale', price: 3500000, currency: 'KES', negotiable: true,
+    brand: 'CIMC', model: 'Tri-Axle', yom: 2018, condition: 'Used - Good',
+    images: ['https://images.unsplash.com/photo-1594953935272-a169052b0f44?auto=format&fit=crop&w=800&q=80'], // Placeholder
+    sellerId: 's4', seller: SELLERS['s4'], location: 'Mombasa', promoted: false, verifiedByDagiv: true
+  },
+  {
+    id: 'ap1', title: 'Isuzu NQR Brake Pads', category: 'Automotive', subCategory: 'Brake systems',
+    type: 'Part', listingType: 'Sale', price: 4500, currency: 'KES', negotiable: false,
+    brand: 'Isuzu', model: 'NQR 75', condition: 'New',
+    images: ['https://images.unsplash.com/photo-1486262715619-01b8c2297615?auto=format&fit=crop&w=800&q=80'],
+    sellerId: 's3', seller: SELLERS['s3'], location: 'Nairobi', promoted: false, verifiedByDagiv: true
+  }
+];
+
+// --- LEGACY DATA (Retained for App compatibility) ---
+// Note: These will be phased out once the UI fully transitions to MARKETPLACE_ITEMS
+
 export const EQUIPMENT_DATA: EquipmentItem[] = [
   // --- A. HEAVY PLANT EQUIPMENT ---
-  // Generators
   {
     id: 'h1', name: 'Perkins 500kVA Diesel Generator', category: 'Heavy Plant Equipment', subCategory: 'Generators',
     brand: 'Perkins', model: '2506A-E15TAG2', year: 2021, condition: 'New', listingType: 'Sale',
@@ -14,7 +217,6 @@ export const EQUIPMENT_DATA: EquipmentItem[] = [
     specs: { 'Prime Power': '500 kVA', 'Engine': 'Perkins 6 Cylinder', 'Alternator': 'Stamford', 'Control': 'Deep Sea' },
     description: 'Heavy duty industrial diesel engine generator (D.E.G). Soundproof canopy included. Ideal for factories.'
   },
-  // Concrete Systems
   {
     id: 'h3', name: 'JS 500 Concrete Mixer', category: 'Heavy Plant Equipment', subCategory: 'Concrete Systems',
     brand: 'SANY', model: 'JS 500', year: 2022, condition: 'New', listingType: 'Sale',
@@ -63,7 +265,6 @@ export const EQUIPMENT_DATA: EquipmentItem[] = [
     specs: { 'Drum': 'Liebherr 9m3', 'Chassis': '6x4', 'Engine': 'V6 Turbo', 'Water Tank': '500L' },
     description: 'Heavy duty transit mixer truck. Excellent condition, ready for ready-mix delivery.'
   },
-  // Pneumatics
   {
     id: 'h2', name: 'Atlas Copco XAS 186 Compressor', category: 'Heavy Plant Equipment', subCategory: 'Pneumatic Systems',
     brand: 'Atlas Copco', model: 'XAS 186', year: 2018, condition: 'Used', listingType: 'Lease',
@@ -80,7 +281,6 @@ export const EQUIPMENT_DATA: EquipmentItem[] = [
     specs: { 'Pressure': '12 Bar', 'Tank': '500L', 'Motor': '10HP', 'Type': 'Reciprocating Piston' },
     description: 'Two-stage reciprocating piston compressor for industrial workshop air supply.'
   },
-  // Hydraulics
   {
     id: 'h6', name: 'Rexroth Hydraulic Pump Unit', category: 'Heavy Plant Equipment', subCategory: 'Hydraulics',
     brand: 'Bosch Rexroth', model: 'A4VSO', year: 2023, condition: 'New', listingType: 'Sale',
@@ -89,7 +289,6 @@ export const EQUIPMENT_DATA: EquipmentItem[] = [
     specs: { 'Pressure': '350 Bar', 'Displacement': '125cc', 'Control': 'DR', 'Application': 'Industrial' },
     description: 'Variable displacement axial piston pump for heavy industrial hydraulic systems.'
   },
-  // HVAC
   {
     id: 'h5', name: 'Carrier Industrial HVAC Chiller', category: 'Heavy Plant Equipment', subCategory: 'HVAC',
     brand: 'Carrier', model: '30XA', year: 2020, condition: 'Used', listingType: 'Sale',
