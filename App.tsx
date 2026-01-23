@@ -10,7 +10,8 @@ import {
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
   ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
   FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer, PlusCircle, Heart, ChevronLeft, UploadCloud, Camera,
-  Globe, Building2, FileCheck
+  Globe, Building2, FileCheck,
+  Video
 } from 'lucide-react';
 
 
@@ -39,77 +40,73 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     
-    // File Input References (Crucial for the upload buttons to work)
+    // File Input References
     const docPrimaryRef = useRef<HTMLInputElement>(null);
     const docSecondaryRef = useRef<HTMLInputElement>(null);
     const docProofRef = useRef<HTMLInputElement>(null);
+    const mediaVideoRef = useRef<HTMLInputElement>(null);
+    const mediaDocRef = useRef<HTMLInputElement>(null);
     
-    // 1. EXTENSIVE GLOBAL CURRENCIES
+    // 1. CONSTANTS
     const CURRENCIES = [
         "KES", "USD", "EUR", "GBP", "AED", "CNY", "INR", "ZAR", "JPY", "AUD", "CAD", "CHF", "HKD", "SGD", "SEK", "DKK", "PLN", "NOK", "THB", "IDR", "TRY", "MXN", "BRL", "RUB", "SAR", "QAR", "EGP", "NGN", "GHS", "ETB", "TZS", "UGX", "RWF", "ZMW", "MZN", "AOA", "MAD", "DZD", "TND"
     ].sort();
 
-    // 2. CONSTANTS
     const YEARS = Array.from({length: 37}, (_, i) => (2026 - i).toString()); // 1990 - 2026
     const USAGE_UNITS = ["Hours", "Km", "Miles"];
     const RENT_PERIODS = ["Hour", "Day", "Week", "Month"];
+    const CONDITIONS = ["New", "Used - Like New", "Used - Good", "Refurbished", "For Parts"];
     
     // Seller State
     const [sellerIdentity, setSellerIdentity] = useState({ 
         phone: '', name: '', status: '', id: '', location: '', email: '',
         businessType: 'Company', regNumber: '',
-        // File Data (Base64)
         doc_primary: '', doc_secondary: '', doc_proof: '',
-        // File Names (Display)
         doc_primary_name: '', doc_secondary_name: '', doc_proof_name: ''
     });
     
-    // Expanded Listing Data (Professional Engineering Fields)
+    // Expanded Listing Data
     const [listingType, setListingType] = useState<'SALE' | 'RENT' | 'PART'>('SALE');
     const [formData, setFormData] = useState({
-        // Core
+        // 1. Primary Details
+        listingTitle: '', 
         category: 'Heavy Plant and Equipment', subCategory: '', 
-        brand: '', model: '', stockId: '', location: '',
+        brand: '', model: '', stockId: '', 
+        yom: '', condition: 'Used',
         
-        // Pricing
-        price: '', currency: 'KES',
-        rentDry: '', rentWet: '', rentCurrency: 'KES', rentPeriod: 'Day',
-        
-        // Machine / Rent Specs
-        yom: '', // Year of Mfg
-        usage: '', usageUnit: 'Hours',
-        netWeight: '', // kg
-        vin: '', 
-        
-        // Engine & Transmission (New)
+        // 2. Pricing
+        price: '', currency: 'KES', priceOnRequest: false,
+        rentDry: '', rentWet: '', rentCurrency: 'KES', rentPeriod: 'Day', 
+        additionalCostTerms: '',
+
+        // 3. Technical Specs
         engineBrand: '', enginePower: '', fuelType: 'Diesel', emissionStandard: '',
         transmissionType: '', maxSpeed: '', 
-        
-        // Dimensions
-        dimLength: '', dimWidth: '', dimHeight: '', 
-        
-        // Undercarriage & Hydraulics (New)
-        trackWidth: '', tireSize: '', 
-        residualTread: '', // %
+        dimLength: '', dimWidth: '', dimHeight: '', netWeight: '',
+        trackWidth: '', tireSize: '', axles: '', residualTread: '', // %
         auxHydraulics: 'No', hammerProtection: 'No',
-        
-        // Cabin (New)
-        cabinType: 'Enclosed', ac: 'Yes', rops: 'Yes',
-        
-        // Performance
-        digDepth: '', digRadius: '', dumpHeight: '',
-        
-        // Condition & Docs
-        condition: 'Used', originalPaint: 'Yes', warranty: '', documents: 'Yes',
-        ceMarked: 'Yes', epaMarked: 'Yes',
+        performanceSpecs: '', // Dig depth, lift capacity etc.
+        usage: '', usageUnit: 'Hours', runningHours: '', // For specialized tracking
         
         // Parts Specific
-        partType: 'Original', // Original vs Aftermarket
-        partNumber: '', oemNumber: '', 
-        partWeight: '',
-        
-        // Additional
-        color: '', additionalEquip: '', description: '', images: [] as string[]
+        partType: 'Original', partNumber: '', oemNumber: '', 
+        partWeight: '', applicableModels: '',
+
+        // 4. Location
+        country: '', region: '', city: '', address: '',
+        pickupLocation: '', availabilityDate: '',
+
+        // 5. Media & Docs
+        images: [] as string[],
+        videos: [] as string[],
+        complianceDocs: [] as string[], // Base64 or links
+
+        // 6. Additional Info
+        warranty: 'No', warrantyDetails: '',
+        originalPaint: 'Yes',
+        sellerTerms: '',
+        shippingInfo: '',
+        description: ''
     });
 
     // @ts-ignore
@@ -120,14 +117,15 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
         : [];
 
     // --- HELPER: FILE TO BASE64 ---
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, field: any, isImageArray = false) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, field: any, isArray = false, arrayField = 'images') => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             const reader = new FileReader();
             reader.onload = () => {
                 if (reader.result) {
-                    if (isImageArray) {
-                        setFormData(prev => ({...prev, images: [...prev.images, reader.result as string]}));
+                    if (isArray) {
+                        // @ts-ignore
+                        setFormData(prev => ({...prev, [arrayField]: [...prev[arrayField], reader.result as string]}));
                     } else {
                         // @ts-ignore
                         setSellerIdentity(prev => ({ ...prev, [`${field}_name`]: file.name, [field]: reader.result as string }));
@@ -140,13 +138,9 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
 
     // --- VALIDATION ---
     const isStepValid = () => {
-        if (step === 2) return formData.category && formData.subCategory && formData.brand && formData.model;
-        if (step === 3) {
-            if (listingType === 'SALE') return formData.yom && formData.price;
-            if (listingType === 'RENT') return formData.rentDry || formData.rentWet;
-            if (listingType === 'PART') return formData.partNumber && formData.price;
-        }
-        if (step === 4) return formData.images.length > 0 && formData.description.length > 10;
+        if (step === 2) return formData.listingTitle && formData.category && formData.subCategory && formData.brand;
+        if (step === 3) return true; // Add specific validation if needed
+        if (step === 4) return formData.images.length > 0; // Require at least one photo
         return true;
     };
 
@@ -184,7 +178,8 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
         const finalPrice = listingType === 'SALE' || listingType === 'PART' ? parseFloat(formData.price) : parseFloat(formData.rentDry) || 0;
         const payload = {
             listingType,
-            sellerName: sellerIdentity.name, phone: sellerIdentity.phone, location: formData.location || sellerIdentity.location,
+            title: formData.listingTitle,
+            sellerName: sellerIdentity.name, phone: sellerIdentity.phone, location: formData.city || sellerIdentity.location,
             category: formData.category, subCategory: formData.subCategory, brand: formData.brand, model: formData.model,
             price: finalPrice, currency: listingType === 'RENT' ? formData.rentCurrency : formData.currency, 
             specs: { ...formData }
@@ -199,14 +194,12 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
 
     // ================= VIEWS =================
 
-    // 1. WELCOME SCREEN (With Restored Buttons & Glow)
+    // 1. WELCOME SCREEN
     if (stage === 'WELCOME') {
         return (
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <style>{`.glow-card:hover { box-shadow: 0 0 40px rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.5); }`}</style>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
-                    
-                    {/* Left: Process Explanation with GLOW */}
                     <div className="w-full md:w-5/12 bg-slate-950 p-8 border-r border-slate-800 relative transition-all duration-500 glow-card group">
                         <div className="absolute top-0 right-0 p-32 bg-yellow-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-yellow-500/10 transition-all duration-700"></div>
                         <div className="text-yellow-500 font-bold uppercase tracking-widest text-xs mb-6">Seller Central</div>
@@ -226,8 +219,6 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
                             </div>
                         </div>
                     </div>
-
-                    {/* Right: The Original Buttons (Restored) */}
                     <div className="w-full md:w-7/12 p-12 flex flex-col justify-center bg-slate-900 relative">
                          <button onClick={onClose} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={24}/></button>
                          <div className="max-w-sm mx-auto w-full">
@@ -262,7 +253,7 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
         );
     }
 
-    // 3. KYC REGISTER (Fully Restored & Functional)
+    // 3. KYC REGISTER
     if (stage === 'KYC_REGISTER') {
         return (
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
@@ -271,14 +262,10 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
                         <div><h2 className="text-xl font-bold text-white">Seller Verification</h2><p className="text-xs text-slate-400">Step 1 of 1: Identity Proof</p></div>
                         <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20}/></button>
                     </div>
-
                     <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
-                        {/* Hidden Inputs */}
                         <input type="file" ref={docPrimaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_primary')} accept="image/*,.pdf" />
                         <input type="file" ref={docSecondaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_secondary')} accept="image/*,.pdf" />
                         <input type="file" ref={docProofRef} hidden onChange={(e) => handleFileSelect(e, 'doc_proof')} accept="image/*,.pdf" />
-
-                        {/* Entity Type Selection */}
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <button onClick={() => setSellerIdentity({...sellerIdentity, businessType: 'Company'})} className={`p-4 rounded-xl border-2 text-left transition-all ${sellerIdentity.businessType === 'Company' ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}>
                                 <div className="flex items-center gap-2 mb-2"><Building2 className={sellerIdentity.businessType === 'Company' ? 'text-blue-400' : 'text-slate-500'} size={24}/><span className={`font-bold ${sellerIdentity.businessType === 'Company' ? 'text-white' : 'text-slate-400'}`}>Registered Company</span></div>
@@ -289,7 +276,6 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
                                 <p className="text-xs text-slate-500">For private owners/brokers.</p>
                             </button>
                         </div>
-
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} onChange={e => setSellerIdentity({...sellerIdentity, name: e.target.value})} />
@@ -300,21 +286,18 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
                             <div className="bg-slate-800/50 p-4 rounded border border-slate-700 mt-6">
                                 <h4 className="text-white font-bold text-sm mb-4 flex items-center"><FileCheck size={16} className="mr-2 text-green-500"/> Required Documents</h4>
                                 <div className="space-y-4">
-                                    {/* 1. Primary ID Upload */}
                                     <div className="flex items-center justify-between p-3 bg-slate-950 rounded border border-slate-800">
                                         <div><div className="text-white text-sm font-bold">{sellerIdentity.businessType === 'Company' ? 'Cert. of Incorporation' : 'National ID (Front)'}</div><div className="text-xs text-slate-500">{sellerIdentity.doc_primary_name || 'PDF or JPG'}</div></div>
                                         <button onClick={() => docPrimaryRef.current?.click()} className={`text-xs px-3 py-2 rounded flex items-center ${sellerIdentity.doc_primary ? 'bg-green-600 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}>
                                             {sellerIdentity.doc_primary ? <><Check size={14} className="mr-2"/> Uploaded</> : <><UploadCloud size={14} className="mr-2"/> Upload</>}
                                         </button>
                                     </div>
-                                    {/* 2. Secondary ID Upload */}
                                     <div className="flex items-center justify-between p-3 bg-slate-950 rounded border border-slate-800">
                                         <div><div className="text-white text-sm font-bold">{sellerIdentity.businessType === 'Company' ? 'KRA PIN Certificate' : 'National ID (Back)'}</div><div className="text-xs text-slate-500">{sellerIdentity.doc_secondary_name || 'Verifiable Document'}</div></div>
                                         <button onClick={() => docSecondaryRef.current?.click()} className={`text-xs px-3 py-2 rounded flex items-center ${sellerIdentity.doc_secondary ? 'bg-green-600 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}>
                                             {sellerIdentity.doc_secondary ? <><Check size={14} className="mr-2"/> Uploaded</> : <><UploadCloud size={14} className="mr-2"/> Upload</>}
                                         </button>
                                     </div>
-                                    {/* 3. Proof of Possession */}
                                     <div className="p-3 bg-yellow-500/10 rounded border border-yellow-500/30">
                                         <div className="flex items-center justify-between mb-2">
                                             <div><div className="text-yellow-500 text-sm font-bold">{sellerIdentity.businessType === 'Company' ? 'Business Permit / Yard Photo' : 'Proof of Possession Photo'}</div><div className="text-xs text-slate-400">{sellerIdentity.doc_proof_name || (sellerIdentity.businessType === 'Company' ? 'Business Permit' : 'Selfie with Item')}</div></div>
@@ -322,21 +305,13 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
                                                 {sellerIdentity.doc_proof ? <><Check size={14} className="mr-2"/> Uploaded</> : <><Camera size={14} className="mr-2"/> Upload</>}
                                             </button>
                                         </div>
-                                        {sellerIdentity.businessType === 'Individual' && (
-                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-2 bg-black/20 p-2 rounded">
-                                                <div className="w-8 h-8 bg-slate-700 rounded flex items-center justify-center"><User size={16}/></div>
-                                                <span>Example: You + Machine + Handwritten Note with Date.</span>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </div>
-
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{sellerIdentity.businessType === 'Company' ? 'Registration No. / KRA PIN' : 'National ID Number'}</label>
                                 <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono tracking-wide" placeholder={sellerIdentity.businessType === 'Company' ? "P051..." : "12345678"} onChange={e => setSellerIdentity({...sellerIdentity, regNumber: e.target.value})} />
                             </div>
-
                             <button onClick={registerSeller} disabled={loading} className="w-full bg-green-600 text-white font-bold py-4 rounded hover:bg-green-500 mt-4 shadow-lg flex items-center justify-center">
                                 {loading ? <RefreshCw className="animate-spin mr-2"/> : <ShieldCheck className="mr-2"/>} Submit for Verification
                             </button>
@@ -350,7 +325,6 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
     // 4. THE WIZARD (GLOBAL PROFESSIONAL STANDARD)
     return (
         <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
-            {/* Inject Global Styles for No Spinners */}
             <style>{`
                 input[type=number]::-webkit-inner-spin-button, 
                 input[type=number]::-webkit-outer-spin-button { 
@@ -370,7 +344,7 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
 
                 <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
                     
-                    {/* STEP 1: SERVICE TYPE (Big Cards) */}
+                    {/* STEP 1: SERVICE TYPE */}
                     {step === 1 && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-right-4">
                             <button onClick={() => { setListingType('SALE'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-yellow-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
@@ -391,163 +365,264 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
                         </div>
                     )}
 
-                    {/* STEP 2: CORE DETAILS */}
+                    {/* STEP 2: PRIMARY DETAILS & LOCATION */}
                     {step === 2 && (
                         <div className="space-y-6 animate-in slide-in-from-right-4">
-                            <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2 mb-4">Core Details</h3>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Category</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c}>{c}</option>)}</select></div>
-                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}><option value="">Select...</option>{subCategories.map((sc: string) => <option key={sc} value={sc}>{sc}</option>)}</select></div>
+                            <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2 mb-4">
+                                {listingType === 'PART' ? 'Part Details & Location' : 'Primary Details & Location'}
+                            </h3>
+                            
+                            {/* Section 1: Core Identifiers */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Listing Title *</label>
+                                    <input 
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg focus:border-yellow-500" 
+                                        placeholder={listingType === 'PART' ? "e.g. Caterpillar 320D Hydraulic Pump" : "e.g. Komatsu PC200-8 Excavator"} 
+                                        value={formData.listingTitle} 
+                                        onChange={e => setFormData({...formData, listingTitle: e.target.value})} 
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Category</label>
+                                        <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                            {categories.map(c => <option key={c}>{c}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Component Type' : 'Machine Type'}</label>
+                                        <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
+                                            <option value="">Select...</option>
+                                            {subCategories.map((sc: string) => <option key={sc} value={sc}>{sc}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Manufacturer' : 'Brand'}</label>
+                                        <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Caterpillar" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} />
+                                    </div>
+                                    {listingType === 'PART' ? (
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Part Number (OEM)</label>
+                                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono" placeholder="e.g. 1U3352" value={formData.partNumber} onChange={e => setFormData({...formData, partNumber: e.target.value})} />
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Model</label>
+                                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 320D GC" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Year & Condition */}
+                                {listingType !== 'PART' && (
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Year of Manufacture</label>
+                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.yom} onChange={e => setFormData({...formData, yom: e.target.value})}>
+                                                <option value="">Select Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Condition</label>
+                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
+                                                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                                {listingType === 'PART' && (
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Compatible Machine Models</label>
+                                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. CAT 320D, 325D" value={formData.applicableModels} onChange={e => setFormData({...formData, applicableModels: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Part Condition</label>
+                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
+                                                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Caterpillar" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} /></div>
-                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Model</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 320D GC" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} /></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Location</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="City, Country" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} /></div>
-                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Stock ID (Optional)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Internal Ref" value={formData.stockId} onChange={e => setFormData({...formData, stockId: e.target.value})} /></div>
+
+                            {/* Section 2: Location */}
+                            <div className="pt-4 border-t border-slate-800">
+                                <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><MapPin size={16} className="mr-2"/> Location</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-slate-500 block mb-1">Country</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Kenya" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} /></div>
+                                    <div><label className="text-xs text-slate-500 block mb-1">Region / State</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi County" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} /></div>
+                                    <div><label className="text-xs text-slate-500 block mb-1">City / Town</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
+                                    <div><label className="text-xs text-slate-500 block mb-1">{listingType === 'RENT' ? 'Pickup Location' : 'Specific Address'}</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Industrial Area, Road A" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
+                                </div>
+                                {listingType === 'RENT' && (
+                                    <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Availability Start Date</label><input type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.availabilityDate} onChange={e => setFormData({...formData, availabilityDate: e.target.value})} /></div>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {/* STEP 3: TECHNICAL SPECS (Professional Grade) */}
+                    {/* STEP 3: TECHNICAL SPECS & PRICING */}
                     {step === 3 && (
                         <div className="space-y-8 animate-in slide-in-from-right-4">
                             
-                            {/* --- MACHINE / RENT SPECS --- */}
-                            {(listingType === 'SALE' || listingType === 'RENT') && (
-                                <>
-                                    {/* 1. KEY SPECS */}
+                            {/* --- PRICING SECTION --- */}
+                            <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
+                                <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><DollarSign size={16} className="mr-2"/> Pricing & Terms</h4>
+                                
+                                {listingType === 'SALE' || listingType === 'PART' ? (
                                     <div className="space-y-4">
-                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Key Specifications</h4>
-                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <div><label className="text-xs text-slate-500 block mb-1">Year of Manufacture</label>
-                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.yom} onChange={e => setFormData({...formData, yom: e.target.value})}>
-                                                <option value="">Select Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                                            </select></div>
-                                            
-                                            <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label>
-                                            <input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="0" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
-                                            
-                                            <div className="flex gap-2">
-                                                <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage</label>
-                                                <input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="0" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
-                                                <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label>
-                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
+                                        <div className="flex gap-4 items-end">
+                                            <div className="w-1/3">
+                                                <label className="text-xs text-slate-500 block mb-1">Currency</label>
+                                                <select className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold custom-select" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                            </div>
+                                            <div className="flex-1">
+                                                <label className="text-xs text-slate-500 block mb-1">Selling Price</label>
+                                                <input type="number" disabled={formData.priceOnRequest} className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold text-lg disabled:opacity-50" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
                                             </div>
                                         </div>
+                                        <div className="flex items-center">
+                                            <input type="checkbox" id="por" className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-yellow-500 focus:ring-yellow-500" checked={formData.priceOnRequest} onChange={e => setFormData({...formData, priceOnRequest: e.target.checked})} />
+                                            <label htmlFor="por" className="ml-2 text-sm text-slate-300">Price on Request (Hide Price)</label>
+                                        </div>
                                     </div>
-
-                                    {/* 2. ENGINE & TRANSMISSION */}
+                                ) : (
+                                    /* RENT PRICING */
                                     <div className="space-y-4">
-                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Engine & Power</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Dry Rate (Machine Only)</label>
+                                                <div className="flex gap-2">
+                                                    <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentCurrency} onChange={e => setFormData({...formData, rentCurrency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                                    <input type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
+                                                    <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Wet Rate (With Operator/Fuel)</label>
+                                                <div className="flex gap-2">
+                                                    <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentCurrency} onChange={e => setFormData({...formData, rentCurrency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                                    <input type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
+                                                    <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 block mb-1">Additional Cost Terms</label>
+                                            <input className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white text-sm" placeholder="e.g. Mobilization fee, min hours per day..." value={formData.additionalCostTerms} onChange={e => setFormData({...formData, additionalCostTerms: e.target.value})} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* --- TECHNICAL SPECS --- */}
+                            <div className="space-y-4">
+                                <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Technical Specifications</h4>
+                                
+                                {listingType === 'PART' ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Dimensions (L x W x H)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 50x30x20 cm" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} /></div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Engine & Power */}
                                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
-                                            <div><label className="text-xs text-slate-500 block mb-1">Power (kW/HP)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 140 kW" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Power</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="kW / HP" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
                                             <div><label className="text-xs text-slate-500 block mb-1">Fuel Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}><option>Diesel</option><option>Petrol</option><option>Electric</option></select></div>
                                             <div><label className="text-xs text-slate-500 block mb-1">Emission</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.emissionStandard} onChange={e => setFormData({...formData, emissionStandard: e.target.value})}><option value="">Standard</option><option>Euro 3</option><option>Euro 4</option><option>Euro 5</option><option>Tier 4F</option></select></div>
                                         </div>
-                                    </div>
 
-                                    {/* 3. CABIN & HYDRAULICS */}
-                                    <div className="space-y-4">
-                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Cabin & Features</h4>
-                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                            <div><label className="text-xs text-slate-500 block mb-1">Cabin Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.cabinType} onChange={e => setFormData({...formData, cabinType: e.target.value})}><option>Enclosed</option><option>Canopy</option><option>ROPS</option></select></div>
-                                            <div><label className="text-xs text-slate-500 block mb-1">Air Conditioning</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.ac} onChange={e => setFormData({...formData, ac: e.target.value})}><option>Yes</option><option>No</option></select></div>
-                                            <div><label className="text-xs text-slate-500 block mb-1">Aux Hydraulics</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.auxHydraulics} onChange={e => setFormData({...formData, auxHydraulics: e.target.value})}><option>Yes</option><option>No</option></select></div>
-                                            <div><label className="text-xs text-slate-500 block mb-1">CE Marked</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.ceMarked} onChange={e => setFormData({...formData, ceMarked: e.target.value})}><option>Yes</option><option>No</option></select></div>
-                                        </div>
-                                    </div>
-
-                                    {/* 4. UNDERCARRIAGE & DIMENSIONS */}
-                                    <div className="space-y-4">
-                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Chassis & Dimensions</h4>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Length (m)" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} />
-                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Width (m)" value={formData.dimWidth} onChange={e => setFormData({...formData, dimWidth: e.target.value})} />
-                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Height (m)" value={formData.dimHeight} onChange={e => setFormData({...formData, dimHeight: e.target.value})} />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Track Width / Tire Size" value={formData.trackWidth} onChange={e => setFormData({...formData, trackWidth: e.target.value})} />
-                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Condition Remaining (%)" value={formData.residualTread} onChange={e => setFormData({...formData, residualTread: e.target.value})} />
-                                        </div>
-                                    </div>
-
-                                    {/* 5. PRICING */}
-                                    <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                                        {listingType === 'SALE' ? (
-                                            <div>
-                                                <label className="text-sm font-bold text-white block mb-2">Selling Price</label>
-                                                <div className="flex gap-2">
-                                                    <select className="w-32 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold custom-select" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
-                                                    <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg no-spinner" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
-                                                </div>
+                                        {/* Usage & Dimensions */}
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                                            <div className="col-span-2 flex gap-2">
+                                                <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage / Mileage</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
+                                                <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
                                             </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 block mb-1">Dry Rate (Machine Only)</label>
-                                                    <div className="flex gap-2">
-                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentCurrency} onChange={e => setFormData({...formData, rentCurrency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
-                                                        <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-2 rounded text-white no-spinner" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
-                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 block mb-1">Wet Rate (With Operator/Fuel)</label>
-                                                    <div className="flex gap-2">
-                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentCurrency} onChange={e => setFormData({...formData, rentCurrency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
-                                                        <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-2 rounded text-white no-spinner" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
-                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {/* --- PARTS SPECS --- */}
-                            {listingType === 'PART' && (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs text-slate-500 block mb-1">Part Number (OEM)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partNumber} onChange={e => setFormData({...formData, partNumber: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">Part Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.partType} onChange={e => setFormData({...formData, partType: e.target.value})}><option>Original (OEM)</option><option>Aftermarket</option><option>Remanufactured</option></select></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">Condition</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}><option>New</option><option>Used</option></select></div>
-                                    </div>
-                                    <div><label className="text-xs text-slate-500 block mb-1">Compatible Models</label><textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-20" placeholder="e.g. Fits CAT 320D, 325D..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
-                                    
-                                    <div className="bg-slate-800/50 p-4 rounded border border-slate-700">
-                                        <label className="text-sm font-bold text-white block mb-2">Price per Unit</label>
-                                        <div className="flex gap-2">
-                                            <select className="w-32 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold custom-select" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
-                                            <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg no-spinner" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                                            <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Axles / Tracks</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Config" value={formData.axles} onChange={e => setFormData({...formData, axles: e.target.value})} /></div>
                                         </div>
-                                    </div>
-                                </div>
-                            )}
+
+                                        {/* Performance */}
+                                        <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Performance Specs</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Dig Depth: 6m, Lift: 4T, Bucket Cap: 1.2m3" value={formData.performanceSpecs} onChange={e => setFormData({...formData, performanceSpecs: e.target.value})} /></div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     )}
 
-                    {/* STEP 4: UPLOADS & DESC */}
+                    {/* STEP 4: MEDIA, DOCS & EXTRAS */}
                     {step === 4 && (
-                        <div className="space-y-6">
-                            <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:bg-slate-900 transition-colors">
-                                <input type="file" multiple id="listingImages" hidden onChange={(e) => handleFileSelect(e, null, true)} accept="image/*" />
-                                <label htmlFor="listingImages" className="cursor-pointer">
-                                    <Camera className="mx-auto text-yellow-500 mb-2" size={32}/>
-                                    <span className="text-white font-bold block">Add Photos *</span>
-                                    <span className="text-xs text-slate-500">High quality photos increase sales. Min 1 required.</span>
-                                </label>
-                            </div>
-                            <div className="grid grid-cols-4 gap-2">{formData.images.map((src, i) => (<div key={i} className="h-20 bg-slate-800 rounded bg-cover bg-center" style={{backgroundImage: `url(${src})`}}></div>))}</div>
+                        <div className="space-y-8 animate-in slide-in-from-right-4">
+                            
+                            {/* Media Section */}
                             <div>
-                                <label className="text-xs text-slate-500 block mb-1">Detailed Description</label>
-                                <textarea className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white h-32" placeholder="Mention specific condition, recent repairs, or included attachments..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                                <h4 className="text-white font-bold mb-4 flex items-center"><Camera className="mr-2 text-yellow-500"/> Media Gallery</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Photos */}
+                                    <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
+                                        <input type="file" multiple id="listingImages" hidden onChange={(e) => handleFileSelect(e, null, true, 'images')} accept="image/*" />
+                                        <label htmlFor="listingImages" className="cursor-pointer block">
+                                            <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2"><Camera size={24} className="text-slate-400"/></div>
+                                            <span className="text-white font-bold text-sm block">Upload Photos *</span>
+                                            <span className="text-xs text-slate-500">Min 1 required. Max 10.</span>
+                                        </label>
+                                        {formData.images.length > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{formData.images.slice(0,4).map((src, i) => <div key={i} className="h-12 bg-cover rounded border border-slate-700" style={{backgroundImage: `url(${src})`}}></div>)}</div>}
+                                    </div>
+                                    {/* Videos */}
+                                    <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
+                                        <input type="file" ref={mediaVideoRef} hidden onChange={(e) => handleFileSelect(e, null, true, 'videos')} accept="video/*" />
+                                        <button onClick={() => mediaVideoRef.current?.click()} className="w-full h-full flex flex-col items-center justify-center">
+                                            <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2"><Video size={24} className="text-slate-400"/></div>
+                                            <span className="text-white font-bold text-sm block">Add Video (Optional)</span>
+                                            <span className="text-xs text-slate-500">Walkthroughs increase trust.</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Documents Section */}
+                            <div>
+                                <h4 className="text-white font-bold mb-4 flex items-center"><FileText className="mr-2 text-blue-500"/> Documentation</h4>
+                                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-sm font-bold text-white">Compliance & Manuals</div>
+                                        <div className="text-xs text-slate-500">Upload service history, logbooks, or specs (PDF).</div>
+                                    </div>
+                                    <input type="file" ref={mediaDocRef} hidden accept=".pdf" onChange={(e) => handleFileSelect(e, null, true, 'complianceDocs')} />
+                                    <button onClick={() => mediaDocRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-xs font-bold flex items-center"><UploadCloud size={14} className="mr-2"/> Upload PDF</button>
+                                </div>
+                                {formData.complianceDocs.length > 0 && <div className="mt-2 text-xs text-green-500 flex items-center"><Check size={12} className="mr-1"/> {formData.complianceDocs.length} Document(s) Attached</div>}
+                            </div>
+
+                            {/* Additional Info */}
+                            <div>
+                                <h4 className="text-white font-bold mb-4 flex items-center"><List className="mr-2 text-green-500"/> Additional Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                    {listingType === 'PART' ? (
+                                        <div><label className="text-xs text-slate-500 block mb-1">Shipping / Packaging Info</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.shippingInfo} onChange={e => setFormData({...formData, shippingInfo: e.target.value})} /></div>
+                                    ) : (
+                                        <>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Warranty Details</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 6 Months Dealer" value={formData.warrantyDetails} onChange={e => setFormData({...formData, warrantyDetails: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Original Paint?</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.originalPaint} onChange={e => setFormData({...formData, originalPaint: e.target.value})}><option>Yes</option><option>No</option></select></div>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="mb-4">
+                                     <label className="text-xs text-slate-500 block mb-1">Seller Terms / Remarks</label>
+                                     <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Sold as is, Buyer arranges transport" value={formData.sellerTerms} onChange={e => setFormData({...formData, sellerTerms: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 block mb-1">Detailed Description</label>
+                                    <textarea className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white h-32" placeholder="Mention specific condition, recent repairs, or included attachments..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                                </div>
                             </div>
                         </div>
                     )}

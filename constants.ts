@@ -263,7 +263,7 @@ export const CATEGORY_STRUCTURE = {
     ]
   },
 
-  "Automotive (Construction & Support Vehicles)": {
+  "Automotive": {
     equipment: [
       "Prime Movers - 6x4",
       "Prime Movers - 4x2",
