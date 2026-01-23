@@ -307,147 +307,266 @@ const SELLERS: Record<string, SellerProfile> = {
   's5': { id: 's5', name: 'Rift Valley Machineries', type: 'Dealer', verified: true, rating: 4.5, joinedDate: '2022', location: 'Eldoret', badges: [] },
 };
 
-// --- EXHAUSTIVE MARKETPLACE DATA ---
+// --- EXHAUSTIVE MARKETPLACE DATA (Updated with Rich Schema) ---
 export const MARKETPLACE_ITEMS: MarketItem[] = [
   // --- 1. HEAVY PLANT AND EQUIPMENT ---
   {
-    id: 'm1', title: 'Komatsu PC200-8 Excavator', category: 'Heavy Plant and Equipment', subCategory: 'Excavators',
-    type: 'Equipment', listingType: 'Sale', price: 8500000, currency: 'KES', negotiable: true,
+    id: 'm1', title: 'Komatsu PC200-8 Excavator', category: 'Heavy Plant and Equipment', subCategory: 'Excavators - Crawler (Track)',
+    type: 'Equipment', listingType: 'Sale', price: 8500000, currency: 'KES', negotiable: true, financeAvailable: true, estMonthlyPayment: 185000,
     brand: 'Komatsu', model: 'PC200-8', yom: 2018, hours: 6500, condition: 'Used - Good',
-    images: ['https://images.unsplash.com/photo-1582035293672-025406d2d537?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's1', seller: SELLERS['s1'], location: 'Mombasa Yard', promoted: true, verifiedByDagiv: true
+    description: 'Direct from contractor fleet. Recently serviced undercarriage. Engine runs smooth with no blow-by. Main pump pressure tested at 350 bar. Ready for inspection at our Mombasa yard. Includes GP bucket.',
+    specifications: [
+        { groupName: 'Engine', items: [{label: 'Make', value: 'Komatsu'}, {label: 'Model', value: 'SAA6D107E-1'}, {label: 'Power', value: '110 kW'}] },
+        { groupName: 'Dimensions', items: [{label: 'Operating Weight', value: '20,500 kg'}, {label: 'Shoe Width', value: '600 mm'}] },
+        { groupName: 'Performance', items: [{label: 'Bucket Capacity', value: '0.8 m3'}, {label: 'Max Dig Depth', value: '6.6 m'}] }
+    ],
+    images: [
+        'https://images.unsplash.com/photo-1582035293672-025406d2d537?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1547844391-72906d441113?auto=format&fit=crop&w=800&q=80'
+    ],
+    location: 'Mombasa Yard', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Available Immediately',
+    sellerId: 's1', seller: SELLERS['s1'], promoted: true, verifiedByDagiv: true, stockReference: 'FLT-001'
   },
   {
-    id: 'm2', title: 'CAT D8R Bulldozer', category: 'Heavy Plant and Equipment', subCategory: 'Bulldozers',
-    type: 'Equipment', listingType: 'Sale', price: 14200000, currency: 'KES', negotiable: false,
+    id: 'm2', title: 'CAT D8R Bulldozer', category: 'Heavy Plant and Equipment', subCategory: 'Bulldozers - Crawler',
+    type: 'Equipment', listingType: 'Sale', price: 14200000, currency: 'KES', negotiable: false, financeAvailable: true, estMonthlyPayment: 310000,
     brand: 'Caterpillar', model: 'D8R', yom: 2015, hours: 12000, condition: 'Refurbished',
+    description: 'Fully refurbished D8R. New undercarriage installed (chains, rollers, idlers). Engine overhauled 500 hours ago. Ripper included. SU Blade with new cutting edges.',
+    specifications: [
+        { groupName: 'Engine', items: [{label: 'Make', value: 'CAT'}, {label: 'Model', value: '3406C DITA'}, {label: 'Net Power', value: '305 HP'}] },
+        { groupName: 'Undercarriage', items: [{label: 'Condition', value: '100% New'}, {label: 'Type', value: 'SystemOne'}] },
+        { groupName: 'Configuration', items: [{label: 'Blade', value: 'Semi-U (SU)'}, {label: 'Ripper', value: 'Multi-Shank'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1519003300449-424ad0405076?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's3', seller: SELLERS['s3'], location: 'Nairobi HQ', promoted: true, verifiedByDagiv: true
+    location: 'Nairobi HQ', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: '3 Days Prep',
+    sellerId: 's3', seller: SELLERS['s3'], promoted: true, verifiedByDagiv: true, stockReference: 'CAT-D8-099'
   },
   {
-    id: 'm3', title: 'Caterpillar 140K Motor Grader', category: 'Heavy Plant and Equipment', subCategory: 'Motor graders',
+    id: 'm3', title: 'Caterpillar 140K Motor Grader', category: 'Heavy Plant and Equipment', subCategory: 'Motor Graders',
     type: 'Equipment', listingType: 'Rent', price: 45000, currency: 'KES', priceUnit: 'per day', negotiable: true,
     brand: 'Caterpillar', model: '140K', yom: 2019, hours: 8000, condition: 'Used - Good',
+    description: 'Reliable 140K grader available for lease. Ideal for county road maintenance and site leveling. Operator provided if required (Wet rate applicable).',
+    specifications: [
+        { groupName: 'Blade', items: [{label: 'Width', value: '14 ft'}, {label: 'Side Shift', value: 'Hydraulic'}] },
+        { groupName: 'Engine', items: [{label: 'Model', value: 'CAT C7 ACERT'}, {label: 'Power', value: '170 HP'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's4', seller: SELLERS['s4'], location: 'Kisumu', promoted: false, verifiedByDagiv: true
+    location: 'Kisumu', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: '24 Hours',
+    sellerId: 's4', seller: SELLERS['s4'], promoted: false, verifiedByDagiv: true
   },
   {
-    id: 'm4', title: 'JCB 3CX Backhoe Loader', category: 'Heavy Plant and Equipment', subCategory: 'Backhoe loaders',
-    type: 'Equipment', listingType: 'Sale', price: 7200000, currency: 'KES', negotiable: true,
+    id: 'm4', title: 'JCB 3CX Backhoe Loader', category: 'Heavy Plant and Equipment', subCategory: 'Backhoe Loaders',
+    type: 'Equipment', listingType: 'Sale', price: 7200000, currency: 'KES', negotiable: true, financeAvailable: true,
     brand: 'JCB', model: '3CX', yom: 2021, hours: 1500, condition: 'Used - Like New',
+    description: 'Low hour machine. 4WD Turbo. Extradig arm. 6-in-1 front bucket. Original paint. Serviced by dealer since new.',
+    specifications: [
+        { groupName: 'Performance', items: [{label: 'Dig Depth', value: '5.46 m'}, {label: 'Loader Capacity', value: '1.0 m3'}] },
+        { groupName: 'Engine', items: [{label: 'Power', value: '92 HP'}, {label: 'Fuel', value: 'Diesel'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1533501705609-b6cb8d579601?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's5', seller: SELLERS['s5'], location: 'Eldoret', promoted: false, verifiedByDagiv: false
+    location: 'Eldoret', deliveryOptions: 'Collection Only', estimatedMobTime: 'Immediate',
+    sellerId: 's5', seller: SELLERS['s5'], promoted: false, verifiedByDagiv: false, stockReference: 'JCB-3CX-21'
   },
   {
-    id: 'm5', title: 'Hamm 3411 Vibratory Roller', category: 'Heavy Plant and Equipment', subCategory: 'Compactors / Rollers',
+    id: 'm5', title: 'Hamm 3411 Vibratory Roller', category: 'Heavy Plant and Equipment', subCategory: 'Compactors - Single Drum',
     type: 'Equipment', listingType: 'Rent', price: 22000, currency: 'KES', priceUnit: 'per day', negotiable: false,
     brand: 'Hamm', model: '3411', yom: 2017, hours: 5000, condition: 'Used - Good',
+    description: '11-ton single drum vibratory roller. Smooth drum. Perfect for road base compaction and earthworks.',
+    specifications: [
+        { groupName: 'Compaction', items: [{label: 'Drum Width', value: '2140 mm'}, {label: 'Centrifugal Force', value: '246 kN'}] },
+        { groupName: 'Dimensions', items: [{label: 'Operating Weight', value: '11,300 kg'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1590240226309-8736025340e5?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's2', seller: SELLERS['s2'], location: 'Nakuru', promoted: false, verifiedByDagiv: false
+    location: 'Nakuru', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: '1 Day',
+    sellerId: 's2', seller: SELLERS['s2'], promoted: false, verifiedByDagiv: false
   },
   {
-    id: 'p1', title: 'Hydraulic Main Pump K3V112', category: 'Heavy Plant and Equipment', subCategory: 'Hydraulic pumps',
+    id: 'p1', title: 'Hydraulic Main Pump K3V112', category: 'Heavy Plant and Equipment', subCategory: 'Hydraulic Pumps',
     type: 'Part', listingType: 'Sale', price: 250000, currency: 'KES', negotiable: false,
     brand: 'Kawasaki', model: 'K3V112DT', condition: 'New',
+    description: 'Genuine OEM Kawasaki main pump. Fits 20-25 ton excavators (Kobelco SK200, Hyundai R210, Sumitomo SH210). 6-month warranty.',
+    specifications: [
+        { groupName: 'Technical', items: [{label: 'Displacement', value: '112 cc/rev'}, {label: 'Pressure', value: '34.3 MPa'}] },
+        { groupName: 'Compatibility', items: [{label: 'Series', value: 'K3V Series'}, {label: 'Shaft', value: '14T Spline'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1518306065525-451631745428?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's3', seller: SELLERS['s3'], location: 'Industrial Area', promoted: false, verifiedByDagiv: true
+    location: 'Industrial Area', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Same Day Dispatch',
+    sellerId: 's3', seller: SELLERS['s3'], promoted: false, verifiedByDagiv: true, stockReference: 'HYD-KAW-001'
   },
 
   // --- 2. HEAVY CONSTRUCTION PLANT MACHINERY ---
   {
-    id: 'm6', title: 'SANY Mobile Crane 50T', category: 'Heavy Construction Plant Machinery', subCategory: 'Mobile cranes',
+    id: 'm6', title: 'SANY Mobile Crane 50T', category: 'Heavy Construction Plant Machinery', subCategory: 'Cranes - Mobile / Truck Mounted',
     type: 'Equipment', listingType: 'Rent', price: 55000, currency: 'KES', priceUnit: 'per day', negotiable: true,
     brand: 'SANY', model: 'STC500', yom: 2021, hours: 2000, condition: 'Used - Like New',
+    description: '50 Ton Truck Crane. 5-section U-shaped boom. Max lifting height 43m. Jib included. Certified operator available.',
+    specifications: [
+        { groupName: 'Lifting', items: [{label: 'Max Capacity', value: '50 Ton'}, {label: 'Boom Length', value: '11.3 - 43.5 m'}] },
+        { groupName: 'Carrier', items: [{label: 'Engine', value: 'Cummins ISLe'}, {label: 'Drive', value: '8x4'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1588301728227-2c96c4df122d?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's1', seller: SELLERS['s1'], location: 'Nairobi Westlands', promoted: true, verifiedByDagiv: true
+    location: 'Nairobi Westlands', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: '24 Hours',
+    sellerId: 's1', seller: SELLERS['s1'], promoted: true, verifiedByDagiv: true
   },
   {
-    id: 'm7', title: 'Liebherr Concrete Batching Plant', category: 'Heavy Construction Plant Machinery', subCategory: 'Concrete batching plants',
-    type: 'Equipment', listingType: 'Sale', price: 12500000, currency: 'KES', negotiable: true,
+    id: 'm7', title: 'Liebherr Concrete Batching Plant', category: 'Heavy Construction Plant Machinery', subCategory: 'Concrete Batching Plants - Mobile',
+    type: 'Equipment', listingType: 'Sale', price: 12500000, currency: 'KES', negotiable: true, financeAvailable: true,
     brand: 'Liebherr', model: 'Mobilmix 2.5', yom: 2016, condition: 'Used - Good',
+    description: 'Fully mobile concrete batching plant. 60m3/hr capacity. Twin shaft mixer. Includes 4 aggregate bins and 2 cement silos. Computerized control system.',
+    specifications: [
+        { groupName: 'Production', items: [{label: 'Output', value: '60 m3/h'}, {label: 'Mixer Type', value: 'DW 2.5 Twin Shaft'}] },
+        { groupName: 'Storage', items: [{label: 'Aggregate Bins', value: '4 x 18 m3'}, {label: 'Cement', value: 'Silos Included'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1584467362398-3306b3a04294?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's4', seller: SELLERS['s4'], location: 'Athi River', promoted: false, verifiedByDagiv: true
+    location: 'Athi River', deliveryOptions: 'Collection Only', estimatedMobTime: '1 Week Dismantling',
+    sellerId: 's4', seller: SELLERS['s4'], promoted: false, verifiedByDagiv: true
   },
   {
-    id: 'm8', title: 'Putzmeister Concrete Pump', category: 'Heavy Construction Plant Machinery', subCategory: 'Concrete pumps',
+    id: 'm8', title: 'Putzmeister Concrete Pump', category: 'Heavy Construction Plant Machinery', subCategory: 'Concrete Pumps - Trailer Mounted',
     type: 'Equipment', listingType: 'Rent', price: 35000, currency: 'KES', priceUnit: 'per day', negotiable: false,
     brand: 'Putzmeister', model: 'BSA 14000', yom: 2018, hours: 4000, condition: 'Used - Good',
+    description: 'Stationary concrete pump for high-rise construction. High pressure capability. Diesel powered.',
+    specifications: [
+        { groupName: 'Pumping', items: [{label: 'Max Output', value: '71 m3/h'}, {label: 'Max Pressure', value: '106 bar'}] },
+        { groupName: 'Engine', items: [{label: 'Power', value: 'Deutz Diesel'}, {label: 'Emission', value: 'Stage III'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1535154668108-f404d55b34ce?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's1', seller: SELLERS['s1'], location: 'Thika', promoted: false, verifiedByDagiv: true
+    location: 'Thika', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Available',
+    sellerId: 's1', seller: SELLERS['s1'], promoted: false, verifiedByDagiv: true
   },
   {
-    id: 'm9', title: 'Wirtgen Cold Milling Machine', category: 'Heavy Construction Plant Machinery', subCategory: 'Road milling machines',
-    type: 'Equipment', listingType: 'Sale', price: 18000000, currency: 'KES', negotiable: true,
+    id: 'm9', title: 'Wirtgen Cold Milling Machine', category: 'Heavy Construction Plant Machinery', subCategory: 'Road Milling Machines (Cold Planers)',
+    type: 'Equipment', listingType: 'Sale', price: 18000000, currency: 'KES', negotiable: true, financeAvailable: true,
     brand: 'Wirtgen', model: 'W 200', yom: 2019, hours: 3200, condition: 'Used - Good',
-    images: ['https://images.unsplash.com/photo-1628109968779-7a0e24b423f4?auto=format&fit=crop&w=800&q=80'], // Reused bitumen image for roadwork context
-    sellerId: 's4', seller: SELLERS['s4'], location: 'Nairobi', promoted: true, verifiedByDagiv: true
+    description: 'Large milling machine for road rehabilitation. 2m milling width. Level Pro system installed. Conveyor belt in good condition.',
+    specifications: [
+        { groupName: 'Milling', items: [{label: 'Width', value: '2,000 mm'}, {label: 'Depth', value: '0 - 330 mm'}] },
+        { groupName: 'Engine', items: [{label: 'Power', value: '410 kW'}, {label: 'Make', value: 'Cummins'}] }
+    ],
+    images: ['https://images.unsplash.com/photo-1628109968779-7a0e24b423f4?auto=format&fit=crop&w=800&q=80'],
+    location: 'Nairobi', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'By Appointment',
+    sellerId: 's4', seller: SELLERS['s4'], promoted: true, verifiedByDagiv: true
   },
 
   // --- 3. LIGHT PLANT AND EQUIPMENT ---
   {
-    id: 'm10', title: 'Perkins 100kVA Generator', category: 'Light Plant and Equipment', subCategory: 'Generators',
+    id: 'm10', title: 'Perkins 100kVA Generator', category: 'Light Plant and Equipment', subCategory: 'Generators - Diesel (<500 kVA)',
     type: 'Equipment', listingType: 'Sale', price: 1800000, currency: 'KES', negotiable: true,
     brand: 'Perkins', model: '1104C-44TAG2', yom: 2022, hours: 100, condition: 'New',
+    description: 'Brand new 100kVA soundproof generator. UK Perkins engine. Stamford alternator. Deep Sea controller. Automatic Transfer Switch (ATS) included.',
+    specifications: [
+        { groupName: 'Power', items: [{label: 'Prime Rating', value: '100 kVA'}, {label: 'Voltage', value: '415/240 V'}] },
+        { groupName: 'Engine', items: [{label: 'Make', value: 'Perkins'}, {label: 'Cylinders', value: '4 Turbo'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1496247749665-49cf5b1022e9?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's3', seller: SELLERS['s3'], location: 'Industrial Area', promoted: true, verifiedByDagiv: true
+    location: 'Industrial Area', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Immediate',
+    sellerId: 's3', seller: SELLERS['s3'], promoted: true, verifiedByDagiv: true
   },
   {
-    id: 'm11', title: 'Wacker Neuson Plate Compactor', category: 'Light Plant and Equipment', subCategory: 'Plate compactors',
+    id: 'm11', title: 'Wacker Neuson Plate Compactor', category: 'Light Plant and Equipment', subCategory: 'Plate Compactors - Reversible',
     type: 'Equipment', listingType: 'Sale', price: 150000, currency: 'KES', negotiable: false,
     brand: 'Wacker Neuson', model: 'DPU 6555', yom: 2023, condition: 'New',
+    description: 'Heavy duty reversible plate compactor. Diesel powered. Electric start. Ideal for paving stones and sub-base compaction.',
+    specifications: [
+        { groupName: 'Performance', items: [{label: 'Centrifugal Force', value: '65 kN'}, {label: 'Base Plate', value: '550 mm'}] },
+        { groupName: 'Engine', items: [{label: 'Make', value: 'Hatz Diesel'}, {label: 'Start', value: 'Electric'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1628109968832-7206d2df2370?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's3', seller: SELLERS['s3'], location: 'Westlands', promoted: false, verifiedByDagiv: true
+    location: 'Westlands', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Immediate',
+    sellerId: 's3', seller: SELLERS['s3'], promoted: false, verifiedByDagiv: true
   },
   {
-    id: 'm12', title: 'Atlas Copco Air Compressor', category: 'Light Plant and Equipment', subCategory: 'Air compressors',
+    id: 'm12', title: 'Atlas Copco Air Compressor', category: 'Light Plant and Equipment', subCategory: 'Air Compressors - Portable',
     type: 'Equipment', listingType: 'Rent', price: 8000, currency: 'KES', priceUnit: 'per day', negotiable: true,
     brand: 'Atlas Copco', model: 'XAS 186', yom: 2017, hours: 4500, condition: 'Used - Good',
+    description: 'Portable diesel screw compressor. 400 CFM. 7 Bar. Towable unit. Good working condition.',
+    specifications: [
+        { groupName: 'Output', items: [{label: 'Free Air Delivery', value: '11.1 m3/min'}, {label: 'Pressure', value: '7 bar'}] },
+        { groupName: 'Engine', items: [{label: 'Make', value: 'Deutz'}, {label: 'Cooling', value: 'Oil/Air'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1579261272765-4b07fb582300?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's2', seller: SELLERS['s2'], location: 'Nakuru', promoted: false, verifiedByDagiv: false
+    location: 'Nakuru', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Available',
+    sellerId: 's2', seller: SELLERS['s2'], promoted: false, verifiedByDagiv: false
   },
   {
-    id: 'm13', title: 'Honda Water Pump', category: 'Light Plant and Equipment', subCategory: 'Water pumps',
+    id: 'm13', title: 'Honda Water Pump', category: 'Light Plant and Equipment', subCategory: 'Water Pumps - Trash',
     type: 'Equipment', listingType: 'Sale', price: 45000, currency: 'KES', negotiable: false,
     brand: 'Honda', model: 'WB30XT', yom: 2023, condition: 'New',
+    description: '3-inch trash pump. Genuine Honda GX160 engine. Handles solids up to 28mm. Silicon carbide mechanical seal.',
+    specifications: [
+        { groupName: 'Performance', items: [{label: 'Max Discharge', value: '1100 L/min'}, {label: 'Total Head', value: '23 m'}] },
+        { groupName: 'Engine', items: [{label: 'Type', value: '4-Stroke Petrol'}, {label: 'Tank', value: '3.1 L'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1594926976920-43642345e821?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's5', seller: SELLERS['s5'], location: 'Eldoret', promoted: false, verifiedByDagiv: true
+    location: 'Eldoret', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Immediate',
+    sellerId: 's5', seller: SELLERS['s5'], promoted: false, verifiedByDagiv: true
   },
 
   // --- 4. AUTOMOTIVE ---
   {
-    id: 'a1', title: 'Sinotruk HOWO 6x4 Tipper', category: 'Automotive', subCategory: 'Tippers',
-    type: 'Equipment', listingType: 'Sale', price: 6800000, currency: 'KES', negotiable: true,
+    id: 'a1', title: 'Sinotruk HOWO 6x4 Tipper', category: 'Automotive', subCategory: 'Tipper Trucks',
+    type: 'Equipment', listingType: 'Sale', price: 6800000, currency: 'KES', negotiable: true, financeAvailable: true,
     brand: 'Sinotruk', model: '371HP', yom: 2020, condition: 'Used - Good',
+    description: 'Heavy duty 25-ton tipper. 371 HP Weichai engine. 10-speed manual gearbox. U-shaped bucket. Tires at 80%.',
+    specifications: [
+        { groupName: 'Powertrain', items: [{label: 'Engine', value: 'WD615.47'}, {label: 'Power', value: '371 HP'}, {label: 'Trans', value: 'HW19710'}] },
+        { groupName: 'Chassis', items: [{label: 'Drive', value: '6x4'}, {label: 'Tires', value: '12.00R20'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1605218427306-635ba243971c?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's2', seller: SELLERS['s2'], location: 'Eldoret', promoted: false, verifiedByDagiv: false
+    location: 'Eldoret', deliveryOptions: 'Collection Only', estimatedMobTime: 'Available',
+    sellerId: 's2', seller: SELLERS['s2'], promoted: false, verifiedByDagiv: false
   },
   {
-    id: 'a2', title: 'Mercedes Actros Prime Mover', category: 'Automotive', subCategory: 'Prime movers',
-    type: 'Equipment', listingType: 'Sale', price: 7500000, currency: 'KES', negotiable: true,
+    id: 'a2', title: 'Mercedes Actros Prime Mover', category: 'Automotive', subCategory: 'Prime Movers - 6x4',
+    type: 'Equipment', listingType: 'Sale', price: 7500000, currency: 'KES', negotiable: true, financeAvailable: true,
     brand: 'Mercedes-Benz', model: '3340', yom: 2016, condition: 'Used - Good',
+    description: 'Mercedes Actros 3340 6x4 tractor head. V6 Turbo engine. EPS Gearbox with clutch pedal. Double diff. Clean interior.',
+    specifications: [
+        { groupName: 'Engine', items: [{label: 'Model', value: 'OM501LA'}, {label: 'Power', value: '400 HP'}] },
+        { groupName: 'Drivetrain', items: [{label: 'Config', value: '6x4'}, {label: 'Suspension', value: 'Steel Leaf'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1632598836423-f38392cb9117?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's1', seller: SELLERS['s1'], location: 'Mombasa', promoted: true, verifiedByDagiv: true
+    location: 'Mombasa', deliveryOptions: 'Collection Only', estimatedMobTime: 'Available',
+    sellerId: 's1', seller: SELLERS['s1'], promoted: true, verifiedByDagiv: true
   },
   {
-    id: 'a3', title: 'Toyota Hilux Double Cab', category: 'Automotive', subCategory: 'Pickups',
+    id: 'a3', title: 'Toyota Hilux Double Cab', category: 'Automotive', subCategory: 'Pickup Trucks - Double Cab',
     type: 'Equipment', listingType: 'Rent', price: 10000, currency: 'KES', priceUnit: 'per day', negotiable: false,
     brand: 'Toyota', model: 'Hilux GD6', yom: 2022, condition: 'Used - Like New',
+    description: 'Project vehicle for lease. 2.4 GD-6 engine. 4x4 Manual. AC, Airbags, ABS. Fitted with canopy and bullbar.',
+    specifications: [
+        { groupName: 'Engine', items: [{label: 'Capacity', value: '2.4 L'}, {label: 'Fuel', value: 'Diesel'}] },
+        { groupName: 'Features', items: [{label: 'Drive', value: '4WD'}, {label: 'Transmission', value: 'Manual'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1594917088927-4a00486c9d06?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's3', seller: SELLERS['s3'], location: 'Nairobi', promoted: false, verifiedByDagiv: true
+    location: 'Nairobi', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Immediate',
+    sellerId: 's3', seller: SELLERS['s3'], promoted: false, verifiedByDagiv: true
   },
   {
-    id: 'a4', title: 'Fuel Tanker Trailer 40,000L', category: 'Automotive', subCategory: 'Tankers',
+    id: 'a4', title: 'Fuel Tanker Trailer 40,000L', category: 'Automotive', subCategory: 'Fuel Tankers',
     type: 'Equipment', listingType: 'Sale', price: 3500000, currency: 'KES', negotiable: true,
     brand: 'CIMC', model: 'Tri-Axle', yom: 2018, condition: 'Used - Good',
-    images: ['https://images.unsplash.com/photo-1594953935272-a169052b0f44?auto=format&fit=crop&w=800&q=80'], // Placeholder
-    sellerId: 's4', seller: SELLERS['s4'], location: 'Mombasa', promoted: false, verifiedByDagiv: true
+    description: '3-Axle fuel tanker. 40,000 Liters capacity. 6 Compartments. Pneumatic bottom loading. BPW axles.',
+    specifications: [
+        { groupName: 'Tank', items: [{label: 'Material', value: 'Carbon Steel'}, {label: 'Compartments', value: '6'}] },
+        { groupName: 'Running Gear', items: [{label: 'Axles', value: 'BPW 13T'}, {label: 'Suspension', value: 'Mechanical'}] }
+    ],
+    images: ['https://images.unsplash.com/photo-1594953935272-a169052b0f44?auto=format&fit=crop&w=800&q=80'],
+    location: 'Mombasa', deliveryOptions: 'Collection Only', estimatedMobTime: 'Available',
+    sellerId: 's4', seller: SELLERS['s4'], promoted: false, verifiedByDagiv: true
   },
   {
-    id: 'ap1', title: 'Isuzu NQR Brake Pads', category: 'Automotive', subCategory: 'Brake systems',
+    id: 'ap1', title: 'Isuzu NQR Brake Pads', category: 'Automotive', subCategory: 'Brake Pads, Discs & Drums',
     type: 'Part', listingType: 'Sale', price: 4500, currency: 'KES', negotiable: false,
     brand: 'Isuzu', model: 'NQR 75', condition: 'New',
+    description: 'Genuine Isuzu front brake pad set. Part No: 8-97329-123-0. Long life, non-asbestos material.',
+    specifications: [
+        { groupName: 'Compatibility', items: [{label: 'Model', value: 'NQR 75 / FRR'}, {label: 'Year', value: '2010+'}] },
+        { groupName: 'Details', items: [{label: 'Position', value: 'Front Axle'}, {label: 'Material', value: 'Ceramic'}] }
+    ],
     images: ['https://images.unsplash.com/photo-1486262715619-01b8c2297615?auto=format&fit=crop&w=800&q=80'],
-    sellerId: 's3', seller: SELLERS['s3'], location: 'Nairobi', promoted: false, verifiedByDagiv: true
+    location: 'Nairobi', deliveryOptions: 'Nationwide Delivery', estimatedMobTime: 'Same Day',
+    sellerId: 's3', seller: SELLERS['s3'], promoted: false, verifiedByDagiv: true
   }
 ];
 

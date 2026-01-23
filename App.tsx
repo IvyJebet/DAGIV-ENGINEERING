@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navbar, Footer } from './components/Layout';
-import { PageView, UserRole, OperatorLog, EquipmentItem, SparePart, MaintenanceTask, Alert, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
-import { EQUIPMENT_DATA, SERVICES_CONTENT, SPARE_PARTS, PROFESSIONALS, MARKETPLACE_ITEMS, CATEGORY_STRUCTURE } from './constants';
+import { PageView, UserRole, OperatorLog, MarketItem, OrderStatusEquipment, OrderStatusRent, OrderStatusPart, EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail } from './types';
+import { SERVICES_CONTENT, PROFESSIONALS, MARKETPLACE_ITEMS, CATEGORY_STRUCTURE } from './constants';
 import { CostChart, FleetStatusChart, UptimeChart } from './components/Widgets';
 import { 
   CheckCircle, ChevronRight, Truck, Wrench, ShieldCheck, MapPin, 
@@ -10,10 +10,8 @@ import {
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
   ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
   FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer, PlusCircle, Heart, ChevronLeft, UploadCloud, Camera,
-  Globe, Building2, FileCheck,
-  Video
+  Globe, Building2, FileCheck, Video, LayoutGrid, Box, TruckIcon, ShieldAlert
 } from 'lucide-react';
-
 
 // --- MOCK DATA ---
 const INITIAL_LOGS: OperatorLog[] = [
@@ -661,8 +659,12 @@ const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onC
         company: '',
         email: '',
         phone: '',
-        details: ''
+        details: '',
+        duration: '',
+        durationUnit: 'Days'
     });
+
+    const isLeasing = service.title.toLowerCase().includes('leasing') || service.title.toLowerCase().includes('hire');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -675,7 +677,8 @@ const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onC
                 email: formData.email,
                 serviceType: service.title,
                 details: formData.details,
-                company: formData.company || "N/A"
+                company: formData.company || "N/A",
+                duration: isLeasing ? `${formData.duration} ${formData.durationUnit}` : undefined
             };
 
             const res = await fetch('http://localhost:8000/api/service-request', {
@@ -786,6 +789,33 @@ const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onC
                             />
                         </div>
 
+                        {/* NEW: Conditional Duration Input for Leasing */}
+                        {isLeasing && (
+                            <div className="space-y-2 bg-slate-800/30 p-4 rounded border border-slate-700">
+                                <label className="block text-yellow-500 text-xs font-bold uppercase mb-2">Lease Duration</label>
+                                <div className="flex gap-4">
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        required 
+                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" 
+                                        placeholder="Duration" 
+                                        value={formData.duration}
+                                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                                    />
+                                    <select 
+                                        className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors"
+                                        value={formData.durationUnit}
+                                        onChange={(e) => setFormData({...formData, durationUnit: e.target.value})}
+                                    >
+                                        <option>Days</option>
+                                        <option>Hours</option>
+                                        <option>Months</option>
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <label className="block text-slate-500 text-xs font-bold uppercase">Project Details / Requirements</label>
                             <textarea 
@@ -816,29 +846,367 @@ const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onC
     );
 };
 
+// --- NEW COMPONENT: Secure Checkout Modal (Jumia Style) ---
+const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClose: () => void }) => {
+    const [step, setStep] = useState(1); // 1: Summary, 2: Buyer Info, 3: Payment, 4: Success
+    const [loading, setLoading] = useState(false);
+    const [rentalDuration, setRentalDuration] = useState<number>(1);
+    
+    // Order Calculation
+    const isRental = item.listingType === 'Rent';
+    // If rental, multiply price by duration. If not, price is fixed.
+    const basePrice = isRental ? (item.price * rentalDuration) : item.price;
+    
+    const taxRate = 0.16; // 16% VAT
+    const logisticsCost = item.deliveryOptions === 'Nationwide Delivery' ? 15000 : 0;
+    const subTotal = basePrice;
+    const total = subTotal + (subTotal * taxRate) + logisticsCost;
+
+    const handleConfirm = () => {
+        setLoading(true);
+        setTimeout(() => {
+            setLoading(false);
+            setStep(4);
+        }, 2000);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[80] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 w-full max-w-4xl h-[80vh] rounded-2xl border border-slate-800 shadow-2xl flex flex-col md:flex-row overflow-hidden">
+                
+                {/* Left: Summary Panel */}
+                <div className="w-full md:w-1/3 bg-slate-950 p-8 border-r border-slate-800 flex flex-col">
+                    <h3 className="text-white font-bold text-lg mb-6 flex items-center"><ShoppingCart className="mr-2 text-yellow-500"/> Order Summary</h3>
+                    
+                    <div className="flex gap-4 mb-6">
+                        <img src={item.images[0]} className="w-20 h-20 object-cover rounded border border-slate-800"/>
+                        <div>
+                            <div className="text-xs text-slate-500 uppercase">{item.brand}</div>
+                            <div className="text-sm font-bold text-white line-clamp-2">{item.title}</div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 text-sm text-slate-400 flex-1">
+                        <div className="flex justify-between">
+                            <span>Subtotal {isRental && `(${rentalDuration} ${item.priceUnit?.replace('per ', '') || 'units'})`}</span>
+                            <span>{item.currency} {subTotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between"><span>Logistics</span><span>{logisticsCost > 0 ? logisticsCost.toLocaleString() : 'TBD'}</span></div>
+                        <div className="flex justify-between"><span>VAT (16%)</span><span>{(subTotal * taxRate).toLocaleString()}</span></div>
+                        <div className="h-px bg-slate-800 my-2"></div>
+                        <div className="flex justify-between text-white font-bold text-lg"><span>Total</span><span>{item.currency} {total.toLocaleString()}</span></div>
+                    </div>
+
+                    <div className="mt-6 bg-yellow-500/10 p-3 rounded border border-yellow-500/30">
+                        <div className="flex items-start gap-2">
+                            <ShieldCheck className="text-yellow-500 mt-0.5 shrink-0" size={16}/>
+                            <p className="text-[10px] text-slate-300">
+                                <strong>DAGIV Escrow Protection:</strong> Funds are held securely until you confirm receipt (Parts) or complete inspection (Equipment).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right: Steps */}
+                <div className="w-full md:w-2/3 p-8 bg-slate-900 relative flex flex-col">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X/></button>
+                    
+                    {/* Steps Header */}
+                    <div className="flex mb-8 gap-4 border-b border-slate-800 pb-4">
+                        {['Review', 'Details', 'Payment', 'Done'].map((s, i) => (
+                            <div key={s} className={`flex items-center text-sm font-bold ${step === i + 1 ? 'text-yellow-500' : step > i + 1 ? 'text-green-500' : 'text-slate-600'}`}>
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 text-xs border ${step === i + 1 ? 'border-yellow-500 bg-yellow-500/10' : step > i + 1 ? 'border-green-500 bg-green-500/10' : 'border-slate-700 bg-slate-800'}`}>
+                                    {step > i + 1 ? <Check size={12}/> : i + 1}
+                                </div>
+                                {s}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Step Content */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        {step === 1 && (
+                            <div className="space-y-6 animate-in fade-in">
+                                <h2 className="text-2xl font-bold text-white">Review Order</h2>
+                                <p className="text-slate-400 text-sm">Please verify the item details before proceeding. By continuing, you agree to the DAGIV Buyer Terms.</p>
+                                
+                                {isRental && (
+                                    <div className="bg-slate-950 border border-yellow-500/30 p-4 rounded text-sm">
+                                        <h4 className="font-bold text-yellow-500 mb-2 flex items-center"><Clock size={16} className="mr-2"/> Rental Duration</h4>
+                                        <div className="flex items-center gap-4">
+                                            <label className="text-slate-400 text-xs uppercase font-bold">Number of {item.priceUnit?.replace('per ', '') || 'Days'}:</label>
+                                            <input 
+                                                type="number" 
+                                                min="1" 
+                                                value={rentalDuration} 
+                                                onChange={(e) => setRentalDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                                                className="bg-slate-900 border border-slate-700 rounded p-2 text-white w-24 text-center font-bold focus:border-yellow-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="bg-slate-950 border border-slate-800 p-4 rounded text-sm">
+                                    <h4 className="font-bold text-white mb-2">Item Condition</h4>
+                                    <p className="text-slate-400">{item.description}</p>
+                                </div>
+                                
+                                <div className="flex gap-4 mt-8">
+                                    <button onClick={onClose} className="px-6 py-3 rounded text-slate-400 font-bold hover:bg-slate-800">Cancel</button>
+                                    <button onClick={() => setStep(2)} className="px-6 py-3 bg-yellow-500 text-slate-900 font-bold rounded hover:bg-yellow-400 flex-1">Continue to Details</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 2 && (
+                            <div className="space-y-4 animate-in slide-in-from-right-8">
+                                <h2 className="text-2xl font-bold text-white">Buyer Details</h2>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs font-bold text-slate-500">First Name</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                    <div><label className="text-xs font-bold text-slate-500">Last Name</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                </div>
+                                <div><label className="text-xs font-bold text-slate-500">Email Address</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                <div><label className="text-xs font-bold text-slate-500">Phone Number</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                <div><label className="text-xs font-bold text-slate-500">Delivery Address / Site Location</label><textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-24"/></div>
+                                <div className="flex gap-4 mt-8">
+                                    <button onClick={() => setStep(1)} className="px-6 py-3 rounded text-slate-400 font-bold hover:bg-slate-800">Back</button>
+                                    <button onClick={() => setStep(3)} className="px-6 py-3 bg-yellow-500 text-slate-900 font-bold rounded hover:bg-yellow-400 flex-1">Proceed to Payment</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 3 && (
+                            <div className="space-y-6 animate-in slide-in-from-right-8">
+                                <h2 className="text-2xl font-bold text-white">Secure Payment</h2>
+                                <div className="space-y-3">
+                                    <label className="flex items-center justify-between p-4 bg-slate-950 border border-yellow-500 rounded cursor-pointer relative overflow-hidden">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-full border-2 border-yellow-500 flex items-center justify-center"><div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div></div>
+                                            <div><div className="font-bold text-white">M-Pesa / Mobile Money</div><div className="text-xs text-slate-400">Instant Escrow Deposit</div></div>
+                                        </div>
+                                        <Phone className="text-slate-500"/>
+                                    </label>
+                                    <label className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded cursor-pointer hover:border-slate-600">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-5 h-5 rounded-fullQX border-2 border-slate-600"></div>
+                                            <div><div className="font-bold text-white">Bank Transfer (EFT/RTGS)</div><div className="text-xs text-slate-400">KCB, Equity, StanChart</div></div>
+                                        </div>
+                                        <Building2 className="text-slate-500"/>
+                                    </label>
+                                </div>
+                                <div className="p-4 bg-blue-900/20 rounded border border-blue-500/30 text-xs text-blue-200">
+                                    Your payment is held in the <strong>DAGIV Trust Account</strong>. The seller is only paid after you verify the item (Inspection or Delivery).
+                                </div>
+                                <div className="flex gap-4 mt-8">
+                                    <button onClick={() => setStep(2)} className="px-6 py-3 rounded text-slate-400 font-bold hover:bg-slate-800">Back</button>
+                                    <button onClick={handleConfirm} disabled={loading} className="px-6 py-3 bg-green-600 text-white font-boldPc rounded hover:bg-green-500 flex-1 flex items-center justify-center">
+                                        {loading ? <RefreshCw className="animate-spin mr-2"/> : <Lock className="mr-2" size={18}/>} 
+                                        {item.listingType === 'Sale' ? 'Pay & Secure Item' : 'Pay Deposit'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 4 && (
+                            <div className="text-center py-10 animate-in zoom-in-95">
+                                <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]"><CheckCircle size={40} className="text-white"/></div>
+                                <h2 className="text-3xl font-bold text-white mb-2">Order Confirmed!</h2>
+                                <p className="text-slate-400 mb-8">Order #DGV-{Math.floor(Math.random()*100000)}<br/>A confirmation email has been sent to you.</p>
+                                <div className="bg-slate-950 p-6 rounded border border-slate-800 text-left max-w-sm mx-auto mb-8">
+                                    <h4 className="text-yellow-500 font-bold text-xs uppercase mb-2">Next Steps</h4>
+                                    <ul className="text-sm text-slate-300 space-y-2">
+                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Funds secured in Escrow.</li>
+                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Seller notified to prepare item.</li>
+                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> {item.listingType === 'Sale' ? 'Engineer assigned for inspection.' : 'Logistics team coordinating pickup.'}</li>
+                                    </ul>
+                                </div>
+                                <button onClick={onClose} className="px-8 py-3 bg-slate-800 text-white font-bold rounded hover:bg-slate-700 border border-slate-600">Return to Marketplace</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- NEW COMPONENT: Product Detail Overlay (Split Screen) ---
+const ProductDetailOverlay = ({ item, onClose, onCheckout }: { item: MarketItem; onClose: () => void; onCheckout: () => void }) => {
+    const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SPECS' | 'SELLER'>('OVERVIEW');
+
+    return (
+        <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col lg:flex-row overflow-hidden animate-in slide-in-from-right-10">
+            {/* LEFT: Visual Command Center */}
+            <div className="w-full lg:w-3/5 bg-black relative flex flex-col h-[40vh] lg:h-full">
+                <button onClick={onClose} className="absolute top-4 left-4 z-20 bg-black/50 p-2 rounded-full text-white hover:bg-slate-800"><ChevronLeft/></button>
+                
+                {/* Main Stage */}
+                <div className="flex-1 relative flex items-center justify-center bg-slate-900">
+                    <img src={item.images[0]} className="max-w-full max-h-full object-contain"/>
+                    {item.promoted && <div className="absolute top-4 right-4 bg-yellow-500 text-slate-900 text-xs font-bold px-3 py-1 rounded">FEATURED</div>}
+                </div>
+
+                {/* Thumbnails */}
+                <div className="h-24 bg-slate-950 border-t border-slate-800 p-4 flex gap-4 overflow-x-auto">
+                    {item.images.map((img, i) => (
+                        <div key={i} className="h-full aspect-video bg-slate-900 rounded border border-slate-800 cursor-pointer hover:border-yellow-500 overflow-hidden">
+                            <img src={img} className="w-full h-full object-cover"/>
+                        </div>
+                    ))}
+                    {/* Video Placeholder */}
+                    <div className="h-full aspect-video bg-slate-900 rounded border border-slate-800 cursor-pointer hover:border-yellow-500 flex items-center justify-center text-slate-500">
+                        <Video size={20}/>
+                    </div>
+                </div>
+            </div>
+
+            {/* RIGHT: Deal Center */}
+            <div className="w-full lg:w-2/5 bg-slate-900 border-l border-slate-800 flex flex-col h-[60vh] lg:h-full">
+                
+                {/* Header */}
+                <div className="p-6 md:p-8 border-b border-slate-800 bg-slate-950/50">
+                    <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <span className="text-yellow-500">{item.category}</span> <ChevronRight size={12}/> <span>{item.subCategory}</span>
+                    </div>
+                    <h1 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight">{item.title}</h1>
+                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                        <span className="flex items-center"><MapPin size={14} className="mr-1"/> {item.location}</span>
+                        <span className="flex items-center"><Tag size={14} className="mr-1"/> {item.condition}</span>
+                        {item.verifiedByDagiv && <span className="flex items-center text-green-500 font-bold"><ShieldCheck size={14} className="mr-1"/> Verified</span>}
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex border-b border-slate-800 bg-slate-950">
+                    {['OVERVIEW', 'SPECS', 'SELLER'].map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 text-xs font-bold tracking-wider ${activeTab === tab ? 'text-yellow-500 border-b-2 border-yellow-500 bg-slate-900' : 'text-slate-500 hover:text-white'}`}>
+                            {tab}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8">
+                    {activeTab === 'OVERVIEW' && (
+                        <div className="space-y-8">
+                            {/* Price Card */}
+                            <div className="bg-slate-950 p-6 rounded-xl border border-slate-800 flex justify-between items-center shadow-lg">
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Price</div>
+                                    <div className="text-3xl font-bold text-white flex items-baseline gap-1">
+                                        <span className="text-sm text-yellow-500">{item.currency}</span>
+                                        {item.price.toLocaleString()}
+                                        {item.priceUnit && <span className="text-sm text-slate-400 font-normal">/{item.priceUnit.replace('per ', '')}</span>}
+                                    </div>
+                                    {item.negotiable && <div className="text-[10px] text-green-500 mt-1 font-bold bg-green-900/20 inline-block px-2 rounded">NEGOTIABLE</div>}
+                                </div>
+                                {item.financeAvailable && (
+                                    <div className="text-right">
+                                        <div className="text-[10px] text-slate-400 uppercase">Est. Monthly</div>
+                                        <div className="text-lg font-bold text-slate-200">KES {item.estMonthlyPayment?.toLocaleString()}</div>
+                                        <div className="text-[10px] text-blue-400 underline cursor-pointer">Finance Options</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="text-white font-bold mb-3 flex items-center"><FileText size={18} className="mr-2 text-yellow-500"/> Description</h3>
+                                <p className="text-slate-400 text-sm leading-relaxed">{item.description}</p>
+                            </div>
+
+                            {/* Logistics */}
+                            <div className="bg-slate-800/30 p-4 rounded border border-slate-800">
+                                <h4 className="text-white font-bold text-sm mb-3 flex items-center"><Truck size={16} className="mr-2 text-blue-500"/> Logistics & Delivery</h4>
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                    <div><span className="text-slate-500 block">Method</span><span className="text-slate-300 font-bold">{item.deliveryOptions}</span></div>
+                                    <div><span className="text-slate-500 block">Lead Time</span><span className="text-slate-300 font-bold">{item.estimatedMobTime}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'SPECS' && (
+                        <div className="space-y-6">
+                            {item.specifications.map((group, idx) => (
+                                <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                                    <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 font-bold text-white text-sm">{group.groupName}</div>
+                                    <div className="divide-y divide-slate-800">
+                                        {group.items.map((spec, sIdx) => (
+                                            <div key={sIdx} className="flex justify-between px-4 py-3 text-sm">
+                                                <span className="text-slate-500">{spec.label}</span>
+                                                <span className="text-slate-200 font-medium">{spec.value} {spec.unit}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {activeTab === 'SELLER' && (
+                        <div className="space-y-6">
+                            <div className="bg-slate-950 p-6 rounded-xl border border-slate-800 text-center">
+                                <div className="w-20 h-20 bg-slate-800 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl font-bold text-slate-500 border-2 border-slate-700">
+                                    {item.seller.name.charAt(0)}
+                                </div>
+                                <h3 className="text-xl font-bold text-white">{item.seller.name}</h3>
+                                <div className="text-yellow-500 text-xs font-bold uppercase mt-1 mb-4">{item.seller.type} • {item.location}</div>
+                                
+                                <div className="flex justify-center gap-4 mb-6">
+                                    <div className="text-center">
+                                        <div className="text-lg font-bold text-white">{item.seller.rating}</div>
+                                        <div className="text-[10px] text-slate-500 uppercase">Rating</div>
+                                    </div>
+                                    <div className="w-px bg-slate-800"></div>
+                                    <div className="text-center">
+                                        <div className="text-lg font-bold text-white">{item.seller.joinedDate}</div>
+                                        <div className="text-[10px] text-slate-500 uppercase">Since</div>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {item.seller.badges.map(b => (
+                                        <span key={b} className="bg-slate-900 border border-slate-700 text-xs px-2 py-1 rounded text-slate-400">{b}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Sticky Action Bar */}
+                <div className="p-6 bg-slate-950 border-t border-slate-800">
+                    <button onClick={onCheckout} className="w-full bg-green-600 text-white font-bold py-4 rounded-lg hover:bg-green-500 shadow-lg flex items-center justify-center transition-all hover:scale-[1.02]">
+                        <Lock className="mr-2" size={20}/>
+                        {item.listingType === 'Sale' ? 'SECURE CHECKOUT & INSPECTION' : 'BOOK FOR RENTAL'}
+                    </button>
+                    <p className="text-center text-[10px] text-slate-500 mt-3 flex items-center justify-center">
+                        <ShieldCheck size={12} className="mr-1 text-yellow-500"/>
+                        Funds held in Escrow until verification.
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- SERVICES PAGE ---
 const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
   const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
 
   // SENIOR DEV PATTERN: Smart Ordering Engine
-  // -----------------------------------------------------------
-  // Current Logic: Force 'High LTV' services (Maintenance) to top.
-  // Future Logic: Replace this function with a 'usePersonalizedSort' hook 
-  // that queries the backend for the user's most frequented categories.
   const getOrderedServices = () => {
       const PRIORITY_SERVICE_ID = 'srv3'; // ID for Maintenance & Repairs from constants.ts
       
       const primaryService = SERVICES_CONTENT.find(s => s.id === PRIORITY_SERVICE_ID);
       const otherServices = SERVICES_CONTENT.filter(s => s.id !== PRIORITY_SERVICE_ID);
       
-      // Safety check: If ID changes or doesn't exist, fallback gracefully
       if (!primaryService) return SERVICES_CONTENT;
       
       return [primaryService, ...otherServices];
   };
 
   const orderedServices = getOrderedServices();
-  // -----------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-slate-950 py-12 px-4">
@@ -914,8 +1282,8 @@ const SellerCTA = ({ onSellClick }: { onSellClick: () => void }) => (
     </div>
   </div>
 );
+
 // --- NEW COMPONENT: Marketplace Item Card (Jumia Style) ---
-// FIXED: Explicitly typed as React.FC to allow 'key' prop in loops without TypeScript errors
 const MarketplaceCard: React.FC<{ item: MarketItem; onClick: () => void }> = ({ item, onClick }) => {
   return (
     <div 
@@ -968,33 +1336,25 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick, isSpareParts = false }:
   const [selectedMainCat, setSelectedMainCat] = useState<string>('All');
   const [selectedSubCat, setSelectedSubCat] = useState<string>('All');
   const [search, setSearch] = useState('');
-  const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
+  
+  // New States for Detail & Checkout
+  const [viewItem, fzViewItem] = useState<MarketItem | null>(null);
+  const [checkoutItem, setCheckoutItem] = useState<MarketItem | null>(null);
 
-  // 1. FILTER LOGIC (Now includes strict Type Filtering)
+  // Filter Logic
   const filteredItems = MARKETPLACE_ITEMS.filter(item => {
-    // Type Filter: Strictly separate Parts from Equipment
     const typeMatch = isSpareParts ? item.type === 'Part' : item.type === 'Equipment';
-
-    // Mode Filter: Sale vs Rent (Parts are usually 'Sale' by default)
     const modeMatch = mode === 'BUY' ? item.listingType === 'Sale' : item.listingType === 'Rent';
-    
-    // Category Filter
     const catMatch = selectedMainCat === 'All' || item.category === selectedMainCat;
-    const subCatMatch = selectedSubCat === 'All' || item.subCategory === selectedSubCat;
-    
-    // Search
-    const searchMatch = item.title.toLowerCase().includes(search.toLowerCase()) || 
-                        item.brand.toLowerCase().includes(search.toLowerCase());
-
+    const subCatMatch = selectedSubCat === 'All' || item.subCategory.includes(selectedSubCat); // Loose match for subcats
+    const searchMatch = item.title.toLowerCase().includes(search.toLowerCase()) || item.brand.toLowerCase().includes(search.toLowerCase());
     return typeMatch && modeMatch && catMatch && subCatMatch && searchMatch;
   });
 
-  // 2. DYNAMIC SIDEBAR LOGIC (The "Brain")
+  // Dynamic Sidebar
   const activeSubCategories = selectedMainCat !== 'All' 
     // @ts-ignore
-    ? (isSpareParts 
-        ? CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.parts || []
-        : CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.equipment || [])
+    ? (isSpareParts ? CATEGORY_STRUCTURE[selectedMainCat]?.parts || [] : CATEGORY_STRUCTURE[selectedMainCat]?.equipment || [])
     : [];
 
   // 3. DYNAMIC HEADER TEXT
@@ -1013,84 +1373,41 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick, isSpareParts = false }:
     <div className="min-h-screen bg-slate-950 pb-20">
       {/* Top Bar */}
       <div className="bg-slate-900 border-b border-slate-800 sticky top-20 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-                {/* Search Bar */}
-                <div className="flex-1 w-full flex relative">
-                   <input 
-                      type="text" 
-                      placeholder={getSearchPlaceholder()}
-                      className="w-full bg-slate-950 border-y border-l border-slate-700 rounded-l text-white pl-4 pr-10 py-3 focus:outline-none focus:border-yellow-500"
-                      onChange={(e) => setSearch(e.target.value)}
-                   />
-                   <button className="bg-yellow-500 text-slate-900 font-bold px-8 py-3 rounded-r hover:bg-yellow-400 transition-colors uppercase text-sm tracking-wide">
-                      Search
-                   </button>
-                </div>
-
-                {/* Post Ad Button */}
-                <button 
-                    onClick={onSellClick}
-                    className="hidden md:flex bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded font-bold items-center shadow-lg transition-transform hover:scale-105"
-                >
-                    <PlusCircle className="mr-2" size={18}/> 
-                    {isSpareParts ? 'SELL PART' : mode === 'BUY' ? 'SELL MACHINE' : 'LIST FOR RENT'}
-                </button>
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex-1 w-full flex relative">
+               <input 
+                  type="text" 
+                  placeholder={getSearchPlaceholder()}
+                  className="w-full bg-slate-950 border-y border-l border-slate-700 rounded-l text-white pl-4 pr-10 py-3 focus:outline-none focus:border-yellow-500"
+                  onChange={(e) => setSearch(e.target.value)}
+               />
+               <button className="bg-yellow-500 text-slate-900 font-bold px-8 py-3 rounded-r hover:bg-yellow-400">SEARCH</button>
             </div>
+            <button onClick={onSellClick} className="hidden md:flex bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded font-bold items-center shadow-lg">
+                <PlusCircle className="mr-2" size={18}/> {isSpareParts ? 'SELL PART' : 'LIST MACHINE'}
+            </button>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col lg:flex-row gap-6">
-        {/* SIDEBAR FILTERS */}
+        {/* Sidebar Filters */}
         <div className="w-full lg:w-64 flex-shrink-0 space-y-6">
-            <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+            <div className="bg-slate-900 rounded-lgcB border border-slate-800 overflow-hidden">
                 <div className="p-4 border-b border-slate-800 bg-slate-950 font-bold text-white flex items-center">
-                    <Filter size={16} className="mr-2 text-yellow-500"/> 
-                    {isSpareParts ? 'Part Categories' : 'Machine Categories'}
+                    <Filter size={16} className="mr-2 text-yellow-500"/> {isSpareParts ? 'Part Categories' : 'Machine Categories'}
                 </div>
-                
-                {/* Main Categories */}
                 <div className="p-2">
-                    <button 
-                         onClick={() => { setSelectedMainCat('All'); setSelectedSubCat('All'); }}
-                         className={`w-full text-left px-3 py-2 rounded text-sm mb-1 ${selectedMainCat === 'All' ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        All Categories
-                    </button>
+                    <button onClick={() => { setSelectedMainCat('All'); setSelectedSubCat('All'); }} className={`w-full text-left px-3 py-2 rounded text-sm mb-1 ${selectedMainCat === 'All' ? 'bg-yellow-500 text-slate-900 font-bold' : 'text-slate-400 hover:text-white'}`}>All</button>
                     {Object.keys(CATEGORY_STRUCTURE).map(cat => (
-                        <button 
-                            key={cat}
-                            onClick={() => { setSelectedMainCat(cat); setSelectedSubCat('All'); }}
-                            className={`w-full text-left px-3 py-2 rounded text-sm mb-1 flex justify-between items-center group ${selectedMainCat === cat ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
-                        >
-                            <span className="truncate">{cat}</span>
-                            {selectedMainCat === cat && <ChevronRight size={14} className="text-yellow-500"/>}
-                        </button>
+                        <button key={cat} onClick={() => { setSelectedMainCat(cat); setSelectedSubCat('All'); }} className={`w-full text-left px-3 py-2 rounded text-sm mb-1 truncate ${selectedMainCat === cat ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-white'}`}>{cat}</button>
                     ))}
                 </div>
-
-                {/* Sub Categories (Dynamic List) */}
                 {selectedMainCat !== 'All' && (
-                    <div className="border-t border-slate-800 p-2 bg-slate-950/50 animate-in slide-in-from-left-2">
-                        <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1">
-                            {isSpareParts ? 'Component Type' : 'Machine Type'}
-                        </div>
+                    <div className="border-t border-slate-800 p-2 bg-slate-950/50">
+                        <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1">Sub-Categories</div>
                         <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                           <button 
-                                onClick={() => setSelectedSubCat('All')}
-                                className={`w-full text-left px-3 py-1.5 rounded text-xs mb-1 ${selectedSubCat === 'All' ? 'text-yellow-500 font-bold' : 'text-slate-400'}`}
-                           >
-                               View All
-                           </button>
                            {activeSubCategories.map((sub: string) => (
-                               <button 
-                                   key={sub}
-                                   onClick={() => setSelectedSubCat(sub)}
-                                   className={`w-full text-left px-3 py-1.5 rounded text-xs mb-1 truncate ${selectedSubCat === sub ? 'text-yellow-500 font-bold bg-yellow-500/10' : 'text-slate-400 hover:text-white'}`}
-                                   title={sub}
-                               >
-                                   {sub}
-                               </button>
+                               <button key={sub} onClick={() => setSelectedSubCat(sub)} className={`w-full text-left px-3 py-1.5 rounded text-xs mb-1 truncate ${selectedSubCat === sub ? 'text-yellow-500 font-bold' : 'text-slate-400'}`}>{sub}</button>
                            ))}
                         </div>
                     </div>
@@ -1098,106 +1415,52 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick, isSpareParts = false }:
             </div>
         </div>
 
-        {/* MAIN CONTENT */}
+        {/* Grid */}
         <div className="flex-1">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">
-                    {selectedSubCat !== 'All' ? selectedSubCat : selectedMainCat !== 'All' ? selectedMainCat : getPageTitle()}
-                </h2>
-                <div className="text-sm text-slate-400">
-                    {filteredItems.length} results found
-                </div>
+            <h2 className="text-xl font-bold text-white mb-4">{selectedSubCat !== 'All' ? selectedSubCat : selectedMainCat} <span className="text-slate-500 text-sm font-normal">({filteredItems.length})</span></h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredItems.map(item => (
+                    // Inline Card Component
+                    <div key={item.id} onClick={() => fzViewItem(item)} className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden hover:shadow-xl hover:border-yellow-500/50 transition-all cursor-pointer group flex flex-col">
+                        <div className="h-48 bg-slate-950 relative">
+                            <img src={item.images[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                            {item.promoted && <span className="absolute top-2 left-2 bg-yellow-500 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded">AD</span>}
+                        </div>
+                        <div className="p-3 flex-1 flex flex-col">
+                            <div className="text-xs text-slate-500 truncate mb-1">{item.brand} {item.model}</div>
+                            <h3 className="text-sm font-bold text-white mb-2 line-clamp-2 leading-tight">{item.title}</h3>
+                            <div className="mt-auto">
+                                <div className="text-lg font-bold text-white">{item.currency} {item.price.toLocaleString()}</div>
+                                <div className="flex items-center justify-between pt-2 border-t border-slate-800/50 mt-2">
+                                    <div className="flex items-center text-[10px] text-slate-400"><MapPin size={10} className="mr-1"/> {item.location}</div>
+                                    <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">{item.condition}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
-
-            {filteredItems.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredItems.map(item => (
-                        <MarketplaceCard key={item.id} item={item} onClick={() => setSelectedItem(item)} />
-                    ))}
-                </div>
-            ) : (
-                <div className="bg-slate-900 rounded-lg border border-slate-800 p-12 text-center">
-                    <Search className="w-16 h-16 text-slate-700 mx-auto mb-4"/>
-                    <h3 className="text-white font-bold text-lg mb-2">No {isSpareParts ? 'parts' : 'machines'} found</h3>
-                    <p className="text-slate-500">Try adjusting your filters or search for a different {isSpareParts ? 'part number' : 'model'}.</p>
-                </div>
-            )}
         </div>
       </div>
 
-      {/* ITEM DETAIL MODAL (Reused) */}
-      {selectedItem && (
-          <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur flex justify-end">
-              <div className="w-full lg:w-[600px] h-full bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right-10">
-                  {/* Header */}
-                  <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                      <div className="flex gap-2">
-                        {selectedItem.verifiedByDagiv && <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded flex items-center"><ShieldCheck size={12} className="mr-1"/> VERIFIED BY DAGIV</span>}
-                      </div>
-                      <button onClick={() => setSelectedItem(null)} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
-                  </div>
-
-                  {/* Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto custom-scrollbar">
-                      <div className="h-64 bg-black relative">
-                          <img src={selectedItem.images[0]} className="w-full h-full object-contain" />
-                      </div>
-
-                      <div className="p-6">
-                          <div className="text-yellow-500 text-xs font-bold uppercase mb-2">{selectedItem.category} &gt; {selectedItem.subCategory}</div>
-                          <h2 className="text-2xl font-bold text-white mb-2">{selectedItem.title}</h2>
-                          <div className="flex items-center gap-4 text-sm text-slate-400 mb-6 border-b border-slate-800 pb-6">
-                              <span className="flex items-center"><MapPin size={14} className="mr-1"/> {selectedItem.location}</span>
-                              <span>•</span>
-                              <span>{selectedItem.condition}</span>
-                          </div>
-
-                          <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 mb-6 flex justify-between items-center">
-                              <div>
-                                  <div className="text-xs text-slate-500 uppercase font-bold">Price</div>
-                                  <div className="text-2xl font-bold text-white">
-                                      {selectedItem.currency} {selectedItem.price.toLocaleString()}
-                                      {selectedItem.listingType === 'Rent' && <span className="text-sm font-normal text-slate-400">/{selectedItem.priceUnit?.replace('per ','')}</span>}
-                                  </div>
-                              </div>
-                              {selectedItem.negotiable && <span className="text-xs bg-slate-700 text-white px-2 py-1 rounded">Negotiable</span>}
-                          </div>
-
-                          <div className="space-y-4">
-                              <h3 className="font-bold text-white">Details</h3>
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                  <div className="flex justify-between border-b border-slate-800 pb-1">
-                                      <span className="text-slate-500">Brand</span>
-                                      <span className="text-white">{selectedItem.brand}</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-slate-800 pb-1">
-                                      <span className="text-slate-500">Model</span>
-                                      <span className="text-white">{selectedItem.model}</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-slate-800 pb-1">
-                                      <span className="text-slate-500">{isSpareParts ? 'Part Type' : 'Year'}</span>
-                                      <span className="text-white">{isSpareParts ? 'OEM/Genuine' : selectedItem.yom || 'N/A'}</span>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* Sticky Footer */}
-                  <div className="p-4 bg-slate-950 border-t border-slate-800 grid grid-cols-2 gap-4">
-                       <button className="bg-slate-800 text-white font-bold py-3 rounded hover:bg-slate-700 border border-slate-700 flex items-center justify-center">
-                           <Phone size={18} className="mr-2"/> Show Contact
-                       </button>
-                       <button className="bg-green-600 text-white font-bold py-3 rounded hover:bg-green-500 shadow-lg flex items-center justify-center">
-                           <ShoppingCart size={18} className="mr-2"/> {selectedItem.listingType === 'Sale' ? 'Make Offer' : 'Book Rental'}
-                       </button>
-                  </div>
-              </div>
-          </div>
+      {/* OVERLAYS */}
+      {viewItem && (
+          <ProductDetailOverlay 
+            item={viewItem} 
+            onClose={() => fzViewItem(null)} 
+            onCheckout={() => { fzViewItem(null); setCheckoutItem(viewItem); }} 
+          />
+      )}
+      {checkoutItem && (
+          <SecureCheckoutModal 
+            item={checkoutItem} 
+            onClose={() => setCheckoutItem(null)} 
+          />
       )}
     </div>
   );
 };
+
 // --- HOME PAGE (REFACTORED) ---
 const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: PageView) => void, onBookInspection: () => void, onSellClick: () => void }) => {
   const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
@@ -2256,8 +2519,6 @@ const App = () => {
   const [operatorLogs, setOperatorLogs] = useState<OperatorLog[]>(INITIAL_LOGS);
   const [showOperatorPortal, setShowOperatorPortal] = useState(false);
   const [inspectionMode, setInspectionMode] = useState(false);
-  
-  // NEW STATE: Seller Wizard Visibility
   const [isSelling, setIsSelling] = useState(false);
 
   // Helper to handle log submission from portal
@@ -2277,78 +2538,26 @@ const App = () => {
   if (inspectionMode) {
       return <InspectionBookingPage onComplete={() => { setInspectionMode(false); setPage(PageView.HOME); }} />
   }
-// In App.tsx
 
   const renderContent = () => {
     switch (page) {
-      case PageView.HOME:
-        return <HomePage 
-                  setPage={setPage} 
-                  onBookInspection={() => setInspectionMode(true)} 
-                  onSellClick={() => setIsSelling(true)} 
-               />;
-               
-      case PageView.MARKETPLACE_BUY:
-        // Buy Equipment Tab: Shows SALE items, Equipment Sub-cats
-        return <MarketplaceLayout 
-                  mode="BUY" 
-                  setPage={setPage} 
-                  onSellClick={() => setIsSelling(true)} 
-                  isSpareParts={false} 
-               />;
-        
-      case PageView.MARKETPLACE_RENT:
-        // Plant Hire Tab: Shows RENT items, Equipment Sub-cats
-        return <MarketplaceLayout 
-                  mode="RENT" 
-                  setPage={setPage} 
-                  onSellClick={() => setIsSelling(true)} 
-                  isSpareParts={false} 
-               />;
-        
-      case PageView.SPARE_PARTS:
-        // Spare Parts Tab: Shows SALE items, PARTS Sub-cats
-        return <MarketplaceLayout 
-                  mode="BUY" 
-                  setPage={setPage} 
-                  onSellClick={() => setIsSelling(true)} 
-                  isSpareParts={true} 
-               />;
-        
-      case PageView.SERVICES:
-        return <ServicesPage setPage={setPage} />;
-        
-      case PageView.ERP:
-        return <ERPDashboard hasAccess={erpAccess} onSubscribe={() => setErpAccess(true)} logs={operatorLogs} />;
-        
-      case PageView.PROFESSIONALS:
-        return <ProfessionalsPage />;
-        
-      case PageView.CONSULT:
-        return <ConsultPage />;
-        
-      case PageView.CONTACT:
-        return <ContactPage />;
-        
-      default:
-        return <HomePage 
-                  setPage={setPage} 
-                  onBookInspection={() => setInspectionMode(true)} 
-                  onSellClick={() => setIsSelling(true)}
-               />;
+      case PageView.HOME: return <HomePage setPage={setPage} onBookInspection={() => setInspectionMode(true)} onSellClick={() => setIsSelling(true)} />;
+      case PageView.MARKETPLACE_BUY: return <MarketplaceLayout mode="BUY" setPage={setPage} onSellClick={() => setIsSelling(true)} isSpareParts={false} />;
+      case PageView.MARKETPLACE_RENT: return <MarketplaceLayout mode="RENT" setPage={setPage} onSellClick={() => setIsSelling(true)} isSpareParts={false} />;
+      case PageView.SPARE_PARTS: return <MarketplaceLayout mode="BUY" setPage={setPage} onSellClick={() => setIsSelling(true)} isSpareParts={true} />;
+      case PageView.SERVICES: return <ServicesPage setPage={setPage} />;
+      case PageView.ERP: return <ERPDashboard hasAccess={erpAccess} onSubscribe={() => setErpAccess(true)} logs={operatorLogs} />;
+      case PageView.PROFESSIONALS: return <ProfessionalsPage />;
+      case PageView.CONSULT: return <ConsultPage />;
+      case PageView.CONTACT: return <ContactPage />;
+      default: return <HomePage setPage={setPage} onBookInspection={() => setInspectionMode(true)} onSellClick={() => setIsSelling(true)} />;
     }
   };
 
   return (
     <div className="bg-slate-950 min-h-screen flex flex-col font-sans text-slate-200 selection:bg-yellow-500 selection:text-slate-900">
-      <Navbar 
-        currentPage={page} 
-        setPage={setPage} 
-        onLoginClick={() => setShowOperatorPortal(true)} 
-      />
-      <div className="flex-1">
-        {renderContent()}
-      </div>
+      <Navbar currentPage={page} setPage={setPage} onLoginClick={() => setShowOperatorPortal(true)} />
+      <div className="flex-1">{renderContent()}</div>
       <Footer setPage={setPage} />
       {isSelling && <SellItemModal onClose={() => setIsSelling(false)} />}
     </div>

@@ -2,15 +2,15 @@
 
 export enum PageView {
   HOME = 'home',
-  MARKETPLACE_BUY = 'marketplace-buy', // Renamed from EQUIPMENT
-  MARKETPLACE_RENT = 'marketplace-rent', // New Dedicated Leasing Tab
+  MARKETPLACE_BUY = 'marketplace-buy',
+  MARKETPLACE_RENT = 'marketplace-rent',
   SPARE_PARTS = 'spare-parts',
   SERVICES = 'services',
   ERP = 'erp',
   PROFESSIONALS = 'professionals',
   CONSULT = 'consult',
   CONTACT = 'contact',
-  SELLER_DASHBOARD = 'seller-dashboard' // New
+  SELLER_DASHBOARD = 'seller-dashboard'
 }
 
 export enum UserRole {
@@ -19,7 +19,38 @@ export enum UserRole {
   ADMIN = 'admin'
 }
 
-// NEW: Seller Profile for the Marketplace
+// --- ORDER LIFECYCLE ENUMS ---
+export enum OrderStatusEquipment {
+  PENDING_INSPECTION = 'PENDING_INSPECTION', // Step 1: Buyer books inspection
+  INSPECTION_VERIFIED = 'INSPECTION_VERIFIED', // Step 2: Engineer approves condition
+  ESCROW_SECURED = 'ESCROW_SECURED',         // Step 3: Funds held in trust
+  RELEASED_FOR_DELIVERY = 'RELEASED',        // Step 4: Seller releases item
+  COMPLETED = 'COMPLETED'                    // Step 5: Buyer accepts, funds released
+}
+
+export enum OrderStatusRent {
+  AVAILABILITY_CHECK = 'AVAILABILITY_CHECK',
+  MOBILIZATION_FUNDED = 'MOBILIZATION_FUNDED',
+  ACTIVE_LEASE = 'ACTIVE_LEASE',
+  DEMOBILIZATION = 'DEMOBILIZATION',
+  SETTLED = 'SETTLED'
+}
+
+export enum OrderStatusPart {
+  ORDER_PLACED = 'ORDER_PLACED',
+  PAYMENT_VERIFIED = 'PAYMENT_VERIFIED',
+  PACKED = 'PACKED',
+  IN_TRANSIT = 'IN_TRANSIT',
+  DELIVERED = 'DELIVERED'
+}
+
+// --- MARKETPLACE DATA MODELS ---
+
+export interface SpecificationGroup {
+  groupName: string; // e.g., "Engine", "Dimensions", "Performance"
+  items: { label: string; value: string | number; unit?: string }[];
+}
+
 export interface SellerProfile {
   id: string;
   name: string;
@@ -28,47 +59,54 @@ export interface SellerProfile {
   rating: number;
   joinedDate: string;
   location: string;
-  badges: string[]; // e.g., "Fast Responder", "Premium Seller"
+  badges: string[];
 }
 
-// NEW: Unified Market Item (Replaces EquipmentItem for the new Marketplace)
 export interface MarketItem {
   id: string;
   title: string;
-  category: string; // The 4 main categories
-  subCategory: string; // The exhaustive list
+  category: string;
+  subCategory: string;
   type: 'Equipment' | 'Part';
   listingType: 'Sale' | 'Rent'; 
   
-  // Pricing
+  // Commercial
   price: number;
   currency: 'KES' | 'USD';
-  priceUnit?: 'per day' | 'per hour' | 'fixed'; // For rentals
+  priceUnit?: 'per day' | 'per hour' | 'fixed';
   negotiable: boolean;
+  financeAvailable?: boolean; // New: Badge for financing
+  estMonthlyPayment?: number; // New: Calculated estimate
 
   // Asset Details
   brand: string;
   model: string;
-  yom?: number; // Year of Manufacture
-  hours?: number;
+  yom?: number;
+  hours?: number; // Odometer/Hours
   condition: 'New' | 'Used - Like New' | 'Used - Good' | 'Refurbished' | 'For Parts';
+  
+  // Rich Data
+  description: string;
+  specifications: SpecificationGroup[]; // Structured specs for display
   
   // Media
   images: string[];
+  videoUrl?: string; // New: YouTube/Vimeo link
   
-  // Seller
+  // Logistics
+  location: string;
+  deliveryOptions: 'Collection Only' | 'Nationwide Delivery' | 'International Shipping';
+  estimatedMobTime?: string; // e.g. "Available immediately" or "3 days"
+
+  // System
   sellerId: string;
   seller: SellerProfile;
-  
-  // Location
-  location: string;
-  
-  // System
-  promoted: boolean; // "Boosted" ads
-  verifiedByDagiv: boolean; // Inspected by your engineers
+  promoted: boolean;
+  verifiedByDagiv: boolean;
+  stockReference?: string;
 }
 
-// --- EXISTING INTERFACES (Retained for functionality) ---
+// --- EXISTING INTERFACES (Retained) ---
 
 export interface OperatorLog {
   id: string;
@@ -78,7 +116,7 @@ export interface OperatorLog {
   startTime: string;
   endTime: string;
   startOdometer: number;
-  endOdometer: number; // 0 if not applicable (using accumulated reading)
+  endOdometer: number;
   fuelAddedLiters: number;
   location: string;
   checklist: {
@@ -90,12 +128,12 @@ export interface OperatorLog {
   notes: string;
 }
 
-// Legacy Interface 
+// Retained for legacy components if any
 export interface EquipmentItem {
   id: string;
   name: string;
   category: string;
-  subCategory: string; // Added for deeper filtering
+  subCategory: string;
   brand: string;
   model: string;
   year: number;
@@ -146,7 +184,7 @@ export interface Review {
 export interface ProfessionalProfile {
   id: string;
   name: string;
-  role: 'Civil Engineer' | 'Structural Engineer' | 'Mechanical Engineer' | 'Software Engineer' | 'Welder' | 'Mechanic' | 'Fabricator' | 'Operator' | 'Driver' | 'Architect' | 'Surveyor'; 
+  role: string;
   specialization: string; 
   rating: number;
   location: string;
