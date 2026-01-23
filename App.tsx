@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navbar, Footer } from './components/Layout';
 import { PageView, UserRole, OperatorLog, EquipmentItem, SparePart, MaintenanceTask, Alert, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
 import { EQUIPMENT_DATA, SERVICES_CONTENT, SPARE_PARTS, PROFESSIONALS, MARKETPLACE_ITEMS, CATEGORY_STRUCTURE } from './constants';
@@ -9,7 +9,8 @@ import {
   Phone, MessageSquare, Briefcase, Star, ShoppingCart, Info, X, Activity,
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
   ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
-  FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer, PlusCircle, Heart, ChevronLeft, UploadCloud, Camera
+  FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer, PlusCircle, Heart, ChevronLeft, UploadCloud, Camera,
+  Globe, Building2, FileCheck
 } from 'lucide-react';
 
 
@@ -31,306 +32,545 @@ const INITIAL_LOGS: OperatorLog[] = [
     }
 ];
 
-// --- NEW COMPONENT: Sell Item Wizard (The "Professional" Flow) ---
+// --- COMPLETE SELLER PORTAL (Full KYC + MachineryLine Specs) ---
 const SellItemModal = ({ onClose }: { onClose: () => void }) => {
+    // Stages: 'WELCOME' -> 'GATE' -> 'KYC_REGISTER' -> 'WIZARD'
+    const [stage, setStage] = useState<'WELCOME' | 'GATE' | 'KYC_REGISTER' | 'WIZARD'>('WELCOME');
     const [step, setStep] = useState(1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
     
-    // Form State
+    // File Input References (Crucial for the upload buttons to work)
+    const docPrimaryRef = useRef<HTMLInputElement>(null);
+    const docSecondaryRef = useRef<HTMLInputElement>(null);
+    const docProofRef = useRef<HTMLInputElement>(null);
+    
+    // 1. EXTENSIVE GLOBAL CURRENCIES
+    const CURRENCIES = [
+        "KES", "USD", "EUR", "GBP", "AED", "CNY", "INR", "ZAR", "JPY", "AUD", "CAD", "CHF", "HKD", "SGD", "SEK", "DKK", "PLN", "NOK", "THB", "IDR", "TRY", "MXN", "BRL", "RUB", "SAR", "QAR", "EGP", "NGN", "GHS", "ETB", "TZS", "UGX", "RWF", "ZMW", "MZN", "AOA", "MAD", "DZD", "TND"
+    ].sort();
+
+    // 2. CONSTANTS
+    const YEARS = Array.from({length: 37}, (_, i) => (2026 - i).toString()); // 1990 - 2026
+    const USAGE_UNITS = ["Hours", "Km", "Miles"];
+    const RENT_PERIODS = ["Hour", "Day", "Week", "Month"];
+    
+    // Seller State
+    const [sellerIdentity, setSellerIdentity] = useState({ 
+        phone: '', name: '', status: '', id: '', location: '', email: '',
+        businessType: 'Company', regNumber: '',
+        // File Data (Base64)
+        doc_primary: '', doc_secondary: '', doc_proof: '',
+        // File Names (Display)
+        doc_primary_name: '', doc_secondary_name: '', doc_proof_name: ''
+    });
+    
+    // Expanded Listing Data (Professional Engineering Fields)
+    const [listingType, setListingType] = useState<'SALE' | 'RENT' | 'PART'>('SALE');
     const [formData, setFormData] = useState({
-        sellerName: '',
-        sellerPhone: '',
-        sellerLocation: '',
-        category: 'Heavy Plant and Equipment',
-        subCategory: '',
-        brand: '',
-        model: '',
-        year: '',
-        hours: '',
-        condition: 'Used - Good',
-        price: '',
-        currency: 'KES'
+        // Core
+        category: 'Heavy Plant and Equipment', subCategory: '', 
+        brand: '', model: '', stockId: '', location: '',
+        
+        // Pricing
+        price: '', currency: 'KES',
+        rentDry: '', rentWet: '', rentCurrency: 'KES', rentPeriod: 'Day',
+        
+        // Machine / Rent Specs
+        yom: '', // Year of Mfg
+        usage: '', usageUnit: 'Hours',
+        netWeight: '', // kg
+        vin: '', 
+        
+        // Engine & Transmission (New)
+        engineBrand: '', enginePower: '', fuelType: 'Diesel', emissionStandard: '',
+        transmissionType: '', maxSpeed: '', 
+        
+        // Dimensions
+        dimLength: '', dimWidth: '', dimHeight: '', 
+        
+        // Undercarriage & Hydraulics (New)
+        trackWidth: '', tireSize: '', 
+        residualTread: '', // %
+        auxHydraulics: 'No', hammerProtection: 'No',
+        
+        // Cabin (New)
+        cabinType: 'Enclosed', ac: 'Yes', rops: 'Yes',
+        
+        // Performance
+        digDepth: '', digRadius: '', dumpHeight: '',
+        
+        // Condition & Docs
+        condition: 'Used', originalPaint: 'Yes', warranty: '', documents: 'Yes',
+        ceMarked: 'Yes', epaMarked: 'Yes',
+        
+        // Parts Specific
+        partType: 'Original', // Original vs Aftermarket
+        partNumber: '', oemNumber: '', 
+        partWeight: '',
+        
+        // Additional
+        color: '', additionalEquip: '', description: '', images: [] as string[]
     });
 
+    // @ts-ignore
     const categories = Object.keys(CATEGORY_STRUCTURE);
     // @ts-ignore
-    const subCategories = formData.category ? CATEGORY_STRUCTURE[formData.category].equipment : [];
+    const subCategories = formData.category 
+        ? (listingType === 'PART' ? CATEGORY_STRUCTURE[formData.category].parts : CATEGORY_STRUCTURE[formData.category].equipment)
+        : [];
 
-    const handleNext = () => setStep(step + 1);
-    const handleBack = () => setStep(step - 1);
-
-    const handleSubmit = () => {
-        setIsSubmitting(true);
-        // Simulate API call / Verification Process
-        setTimeout(() => {
-            setIsSubmitting(false);
-            setStep(5); // Move to Success Step
-        }, 2000);
+    // --- HELPER: FILE TO BASE64 ---
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, field: any, isImageArray = false) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (reader.result) {
+                    if (isImageArray) {
+                        setFormData(prev => ({...prev, images: [...prev.images, reader.result as string]}));
+                    } else {
+                        // @ts-ignore
+                        setSellerIdentity(prev => ({ ...prev, [`${field}_name`]: file.name, [field]: reader.result as string }));
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
-    return (
-        <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                
-                {/* Header */}
-                <div className="bg-slate-950 p-6 border-b border-slate-800 flex justify-between items-center">
-                    <div>
-                        <div className="text-yellow-500 text-xs font-bold uppercase tracking-widest mb-1">Seller Portal</div>
-                        <h2 className="text-xl font-bold text-white">List Your Equipment</h2>
-                    </div>
-                    <button onClick={onClose} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white"><X size={20}/></button>
-                </div>
+    // --- VALIDATION ---
+    const isStepValid = () => {
+        if (step === 2) return formData.category && formData.subCategory && formData.brand && formData.model;
+        if (step === 3) {
+            if (listingType === 'SALE') return formData.yom && formData.price;
+            if (listingType === 'RENT') return formData.rentDry || formData.rentWet;
+            if (listingType === 'PART') return formData.partNumber && formData.price;
+        }
+        if (step === 4) return formData.images.length > 0 && formData.description.length > 10;
+        return true;
+    };
 
-                {/* Progress Bar */}
-                <div className="h-1 bg-slate-800 w-full">
-                    <div className="h-full bg-yellow-500 transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }}></div>
-                </div>
+    // --- ACTIONS ---
+    const checkSeller = async () => {
+        if(!sellerIdentity.phone) return alert("Enter phone number");
+        setLoading(true);
+        try {
+            const res = await fetch('http://localhost:8000/api/sellers/check', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ phone: sellerIdentity.phone })
+            });
+            const data = await res.json();
+            if (data.exists) {
+                setSellerIdentity(prev => ({ ...prev, name: data.name, status: data.status, id: data.sellerId, location: data.location }));
+                if (data.status === 'VERIFIED') setStage('WIZARD');
+                else { alert("Verification pending. You can draft listings."); setStage('WIZARD'); }
+            } else { setStage('KYC_REGISTER'); }
+        } catch { alert("Connection Error"); } finally { setLoading(false); }
+    };
 
-                {/* Content Area */}
-                <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
+    const registerSeller = async () => {
+        if(!sellerIdentity.regNumber || !sellerIdentity.doc_primary) return alert("Missing documents");
+        setLoading(true);
+        try {
+            const res = await fetch('http://localhost:8000/api/sellers/register', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ ...sellerIdentity })
+            });
+            if(res.ok) { alert("Submitted! Verification pending."); onClose(); }
+        } catch { alert("Error"); } finally { setLoading(false); }
+    };
+
+    const handleSubmitListing = async () => {
+        setLoading(true);
+        const finalPrice = listingType === 'SALE' || listingType === 'PART' ? parseFloat(formData.price) : parseFloat(formData.rentDry) || 0;
+        const payload = {
+            listingType,
+            sellerName: sellerIdentity.name, phone: sellerIdentity.phone, location: formData.location || sellerIdentity.location,
+            category: formData.category, subCategory: formData.subCategory, brand: formData.brand, model: formData.model,
+            price: finalPrice, currency: listingType === 'RENT' ? formData.rentCurrency : formData.currency, 
+            specs: { ...formData }
+        };
+        try {
+            const res = await fetch('http://localhost:8000/api/marketplace/submit', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            });
+            if (res.ok) setStep(5);
+        } catch { alert("Error"); } finally { setLoading(false); }
+    };
+
+    // ================= VIEWS =================
+
+    // 1. WELCOME SCREEN (With Restored Buttons & Glow)
+    if (stage === 'WELCOME') {
+        return (
+            <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+                <style>{`.glow-card:hover { box-shadow: 0 0 40px rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.5); }`}</style>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
                     
-                    {/* STEP 1: Seller Identity (Security Layer) */}
-                    {step === 1 && (
-                        <div className="space-y-6 animate-in slide-in-from-right-4">
-                            <div className="text-center mb-8">
-                                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500 border border-blue-500/20">
-                                    <User size={32}/>
-                                </div>
-                                <h3 className="text-white font-bold text-lg">Merchant Profile</h3>
-                                <p className="text-slate-400 text-sm">Tell us who is selling this equipment. This helps build trust with buyers.</p>
+                    {/* Left: Process Explanation with GLOW */}
+                    <div className="w-full md:w-5/12 bg-slate-950 p-8 border-r border-slate-800 relative transition-all duration-500 glow-card group">
+                        <div className="absolute top-0 right-0 p-32 bg-yellow-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-yellow-500/10 transition-all duration-700"></div>
+                        <div className="text-yellow-500 font-bold uppercase tracking-widest text-xs mb-6">Seller Central</div>
+                        <h2 className="text-2xl font-bold text-white mb-8 group-hover:text-yellow-500 transition-colors">How to Sell on DAGIV</h2>
+                        <div className="space-y-8 relative z-10">
+                            <div className="flex gap-4">
+                                <div className="flex flex-col items-center"><div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-sm group-hover:border-yellow-500 transition-colors">1</div><div className="w-0.5 h-full bg-slate-800 my-2"></div></div>
+                                <div><h4 className="text-white font-bold">Verification</h4><p className="text-slate-400 text-sm mt-1">Upload ID/Business Permit once.</p></div>
                             </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Company / Seller Name</label>
-                                    <input 
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                        value={formData.sellerName}
-                                        onChange={(e) => setFormData({...formData, sellerName: e.target.value})}
-                                        placeholder="e.g. Mombasa Cement Fleet"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Phone Number</label>
-                                        <input 
-                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                            value={formData.sellerPhone}
-                                            onChange={(e) => setFormData({...formData, sellerPhone: e.target.value})}
-                                            placeholder="+254 7..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Yard Location</label>
-                                        <input 
-                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                            value={formData.sellerLocation}
-                                            onChange={(e) => setFormData({...formData, sellerLocation: e.target.value})}
-                                            placeholder="e.g. Athi River"
-                                        />
-                                    </div>
-                                </div>
+                            <div className="flex gap-4">
+                                <div className="flex flex-col items-center"><div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-white font-bold text-sm group-hover:border-yellow-500 transition-colors">2</div><div className="w-0.5 h-full bg-slate-800 my-2"></div></div>
+                                <div><h4 className="text-white font-bold">List Inventory</h4><p className="text-slate-400 text-sm mt-1">Add detailed specs & photos.</p></div>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex flex-col items-center"><div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-sm"><Check size={16}/></div></div>
+                                <div><h4 className="text-white font-bold">Instant Publish</h4><p className="text-slate-400 text-sm mt-1">Verified ads go live <strong>instantly</strong>.</p></div>
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* STEP 2: Item Categorization (Structured Data) */}
-                    {step === 2 && (
-                        <div className="space-y-6 animate-in slide-in-from-right-4">
-                            <div className="text-center mb-8">
-                                <h3 className="text-white font-bold text-lg">What are you selling?</h3>
-                                <p className="text-slate-400 text-sm">Categorize your asset correctly to ensure it appears in the right filters.</p>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Main Category</label>
-                                    <select 
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                        value={formData.category}
-                                        onChange={(e) => setFormData({...formData, category: e.target.value, subCategory: ''})}
-                                    >
-                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Sub-Category</label>
-                                    <select 
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                        value={formData.subCategory}
-                                        onChange={(e) => setFormData({...formData, subCategory: e.target.value})}
-                                    >
-                                        <option value="">-- Select Type --</option>
-                                        {subCategories.map((sc: string) => <option key={sc} value={sc}>{sc}</option>)}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Brand / Make</label>
-                                        <input 
-                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                            placeholder="e.g. Caterpillar"
-                                            value={formData.brand}
-                                            onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Model</label>
-                                        <input 
-                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                            placeholder="e.g. 336D2"
-                                            value={formData.model}
-                                            onChange={(e) => setFormData({...formData, model: e.target.value})}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Right: The Original Buttons (Restored) */}
+                    <div className="w-full md:w-7/12 p-12 flex flex-col justify-center bg-slate-900 relative">
+                         <button onClick={onClose} className="absolute top-6 right-6 text-slate-500 hover:text-white"><X size={24}/></button>
+                         <div className="max-w-sm mx-auto w-full">
+                             <h3 className="text-3xl font-bold text-white mb-2">Start Selling</h3>
+                             <p className="text-slate-400 mb-8">Access thousands of contractors and engineers.</p>
+                             <div className="space-y-4">
+                                 <button onClick={() => setStage('GATE')} className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded-lg hover:bg-yellow-400 flex justify-between items-center px-6 group transition-all shadow-lg">
+                                    <span>I have a Verified Account</span><ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
+                                 </button>
+                                 <div className="relative py-2"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div><div className="relative flex justify-center text-sm"><span className="px-2 bg-slate-900 text-slate-500">First time here?</span></div></div>
+                                 <button onClick={() => setStage('GATE')} className="w-full bg-slate-800 text-white font-bold py-4 rounded-lg hover:bg-slate-700 border border-slate-700 flex justify-center items-center">Create Seller Profile</button>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // 2. GATE (Check Phone)
+    if (stage === 'GATE') {
+        return (
+            <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 text-center shadow-2xl relative">
+                    <button onClick={() => setStage('WELCOME')} className="absolute top-4 left-4 text-slate-500"><ChevronLeft size={20}/></button>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500"><X size={20}/></button>
+                    <h2 className="text-2xl font-bold text-white mb-2">Seller Identification</h2>
+                    <input className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white text-center text-lg font-bold tracking-widest mb-4 mt-6" placeholder="07XX XXX XXX" value={sellerIdentity.phone} onChange={(e) => setSellerIdentity({...sellerIdentity, phone: e.target.value})} />
+                    <button onClick={checkSeller} disabled={loading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded-lg hover:bg-yellow-400 flex items-center justify-center">{loading ? <RefreshCw className="animate-spin mr-2"/> : "Continue"}</button>
+                </div>
+            </div>
+        );
+    }
+
+    // 3. KYC REGISTER (Fully Restored & Functional)
+    if (stage === 'KYC_REGISTER') {
+        return (
+            <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
+                        <div><h2 className="text-xl font-bold text-white">Seller Verification</h2><p className="text-xs text-slate-400">Step 1 of 1: Identity Proof</p></div>
+                        <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20}/></button>
+                    </div>
+
+                    <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+                        {/* Hidden Inputs */}
+                        <input type="file" ref={docPrimaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_primary')} accept="image/*,.pdf" />
+                        <input type="file" ref={docSecondaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_secondary')} accept="image/*,.pdf" />
+                        <input type="file" ref={docProofRef} hidden onChange={(e) => handleFileSelect(e, 'doc_proof')} accept="image/*,.pdf" />
+
+                        {/* Entity Type Selection */}
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <button onClick={() => setSellerIdentity({...sellerIdentity, businessType: 'Company'})} className={`p-4 rounded-xl border-2 text-left transition-all ${sellerIdentity.businessType === 'Company' ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}>
+                                <div className="flex items-center gap-2 mb-2"><Building2 className={sellerIdentity.businessType === 'Company' ? 'text-blue-400' : 'text-slate-500'} size={24}/><span className={`font-bold ${sellerIdentity.businessType === 'Company' ? 'text-white' : 'text-slate-400'}`}>Registered Company</span></div>
+                                <p className="text-xs text-slate-500">For dealers & contractors.</p>
+                            </button>
+                            <button onClick={() => setSellerIdentity({...sellerIdentity, businessType: 'Individual'})} className={`p-4 rounded-xl border-2 text-left transition-all ${sellerIdentity.businessType === 'Individual' ? 'bg-yellow-900/20 border-yellow-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}>
+                                <div className="flex items-center gap-2 mb-2"><User className={sellerIdentity.businessType === 'Individual' ? 'text-yellow-400' : 'text-slate-500'} size={24}/><span className={`font-bold ${sellerIdentity.businessType === 'Individual' ? 'text-white' : 'text-slate-400'}`}>Individual Seller</span></div>
+                                <p className="text-xs text-slate-500">For private owners/brokers.</p>
+                            </button>
                         </div>
-                    )}
 
-                    {/* STEP 3: Specs & Pricing */}
-                    {step === 3 && (
-                        <div className="space-y-6 animate-in slide-in-from-right-4">
-                            <h3 className="text-white font-bold text-lg mb-6">Condition & Specs</h3>
-                            
+                        <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Year of Mfg</label>
-                                    <input 
-                                        type="number"
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                        placeholder="2018"
-                                        value={formData.year}
-                                        onChange={(e) => setFormData({...formData, year: e.target.value})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Hours / Mileage</label>
-                                    <input 
-                                        type="number"
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none"
-                                        placeholder="5000"
-                                        value={formData.hours}
-                                        onChange={(e) => setFormData({...formData, hours: e.target.value})}
-                                    />
+                                <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} onChange={e => setSellerIdentity({...sellerIdentity, name: e.target.value})} />
+                                <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" onChange={e => setSellerIdentity({...sellerIdentity, email: e.target.value})} />
+                            </div>
+                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Physical Address / Yard Location" onChange={e => setSellerIdentity({...sellerIdentity, location: e.target.value})} />
+                            
+                            <div className="bg-slate-800/50 p-4 rounded border border-slate-700 mt-6">
+                                <h4 className="text-white font-bold text-sm mb-4 flex items-center"><FileCheck size={16} className="mr-2 text-green-500"/> Required Documents</h4>
+                                <div className="space-y-4">
+                                    {/* 1. Primary ID Upload */}
+                                    <div className="flex items-center justify-between p-3 bg-slate-950 rounded border border-slate-800">
+                                        <div><div className="text-white text-sm font-bold">{sellerIdentity.businessType === 'Company' ? 'Cert. of Incorporation' : 'National ID (Front)'}</div><div className="text-xs text-slate-500">{sellerIdentity.doc_primary_name || 'PDF or JPG'}</div></div>
+                                        <button onClick={() => docPrimaryRef.current?.click()} className={`text-xs px-3 py-2 rounded flex items-center ${sellerIdentity.doc_primary ? 'bg-green-600 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}>
+                                            {sellerIdentity.doc_primary ? <><Check size={14} className="mr-2"/> Uploaded</> : <><UploadCloud size={14} className="mr-2"/> Upload</>}
+                                        </button>
+                                    </div>
+                                    {/* 2. Secondary ID Upload */}
+                                    <div className="flex items-center justify-between p-3 bg-slate-950 rounded border border-slate-800">
+                                        <div><div className="text-white text-sm font-bold">{sellerIdentity.businessType === 'Company' ? 'KRA PIN Certificate' : 'National ID (Back)'}</div><div className="text-xs text-slate-500">{sellerIdentity.doc_secondary_name || 'Verifiable Document'}</div></div>
+                                        <button onClick={() => docSecondaryRef.current?.click()} className={`text-xs px-3 py-2 rounded flex items-center ${sellerIdentity.doc_secondary ? 'bg-green-600 text-white' : 'bg-slate-800 text-white hover:bg-slate-700'}`}>
+                                            {sellerIdentity.doc_secondary ? <><Check size={14} className="mr-2"/> Uploaded</> : <><UploadCloud size={14} className="mr-2"/> Upload</>}
+                                        </button>
+                                    </div>
+                                    {/* 3. Proof of Possession */}
+                                    <div className="p-3 bg-yellow-500/10 rounded border border-yellow-500/30">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div><div className="text-yellow-500 text-sm font-bold">{sellerIdentity.businessType === 'Company' ? 'Business Permit / Yard Photo' : 'Proof of Possession Photo'}</div><div className="text-xs text-slate-400">{sellerIdentity.doc_proof_name || (sellerIdentity.businessType === 'Company' ? 'Business Permit' : 'Selfie with Item')}</div></div>
+                                            <button onClick={() => docProofRef.current?.click()} className={`text-xs px-3 py-2 rounded flex items-center shadow-lg ${sellerIdentity.doc_proof ? 'bg-green-600 hover:bg-green-500' : 'bg-yellow-600 hover:bg-yellow-500'} text-white`}>
+                                                {sellerIdentity.doc_proof ? <><Check size={14} className="mr-2"/> Uploaded</> : <><Camera size={14} className="mr-2"/> Upload</>}
+                                            </button>
+                                        </div>
+                                        {sellerIdentity.businessType === 'Individual' && (
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-2 bg-black/20 p-2 rounded">
+                                                <div className="w-8 h-8 bg-slate-700 rounded flex items-center justify-center"><User size={16}/></div>
+                                                <span>Example: You + Machine + Handwritten Note with Date.</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Condition</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {['New', 'Used - Like New', 'Used - Good', 'Refurbished'].map(c => (
-                                        <button 
-                                            key={c}
-                                            onClick={() => setFormData({...formData, condition: c})}
-                                            className={`p-3 rounded text-sm font-bold border transition-all ${formData.condition === c ? 'bg-yellow-500 text-slate-900 border-yellow-500' : 'bg-slate-950 text-slate-400 border-slate-700'}`}
-                                        >
-                                            {c}
-                                        </button>
-                                    ))}
-                                </div>
+                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{sellerIdentity.businessType === 'Company' ? 'Registration No. / KRA PIN' : 'National ID Number'}</label>
+                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono tracking-wide" placeholder={sellerIdentity.businessType === 'Company' ? "P051..." : "12345678"} onChange={e => setSellerIdentity({...sellerIdentity, regNumber: e.target.value})} />
                             </div>
 
-                            <div className="border-t border-slate-800 pt-6">
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Selling Price</label>
-                                <div className="flex gap-2">
-                                    <select className="bg-slate-950 border border-slate-700 rounded p-3 text-white font-bold">
-                                        <option>KES</option>
-                                        <option>USD</option>
-                                    </select>
-                                    <input 
-                                        type="number"
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none font-bold text-lg"
-                                        placeholder="0.00"
-                                        value={formData.price}
-                                        onChange={(e) => setFormData({...formData, price: e.target.value})}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* STEP 4: Review & Trust Contract */}
-                    {step === 4 && (
-                        <div className="space-y-6 animate-in slide-in-from-right-4">
-                            <div className="bg-yellow-500/10 p-6 rounded-xl border border-yellow-500/30 text-center">
-                                <ShieldCheck className="w-12 h-12 text-yellow-500 mx-auto mb-3"/>
-                                <h3 className="text-white font-bold text-lg">Verification Policy</h3>
-                                <p className="text-slate-400 text-sm mt-2">
-                                    To maintain the integrity of the DAGIV Marketplace, all equipment must be physically verified by our engineers before the listing goes live.
-                                </p>
-                            </div>
-
-                            <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 text-sm space-y-2">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Seller:</span>
-                                    <span className="text-white font-bold">{formData.sellerName}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Asset:</span>
-                                    <span className="text-white font-bold">{formData.brand} {formData.model}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Listed Price:</span>
-                                    <span className="text-yellow-500 font-bold">KES {Number(formData.price).toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            <label className="flex items-start gap-3 p-4 bg-slate-900 rounded border border-slate-700 cursor-pointer hover:bg-slate-800 transition-colors">
-                                <input type="checkbox" className="mt-1 w-4 h-4 rounded bg-slate-700 border-slate-600 text-yellow-500 focus:ring-yellow-500" />
-                                <div className="text-sm text-slate-300">
-                                    I agree to the <span className="text-white font-bold underline">Terms of Service</span>. I understand that DAGIV Engineering charges a <strong>2.5% commission</strong> upon successful sale of this asset.
-                                </div>
-                            </label>
-                        </div>
-                    )}
-
-                    {/* STEP 5: Success (The fluid ending) */}
-                    {step === 5 && (
-                        <div className="text-center py-10 animate-in zoom-in-95 duration-300">
-                            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
-                                <Check size={40} className="text-white"/>
-                            </div>
-                            <h2 className="text-3xl font-black text-white mb-4">Listing Submitted!</h2>
-                            <p className="text-slate-400 mb-8 max-w-md mx-auto">
-                                Your listing reference is <span className="text-yellow-500 font-bold">#LST-{Math.floor(Math.random()*10000)}</span>. 
-                                <br/><br/>
-                                Our verification team has been notified. We will contact you at <strong>{formData.sellerPhone}</strong> within 24 hours to schedule an inspection.
-                            </p>
-                            <button onClick={onClose} className="bg-slate-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-slate-700 border border-slate-700">
-                                Return to Marketplace
+                            <button onClick={registerSeller} disabled={loading} className="w-full bg-green-600 text-white font-bold py-4 rounded hover:bg-green-500 mt-4 shadow-lg flex items-center justify-center">
+                                {loading ? <RefreshCw className="animate-spin mr-2"/> : <ShieldCheck className="mr-2"/>} Submit for Verification
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // 4. THE WIZARD (GLOBAL PROFESSIONAL STANDARD)
+    return (
+        <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+            {/* Inject Global Styles for No Spinners */}
+            <style>{`
+                input[type=number]::-webkit-inner-spin-button, 
+                input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; margin: 0; 
+                }
+                input[type=number] { -moz-appearance: textfield; }
+                .custom-select { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto; }
+            `}</style>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
+                
+                {/* Header */}
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
+                    <div className="flex items-center gap-2"><BadgeCheck size={18} className="text-green-500"/><span className="text-white font-bold">New Listing</span></div>
+                    <button onClick={onClose}><X className="text-slate-500 hover:text-white"/></button>
+                </div>
+
+                <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
+                    
+                    {/* STEP 1: SERVICE TYPE (Big Cards) */}
+                    {step === 1 && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-right-4">
+                            <button onClick={() => { setListingType('SALE'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-yellow-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
+                                <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-yellow-500 group-hover:scale-110 transition-transform shadow-lg"><Truck size={32}/></div>
+                                <h3 className="font-bold text-xl text-white mb-2">Sell Machine</h3>
+                                <p className="text-slate-400 text-sm">Excavators, Loaders, Trucks</p>
+                            </button>
+                            <button onClick={() => { setListingType('RENT'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-blue-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
+                                <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform shadow-lg"><Clock size={32}/></div>
+                                <h3 className="font-bold text-xl text-white mb-2">Rent Out</h3>
+                                <p className="text-slate-400 text-sm">Lease your fleet</p>
+                            </button>
+                            <button onClick={() => { setListingType('PART'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-green-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
+                                <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform shadow-lg"><Settings size={32}/></div>
+                                <h3 className="font-bold text-xl text-white mb-2">Sell Part</h3>
+                                <p className="text-slate-400 text-sm">Spares & Attachments</p>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* STEP 2: CORE DETAILS */}
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4">
+                            <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2 mb-4">Core Details</h3>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Category</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c}>{c}</option>)}</select></div>
+                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}><option value="">Select...</option>{subCategories.map((sc: string) => <option key={sc} value={sc}>{sc}</option>)}</select></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Caterpillar" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} /></div>
+                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Model</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 320D GC" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Location</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="City, Country" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} /></div>
+                                <div><label className="text-xs text-slate-500 font-bold block mb-1">Stock ID (Optional)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Internal Ref" value={formData.stockId} onChange={e => setFormData({...formData, stockId: e.target.value})} /></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 3: TECHNICAL SPECS (Professional Grade) */}
+                    {step === 3 && (
+                        <div className="space-y-8 animate-in slide-in-from-right-4">
+                            
+                            {/* --- MACHINE / RENT SPECS --- */}
+                            {(listingType === 'SALE' || listingType === 'RENT') && (
+                                <>
+                                    {/* 1. KEY SPECS */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Key Specifications</h4>
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div><label className="text-xs text-slate-500 block mb-1">Year of Manufacture</label>
+                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.yom} onChange={e => setFormData({...formData, yom: e.target.value})}>
+                                                <option value="">Select Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                            </select></div>
+                                            
+                                            <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label>
+                                            <input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="0" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
+                                            
+                                            <div className="flex gap-2">
+                                                <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage</label>
+                                                <input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="0" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
+                                                <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label>
+                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 2. ENGINE & TRANSMISSION */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Engine & Power</h4>
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Power (kW/HP)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 140 kW" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Fuel Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}><option>Diesel</option><option>Petrol</option><option>Electric</option></select></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Emission</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.emissionStandard} onChange={e => setFormData({...formData, emissionStandard: e.target.value})}><option value="">Standard</option><option>Euro 3</option><option>Euro 4</option><option>Euro 5</option><option>Tier 4F</option></select></div>
+                                        </div>
+                                    </div>
+
+                                    {/* 3. CABIN & HYDRAULICS */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Cabin & Features</h4>
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div><label className="text-xs text-slate-500 block mb-1">Cabin Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.cabinType} onChange={e => setFormData({...formData, cabinType: e.target.value})}><option>Enclosed</option><option>Canopy</option><option>ROPS</option></select></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Air Conditioning</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.ac} onChange={e => setFormData({...formData, ac: e.target.value})}><option>Yes</option><option>No</option></select></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Aux Hydraulics</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.auxHydraulics} onChange={e => setFormData({...formData, auxHydraulics: e.target.value})}><option>Yes</option><option>No</option></select></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">CE Marked</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.ceMarked} onChange={e => setFormData({...formData, ceMarked: e.target.value})}><option>Yes</option><option>No</option></select></div>
+                                        </div>
+                                    </div>
+
+                                    {/* 4. UNDERCARRIAGE & DIMENSIONS */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Chassis & Dimensions</h4>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Length (m)" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} />
+                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Width (m)" value={formData.dimWidth} onChange={e => setFormData({...formData, dimWidth: e.target.value})} />
+                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Height (m)" value={formData.dimHeight} onChange={e => setFormData({...formData, dimHeight: e.target.value})} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Track Width / Tire Size" value={formData.trackWidth} onChange={e => setFormData({...formData, trackWidth: e.target.value})} />
+                                            <input type="number" className="bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" placeholder="Condition Remaining (%)" value={formData.residualTread} onChange={e => setFormData({...formData, residualTread: e.target.value})} />
+                                        </div>
+                                    </div>
+
+                                    {/* 5. PRICING */}
+                                    <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                                        {listingType === 'SALE' ? (
+                                            <div>
+                                                <label className="text-sm font-bold text-white block mb-2">Selling Price</label>
+                                                <div className="flex gap-2">
+                                                    <select className="w-32 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold custom-select" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                                    <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg no-spinner" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">Dry Rate (Machine Only)</label>
+                                                    <div className="flex gap-2">
+                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentCurrency} onChange={e => setFormData({...formData, rentCurrency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                                        <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-2 rounded text-white no-spinner" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
+                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">Wet Rate (With Operator/Fuel)</label>
+                                                    <div className="flex gap-2">
+                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentCurrency} onChange={e => setFormData({...formData, rentCurrency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                                        <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-2 rounded text-white no-spinner" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
+                                                        <select className="w-24 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* --- PARTS SPECS --- */}
+                            {listingType === 'PART' && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs text-slate-500 block mb-1">Part Number (OEM)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partNumber} onChange={e => setFormData({...formData, partNumber: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Part Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.partType} onChange={e => setFormData({...formData, partType: e.target.value})}><option>Original (OEM)</option><option>Aftermarket</option><option>Remanufactured</option></select></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white no-spinner" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Condition</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}><option>New</option><option>Used</option></select></div>
+                                    </div>
+                                    <div><label className="text-xs text-slate-500 block mb-1">Compatible Models</label><textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-20" placeholder="e.g. Fits CAT 320D, 325D..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
+                                    
+                                    <div className="bg-slate-800/50 p-4 rounded border border-slate-700">
+                                        <label className="text-sm font-bold text-white block mb-2">Price per Unit</label>
+                                        <div className="flex gap-2">
+                                            <select className="w-32 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold custom-select" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+                                            <input type="number" className="flex-1 bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg no-spinner" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* STEP 4: UPLOADS & DESC */}
+                    {step === 4 && (
+                        <div className="space-y-6">
+                            <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:bg-slate-900 transition-colors">
+                                <input type="file" multiple id="listingImages" hidden onChange={(e) => handleFileSelect(e, null, true)} accept="image/*" />
+                                <label htmlFor="listingImages" className="cursor-pointer">
+                                    <Camera className="mx-auto text-yellow-500 mb-2" size={32}/>
+                                    <span className="text-white font-bold block">Add Photos *</span>
+                                    <span className="text-xs text-slate-500">High quality photos increase sales. Min 1 required.</span>
+                                </label>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">{formData.images.map((src, i) => (<div key={i} className="h-20 bg-slate-800 rounded bg-cover bg-center" style={{backgroundImage: `url(${src})`}}></div>))}</div>
+                            <div>
+                                <label className="text-xs text-slate-500 block mb-1">Detailed Description</label>
+                                <textarea className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white h-32" placeholder="Mention specific condition, recent repairs, or included attachments..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* STEP 5: SUCCESS */}
+                    {step === 5 && (
+                        <div className="text-center py-12 animate-in zoom-in-95">
+                            <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]"><Check className="text-white" size={48}/></div>
+                            <h2 className="text-3xl font-bold text-white mb-2">Listing Published!</h2>
+                            <p className="text-slate-400 mb-8 max-w-md mx-auto">{sellerIdentity.status === 'VERIFIED' ? "Your verified listing is now LIVE on the marketplace." : "Your listing has been submitted for engineering review."}</p>
+                            <button onClick={onClose} className="bg-slate-800 text-white font-bold py-4 px-12 rounded-xl hover:bg-slate-700 border border-slate-700">Return to Dashboard</button>
                         </div>
                     )}
                 </div>
 
-                {/* Footer Controls */}
+                {/* FOOTER NAV */}
                 {step < 5 && (
-                    <div className="bg-slate-950 p-6 border-t border-slate-800 flex justify-between">
-                        {step > 1 ? (
-                            <button onClick={handleBack} className="text-slate-400 hover:text-white font-bold flex items-center px-4 py-2">
-                                <ChevronLeft size={18} className="mr-2"/> Back
-                            </button>
-                        ) : ( <div></div> )}
-
+                    <div className="p-6 border-t border-slate-800 flex justify-between bg-slate-950 rounded-b-2xl">
+                        {step > 1 ? <button onClick={() => setStep(step-1)} className="text-slate-400 font-bold px-6 hover:text-white transition-colors">Back</button> : <div></div>}
                         {step < 4 ? (
-                            <button 
-                                onClick={handleNext} 
-                                disabled={
-                                    (step === 1 && !formData.sellerName) || 
-                                    (step === 2 && !formData.category)
-                                }
-                                className="bg-white text-slate-900 font-bold py-3 px-8 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                            >
-                                Next Step <ArrowRight size={18} className="ml-2"/>
-                            </button>
+                            <button onClick={() => setStep(step+1)} disabled={!isStepValid()} className="bg-white text-slate-900 font-bold py-3 px-8 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next Step</button>
                         ) : (
-                            <button 
-                                onClick={handleSubmit} 
-                                disabled={isSubmitting}
-                                className="bg-yellow-500 text-slate-900 font-bold py-3 px-8 rounded hover:bg-yellow-400 shadow-lg disabled:opacity-70 flex items-center"
-                            >
-                                {isSubmitting ? <RefreshCw className="animate-spin mr-2"/> : <CheckCircle className="mr-2"/>}
-                                Submit for Review
-                            </button>
+                            <button onClick={handleSubmitListing} disabled={loading || !isStepValid()} className="bg-yellow-500 text-slate-900 font-bold py-3 px-8 rounded hover:bg-yellow-400 shadow-lg disabled:opacity-50 transition-colors flex items-center">{loading ? <RefreshCw className="animate-spin mr-2"/> : <CheckCircle className="mr-2"/>} Publish Listing</button>
                         )}
                     </div>
                 )}
@@ -338,7 +578,6 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
         </div>
     );
 };
-
 // Service Request Modal Component
 const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onClose: () => void }) => {
     const [status, setStatus] = useState<'IDLE' | 'SENDING' | 'SUCCESS'>('IDLE');
@@ -649,41 +888,55 @@ const MarketplaceCard: React.FC<{ item: MarketItem; onClick: () => void }> = ({ 
   );
 };
 
-// --- MAIN PAGE COMPONENT: MarketplaceLayout ---
-const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT', setPage: (p: PageView) => void, onSellClick: () => void }) => {
+// --- MAIN PAGE COMPONENT: MarketplaceLayout (Updated for Dynamic Categories) ---
+const MarketplaceLayout = ({ mode, setPage, onSellClick, isSpareParts = false }: { mode: 'BUY' | 'RENT', setPage: (p: PageView) => void, onSellClick: () => void, isSpareParts?: boolean }) => {
   const [selectedMainCat, setSelectedMainCat] = useState<string>('All');
   const [selectedSubCat, setSelectedSubCat] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
 
-  // Filter Data Logic
+  // 1. FILTER LOGIC (Now includes strict Type Filtering)
   const filteredItems = MARKETPLACE_ITEMS.filter(item => {
-    // 1. Mode Filter (Buy vs Rent)
-    // Buy Tab shows: Sales
-    // Rent Tab shows: Rentals
-    // Spare Parts are usually Sale only, shown in Buy tab or their own tab
+    // Type Filter: Strictly separate Parts from Equipment
+    const typeMatch = isSpareParts ? item.type === 'Part' : item.type === 'Equipment';
+
+    // Mode Filter: Sale vs Rent (Parts are usually 'Sale' by default)
     const modeMatch = mode === 'BUY' ? item.listingType === 'Sale' : item.listingType === 'Rent';
     
-    // 2. Category Filter
+    // Category Filter
     const catMatch = selectedMainCat === 'All' || item.category === selectedMainCat;
     const subCatMatch = selectedSubCat === 'All' || item.subCategory === selectedSubCat;
     
-    // 3. Search
+    // Search
     const searchMatch = item.title.toLowerCase().includes(search.toLowerCase()) || 
                         item.brand.toLowerCase().includes(search.toLowerCase());
 
-    return modeMatch && catMatch && subCatMatch && searchMatch;
+    return typeMatch && modeMatch && catMatch && subCatMatch && searchMatch;
   });
 
-  // Derived subcategories for sidebar
+  // 2. DYNAMIC SIDEBAR LOGIC (The "Brain")
   const activeSubCategories = selectedMainCat !== 'All' 
-    // @ts-ignore - Dynamic key access
-    ? (CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.equipment || []).concat(CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.parts || [])
+    // @ts-ignore
+    ? (isSpareParts 
+        ? CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.parts || []
+        : CATEGORY_STRUCTURE[selectedMainCat as keyof typeof CATEGORY_STRUCTURE]?.equipment || [])
     : [];
+
+  // 3. DYNAMIC HEADER TEXT
+  const getPageTitle = () => {
+      if (isSpareParts) return 'Genuine Spare Parts Market';
+      return mode === 'BUY' ? 'Heavy Machinery Marketplace' : 'Plant Hire & Leasing';
+  };
+
+  const getSearchPlaceholder = () => {
+      if (isSpareParts) return "Search by Part Number, Name (e.g. 1U3352RC)...";
+      if (mode === 'RENT') return "Search for cranes, pumps, generators to rent...";
+      return "Search for excavators, trucks, dozers...";
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 pb-20">
-      {/* Jumia-style Top Bar */}
+      {/* Top Bar */}
       <div className="bg-slate-900 border-b border-slate-800 sticky top-20 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row gap-4 items-center">
@@ -691,7 +944,7 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                 <div className="flex-1 w-full flex relative">
                    <input 
                       type="text" 
-                      placeholder={mode === 'BUY' ? "Search for excavators, parts, trucks..." : "Search for cranes, pumps, generators to rent..."}
+                      placeholder={getSearchPlaceholder()}
                       className="w-full bg-slate-950 border-y border-l border-slate-700 rounded-l text-white pl-4 pr-10 py-3 focus:outline-none focus:border-yellow-500"
                       onChange={(e) => setSearch(e.target.value)}
                    />
@@ -700,12 +953,13 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                    </button>
                 </div>
 
-                {/* Post Ad Button (UPDATED) */}
+                {/* Post Ad Button */}
                 <button 
                     onClick={onSellClick}
                     className="hidden md:flex bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded font-bold items-center shadow-lg transition-transform hover:scale-105"
                 >
-                    <PlusCircle className="mr-2" size={18}/> {mode === 'BUY' ? 'SELL NOW' : 'LIST FOR RENT'}
+                    <PlusCircle className="mr-2" size={18}/> 
+                    {isSpareParts ? 'SELL PART' : mode === 'BUY' ? 'SELL MACHINE' : 'LIST FOR RENT'}
                 </button>
             </div>
         </div>
@@ -716,7 +970,8 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
         <div className="w-full lg:w-64 flex-shrink-0 space-y-6">
             <div className="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
                 <div className="p-4 border-b border-slate-800 bg-slate-950 font-bold text-white flex items-center">
-                    <Filter size={16} className="mr-2 text-yellow-500"/> Categories
+                    <Filter size={16} className="mr-2 text-yellow-500"/> 
+                    {isSpareParts ? 'Part Categories' : 'Machine Categories'}
                 </div>
                 
                 {/* Main Categories */}
@@ -739,10 +994,12 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                     ))}
                 </div>
 
-                {/* Sub Categories (Show if Main selected) */}
+                {/* Sub Categories (Dynamic List) */}
                 {selectedMainCat !== 'All' && (
                     <div className="border-t border-slate-800 p-2 bg-slate-950/50 animate-in slide-in-from-left-2">
-                        <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1">Sub-Categories</div>
+                        <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1">
+                            {isSpareParts ? 'Component Type' : 'Machine Type'}
+                        </div>
                         <div className="max-h-60 overflow-y-auto custom-scrollbar">
                            <button 
                                 onClick={() => setSelectedSubCat('All')}
@@ -755,6 +1012,7 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                                    key={sub}
                                    onClick={() => setSelectedSubCat(sub)}
                                    className={`w-full text-left px-3 py-1.5 rounded text-xs mb-1 truncate ${selectedSubCat === sub ? 'text-yellow-500 font-bold bg-yellow-500/10' : 'text-slate-400 hover:text-white'}`}
+                                   title={sub}
                                >
                                    {sub}
                                </button>
@@ -763,26 +1021,13 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                     </div>
                 )}
             </div>
-
-            {/* Price Filter (Mock) */}
-            <div className="bg-slate-900 rounded-lg border border-slate-800 p-4">
-                <div className="font-bold text-white mb-3 text-sm">Price Range ({mode === 'BUY' ? 'KES' : 'KES/Day'})</div>
-                <div className="flex gap-2 mb-3">
-                    <input className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Min" />
-                    <input className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-white" placeholder="Max" />
-                </div>
-                <button className="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2 rounded border border-slate-700">Apply Filter</button>
-            </div>
         </div>
 
         {/* MAIN CONTENT */}
         <div className="flex-1">
-            {/* UPDATED SELLER CTA */}
-            <SellerCTA onSellClick={onSellClick} />
-            
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-white">
-                    {selectedSubCat !== 'All' ? selectedSubCat : selectedMainCat !== 'All' ? selectedMainCat : mode === 'BUY' ? 'Latest Machinery For Sale' : 'Latest Machinery For Rent'}
+                    {selectedSubCat !== 'All' ? selectedSubCat : selectedMainCat !== 'All' ? selectedMainCat : getPageTitle()}
                 </h2>
                 <div className="text-sm text-slate-400">
                     {filteredItems.length} results found
@@ -798,14 +1043,14 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
             ) : (
                 <div className="bg-slate-900 rounded-lg border border-slate-800 p-12 text-center">
                     <Search className="w-16 h-16 text-slate-700 mx-auto mb-4"/>
-                    <h3 className="text-white font-bold text-lg mb-2">No items found</h3>
-                    <p className="text-slate-500">Try adjusting your category filters or search terms.</p>
+                    <h3 className="text-white font-bold text-lg mb-2">No {isSpareParts ? 'parts' : 'machines'} found</h3>
+                    <p className="text-slate-500">Try adjusting your filters or search for a different {isSpareParts ? 'part number' : 'model'}.</p>
                 </div>
             )}
         </div>
       </div>
 
-      {/* ITEM DETAIL MODAL (Enhanced Trust) */}
+      {/* ITEM DETAIL MODAL (Reused) */}
       {selectedItem && (
           <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur flex justify-end">
               <div className="w-full lg:w-[600px] h-full bg-slate-900 border-l border-slate-800 shadow-2xl flex flex-col animate-in slide-in-from-right-10">
@@ -819,7 +1064,6 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
 
                   {/* Scrollable Content */}
                   <div className="flex-1 overflow-y-auto custom-scrollbar">
-                      {/* Image */}
                       <div className="h-64 bg-black relative">
                           <img src={selectedItem.images[0]} className="w-full h-full object-contain" />
                       </div>
@@ -833,7 +1077,6 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                               <span>{selectedItem.condition}</span>
                           </div>
 
-                          {/* Price Block */}
                           <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 mb-6 flex justify-between items-center">
                               <div>
                                   <div className="text-xs text-slate-500 uppercase font-bold">Price</div>
@@ -845,42 +1088,8 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                               {selectedItem.negotiable && <span className="text-xs bg-slate-700 text-white px-2 py-1 rounded">Negotiable</span>}
                           </div>
 
-                          {/* Seller Info */}
-                          <div className="mb-6">
-                              <h3 className="font-bold text-white mb-3">Sold By</h3>
-                              <div className="flex items-center gap-3 bg-slate-800 p-3 rounded-lg">
-                                  <div className="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center text-slate-400 font-bold">
-                                      {selectedItem.seller.name.charAt(0)}
-                                  </div>
-                                  <div className="flex-1">
-                                      <div className="text-white font-bold text-sm flex items-center">
-                                          {selectedItem.seller.name}
-                                          {selectedItem.seller.verified && <BadgeCheck size={14} className="text-blue-500 ml-1" />}
-                                      </div>
-                                      <div className="text-xs text-slate-500">Member since {selectedItem.seller.joinedDate} • {selectedItem.seller.location}</div>
-                                  </div>
-                                  <div className="text-yellow-500 flex items-center text-sm font-bold">
-                                      {selectedItem.seller.rating} <Star size={12} fill="currentColor" className="ml-1"/>
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Trust Badges */}
-                          <div className="grid grid-cols-2 gap-3 mb-6">
-                              <div className="bg-slate-950 p-3 rounded border border-slate-800 text-center">
-                                  <ShieldCheck size={24} className="mx-auto text-green-500 mb-2"/>
-                                  <div className="text-white font-bold text-xs">Escrow Protected</div>
-                                  <div className="text-[10px] text-slate-500">Funds held until you approve</div>
-                              </div>
-                              <div className="bg-slate-950 p-3 rounded border border-slate-800 text-center">
-                                  <Truck size={24} className="mx-auto text-blue-500 mb-2"/>
-                                  <div className="text-white font-bold text-xs">Logistics Support</div>
-                                  <div className="text-[10px] text-slate-500">We arrange transport</div>
-                              </div>
-                          </div>
-
                           <div className="space-y-4">
-                              <h3 className="font-bold text-white">Specifications</h3>
+                              <h3 className="font-bold text-white">Details</h3>
                               <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div className="flex justify-between border-b border-slate-800 pb-1">
                                       <span className="text-slate-500">Brand</span>
@@ -891,12 +1100,8 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
                                       <span className="text-white">{selectedItem.model}</span>
                                   </div>
                                   <div className="flex justify-between border-b border-slate-800 pb-1">
-                                      <span className="text-slate-500">Year</span>
-                                      <span className="text-white">{selectedItem.yom || 'N/A'}</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-slate-800 pb-1">
-                                      <span className="text-slate-500">Hours</span>
-                                      <span className="text-white">{selectedItem.hours || 'N/A'}</span>
+                                      <span className="text-slate-500">{isSpareParts ? 'Part Type' : 'Year'}</span>
+                                      <span className="text-white">{isSpareParts ? 'OEM/Genuine' : selectedItem.yom || 'N/A'}</span>
                                   </div>
                               </div>
                           </div>
@@ -918,7 +1123,6 @@ const MarketplaceLayout = ({ mode, setPage, onSellClick }: { mode: 'BUY' | 'RENT
     </div>
   );
 };
-
 // --- HOME PAGE (REFACTORED) ---
 const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: PageView) => void, onBookInspection: () => void, onSellClick: () => void }) => {
   const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
@@ -930,7 +1134,7 @@ const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: Pag
       <div className="absolute inset-0 z-0">
         <img 
           src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=2000&q=80" 
-          alt="Construction in Kenya" 
+          alt="Construction in the World" 
           className="w-full h-full object-cover opacity-40"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-900/40"></div>
@@ -939,7 +1143,7 @@ const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: Pag
       <div className="relative z-10 text-center max-w-5xl px-4 animate-in fade-in slide-in-from-bottom-10 duration-1000">
         <div className="inline-block px-4 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full mb-6 backdrop-blur-sm">
           <span className="text-yellow-500 text-sm font-bold tracking-widest uppercase flex items-center gap-2">
-             <MapPin size={14} /> Kenya's Trusted Industrial Partner
+             <MapPin size={14} /> world's Trusted Industrial Partner
           </span>
         </div>
         <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight mb-6 leading-tight drop-shadow-2xl">
@@ -1004,7 +1208,7 @@ const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: Pag
             <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-white mb-4">About DAGIV ENGINEERING</h2>
                 <div className="h-1 w-20 bg-yellow-500 mx-auto mb-6"></div>
-                <p className="text-slate-400 max-w-2xl mx-auto">Built on integrity, powered by expertise. We are setting new standards for mechanical engineering in East Africa.</p>
+                <p className="text-slate-400 max-w-2xl mx-auto">Built on integrity, powered by expertise. We are setting new standards for mechanical engineering in the world.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20">
@@ -1013,7 +1217,7 @@ const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: Pag
                         <Activity size={32} />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3">Our Vision</h3>
-                    <p className="text-slate-400 text-sm">To be the undisputed leader in industrial engineering solutions across Africa, driving infrastructure growth through reliability.</p>
+                    <p className="text-slate-400 text-sm">To be the undisputed leader in industrial engineering solutions across the world, driving infrastructure growth through reliability.</p>
                 </div>
                 <div className="text-center p-6 bg-slate-950 rounded-xl border border-slate-800 hover:border-yellow-500/50 transition-colors">
                     <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-500 shadow-inner border border-slate-800">
@@ -1027,7 +1231,7 @@ const HomePage = ({ setPage, onBookInspection, onSellClick }: { setPage: (p: Pag
                         <Users size={32} />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3">Our Goals</h3>
-                    <p className="text-slate-400 text-sm">Empowering local industries, upskilling Kenyan engineers, and delivering sustainable mechanical solutions.</p>
+                    <p className="text-slate-400 text-sm">Empowering local industries, upskilling World's engineers, and delivering sustainable mechanical solutions.</p>
                 </div>
             </div>
 
@@ -1998,6 +2202,7 @@ const App = () => {
   if (inspectionMode) {
       return <InspectionBookingPage onComplete={() => { setInspectionMode(false); setPage(PageView.HOME); }} />
   }
+// In App.tsx
 
   const renderContent = () => {
     switch (page) {
@@ -2007,22 +2212,49 @@ const App = () => {
                   onBookInspection={() => setInspectionMode(true)} 
                   onSellClick={() => setIsSelling(true)} 
                />;
+               
       case PageView.MARKETPLACE_BUY:
-        return <MarketplaceLayout mode="BUY" setPage={setPage} onSellClick={() => setIsSelling(true)} />;
+        // Buy Equipment Tab: Shows SALE items, Equipment Sub-cats
+        return <MarketplaceLayout 
+                  mode="BUY" 
+                  setPage={setPage} 
+                  onSellClick={() => setIsSelling(true)} 
+                  isSpareParts={false} 
+               />;
+        
       case PageView.MARKETPLACE_RENT:
-        return <MarketplaceLayout mode="RENT" setPage={setPage} onSellClick={() => setIsSelling(true)} />;
+        // Plant Hire Tab: Shows RENT items, Equipment Sub-cats
+        return <MarketplaceLayout 
+                  mode="RENT" 
+                  setPage={setPage} 
+                  onSellClick={() => setIsSelling(true)} 
+                  isSpareParts={false} 
+               />;
+        
       case PageView.SPARE_PARTS:
-        return <MarketplaceLayout mode="BUY" setPage={setPage} onSellClick={() => setIsSelling(true)} />;
+        // Spare Parts Tab: Shows SALE items, PARTS Sub-cats
+        return <MarketplaceLayout 
+                  mode="BUY" 
+                  setPage={setPage} 
+                  onSellClick={() => setIsSelling(true)} 
+                  isSpareParts={true} 
+               />;
+        
       case PageView.SERVICES:
         return <ServicesPage setPage={setPage} />;
+        
       case PageView.ERP:
         return <ERPDashboard hasAccess={erpAccess} onSubscribe={() => setErpAccess(true)} logs={operatorLogs} />;
+        
       case PageView.PROFESSIONALS:
         return <ProfessionalsPage />;
+        
       case PageView.CONSULT:
         return <ConsultPage />;
+        
       case PageView.CONTACT:
         return <ContactPage />;
+        
       default:
         return <HomePage 
                   setPage={setPage} 

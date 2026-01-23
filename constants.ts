@@ -2,54 +2,301 @@
 import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
 import { SearchCheck, Truck, Wrench, Flame } from 'lucide-react';
 
-// --- CATEGORY CONSTANTS ---
+// constants.ts
+
 export const CATEGORY_STRUCTURE = {
   "Heavy Plant and Equipment": {
     equipment: [
-      "Excavators", "Bulldozers", "Wheel loaders", "Motor graders", 
-      "Compactors / Rollers", "Backhoe loaders", "Scrapers", "Draglines", 
-      "Pile drivers", "Asphalt pavers", "Crushing plants", "Screening plants"
+      // Excavation & Earthmoving
+      "Excavators - Crawler (Track)",
+      "Excavators - Wheeled",
+      "Excavators - Long Reach",
+      "Excavators - Ultra Long Reach",
+      "Excavators - Mini (< 6 Ton)",
+      "Excavators - Midi (6–10 Ton)",
+      "Excavators - High Reach Demolition",
+      "Excavators - Amphibious",
+      "Backhoe Loaders",
+      "Backhoe Loaders - 2WD",
+      "Backhoe Loaders - 4WD",
+
+      // Dozing & Grading
+      "Bulldozers - Crawler",
+      "Bulldozers - Swamp / Low Ground Pressure",
+      "Motor Graders",
+      "Scrapers - Open Bowl",
+      "Scrapers - Elevating",
+      "Scrapers - Pull Type",
+
+      // Loading
+      "Wheel Loaders",
+      "Wheel Loaders - Compact",
+      "Track Loaders",
+      "Skid Steer Loaders",
+      "Multi-Terrain Loaders",
+
+      // Hauling
+      "Dump Trucks - Articulated (ADT)",
+      "Dump Trucks - Rigid",
+      "Off-Highway Mining Trucks",
+
+      // Compaction
+      "Compactors - Single Drum",
+      "Compactors - Double Drum / Tandem",
+      "Compactors - Padfoot / Sheepfoot",
+      "Compactors - Pneumatic Tyre",
+
+      // Trenching & Pipelaying
+      "Trenchers - Chain",
+      "Trenchers - Wheel",
+      "Pipe Layers",
+
+      // Specialized
+      "Soil Stabilizers",
+      "Landfill Compactors",
+      "Wheel Tractors - Industrial",
+      "Snow Ploughs / Spreaders (Heavy Duty)"
     ],
+
     parts: [
-      "Engines", "Hydraulic pumps", "Cylinders", "Track chains", 
-      "Bucket teeth", "Final drives", "Radiators", "Filters", 
-      "Control valves", "Undercarriage parts"
+      // Undercarriage
+      "Track Chains & Links",
+      "Track Rollers (Bottom & Carrier)",
+      "Idlers & Recoil Assemblies",
+      "Sprockets & Segments",
+      "Track Pads (Single / Double / Triple Grouser)",
+
+      // Ground Engaging Tools
+      "Bucket Teeth & Adapters",
+      "Cutting Edges & End Bits",
+      "Ripper Shanks & Tips",
+      "Side Cutters",
+
+      // Powertrain
+      "Engines - Complete",
+      "Engine Short Blocks",
+      "Cylinder Heads",
+      "Crankshafts & Camshafts",
+      "Pistons, Liners & Rings",
+      "Turbochargers",
+
+      // Transmission & Final Drive
+      "Gearboxes",
+      "Torque Converters",
+      "Final Drives / Travel Motors",
+      "Differentials",
+      "Axles & Planetary Assemblies",
+
+      // Hydraulics
+      "Hydraulic Pumps (Main / Pilot / Gear)",
+      "Hydraulic Motors",
+      "Control Valve Blocks",
+      "Hydraulic Cylinders",
+      "Seal Kits & O-Rings",
+      "Hydraulic Hoses & Fittings",
+
+      // Electrical & Controls
+      "ECUs & Controllers",
+      "Sensors & Switches",
+      "Wiring Harnesses",
+      "Starters & Alternators",
+      "Batteries",
+
+      // Cab & Structure
+      "Cab Shells",
+      "Cab Glass (Front / Side / Rear)",
+      "Seats & Seat Belts",
+      "Joysticks & Control Levers",
+      "Mirrors & Cameras",
+
+      // Consumables
+      "Filters - Air",
+      "Filters - Oil",
+      "Filters - Fuel",
+      "Filters - Hydraulic",
+      "Belts",
+      "Bearings"
     ]
   },
+
   "Heavy Construction Plant Machinery": {
     equipment: [
-      "Tower cranes", "Mobile cranes", "Concrete batching plants", 
-      "Concrete mixers", "Concrete pumps", "Shotcrete machines", 
-      "Road milling machines", "Bitumen sprayers", "Soil stabilizers"
+      // Cranes
+      "Cranes - Mobile / Truck Mounted",
+      "Cranes - Rough Terrain",
+      "Cranes - All Terrain",
+      "Cranes - Crawler",
+      "Cranes - Tower (Top Slewing)",
+      "Cranes - Tower (Self Erecting)",
+
+      // Concrete
+      "Concrete Batching Plants - Stationary",
+      "Concrete Batching Plants - Mobile",
+      "Concrete Pumps - Truck Mounted",
+      "Concrete Pumps - Trailer Mounted",
+      "Concrete Pumps - Stationary / Line",
+      "Self-Loading Concrete Mixers",
+      "Transit Concrete Mixers",
+
+      // Asphalt & Roads
+      "Asphalt Pavers - Tracked",
+      "Asphalt Pavers - Wheeled",
+      "Road Milling Machines (Cold Planers)",
+      "Chip Spreaders",
+      "Bitumen Sprayers",
+
+      // Crushing & Screening
+      "Jaw Crushers",
+      "Cone Crushers",
+      "Impact Crushers",
+      "Mobile Crushing Plants",
+      "Screening Plants",
+      "Sand Washing Plants",
+
+      // Foundations & Drilling
+      "Piling Rigs - CFA",
+      "Piling Rigs - Rotary",
+      "Piling Rigs - Impact Hammer",
+      "Drilling Rigs - DTH",
+      "Drilling Rigs - Rotary",
+      "Anchor Drilling Rigs",
+
+      // Specialized
+      "Slipform Pavers",
+      "Concrete Block Making Machines",
+      "Soil Recyclers"
     ],
+
     parts: [
-      "Boom sections", "Wire ropes", "Bearings", "Gearboxes", 
-      "Control panels", "PLC units", "Sensors", "Conveyor belts"
+      // Crane Parts
+      "Wire Ropes & Hoist Ropes",
+      "Boom Sections",
+      "Jib Sections",
+      "Sheaves & Pulleys",
+      "Load Moment Indicators (LMI)",
+
+      // Concrete Plant Parts
+      "Mixer Shafts",
+      "Mixing Blades & Liners",
+      "Weighing Sensors & Load Cells",
+      "Silos & Screw Conveyors",
+
+      // Concrete Pump Parts
+      "Pump Pistons & Cups",
+      "Wear Plates & Cutting Rings",
+      "Delivery Pipes",
+      "Clamps & Elbows",
+
+      // Asphalt & Road
+      "Paver Screed Plates",
+      "Augers",
+      "Conveyor Chains",
+
+      // Crushers & Screens
+      "Crusher Jaws",
+      "Crusher Mantles & Concaves",
+      "Blow Bars",
+      "Screen Meshes",
+      "Vibrating Motors",
+
+      // Drilling
+      "Kelly Bars",
+      "Augers",
+      "Drill Rods",
+      "Drill Bits & Teeth"
     ]
   },
+
   "Light Plant and Equipment": {
     equipment: [
-      "Plate compactors", "Power trowels", "Vibrators", "Water pumps", 
-      "Air compressors", "Generators", "Welding machines", 
-      "Scaffolding systems", "Ladders", "Hand-guided rollers"
+      // Power
+      "Generators - Diesel (<500 kVA)",
+      "Generators - Petrol",
+      "Generators - Silent / Canopy",
+      "Inverter Generators",
+
+      // Air
+      "Air Compressors - Portable",
+      "Air Compressors - Towable",
+
+      // Compaction
+      "Plate Compactors - Forward",
+      "Plate Compactors - Reversible",
+      "Walk-Behind Rollers",
+      "Tamping Rammers",
+
+      // Concrete & Masonry
+      "Concrete Mixers (Portable)",
+      "Concrete Vibrators (Poker / Needle)",
+      "Power Trowels - Single",
+      "Power Trowels - Ride-On",
+
+      // Cutting & Drilling
+      "Floor Saws",
+      "Asphalt Cutters",
+      "Core Drilling Machines",
+      "Jack Hammers / Breakers",
+
+      // Utilities
+      "Lighting Towers",
+      "Water Pumps - Trash",
+      "Water Pumps - Centrifugal",
+      "Welding Machines - Diesel",
+      "Welding Machines - Electric",
+
+      // Steel & Fabrication
+      "Bar Bending Machines",
+      "Bar Cutting Machines"
     ],
+
     parts: [
-      "Starter motors", "Alternators", "Belts", "Spark plugs", 
-      "Hoses", "Nozzles", "Switches", "Control boards"
+      "AVRs & Control Panels",
+      "Fuel Injectors (Small Engines)",
+      "Carburetors & Repair Kits",
+      "Pull Starters / Recoil Assemblies",
+      "Spark Plugs & Ignition Coils",
+      "Vibrator Shafts & Hoses",
+      "Cutting Discs & Diamond Blades",
+      "Compressor Separator Filters",
+      "Electrical Sockets & Breakers",
+      "Rubber Mounts & Anti-Vibration Pads"
     ]
   },
-  "Automotive": {
+
+  "Automotive (Construction & Support Vehicles)": {
     equipment: [
-      "Trucks", "Tippers", "Prime movers", "Trailers", 
-      "Tankers", "Service vans", "Pickups"
+      "Prime Movers - 6x4",
+      "Prime Movers - 4x2",
+      "Tipper Trucks",
+      "Flatbed Trucks",
+      "Drop Side Trucks",
+      "Fuel Tankers",
+      "Water Bowsers",
+      "Low Bed / Low Loader Trailers",
+      "Heavy Haulage Trailers",
+      "Skeletal Trailers",
+      "Service Trucks / Mobile Workshops",
+      "Pickup Trucks - Double Cab",
+      "Pickup Trucks - Single Cab",
+      "Panel Vans"
     ],
+
     parts: [
-      "Engines", "Gearboxes", "Axles", "Brake systems", 
-      "Suspension kits", "Tyres & rims", "ECUs", "Fuel systems", 
-      "Cooling systems"
+      "Brake Pads, Discs & Drums",
+      "Clutch Kits & Pressure Plates",
+      "Gearboxes & Transmissions",
+      "Prop Shafts",
+      "Differentials",
+      "Axles",
+      "Leaf Springs & Shock Absorbers",
+      "Fuel Injectors & Pumps",
+      "Radiators & Cooling Fans",
+      "Body Panels & Lighting",
+      "Tyres & Rims"
     ]
   }
 };
+
 
 // --- MOCK SELLERS ---
 const SELLERS: Record<string, SellerProfile> = {
@@ -582,7 +829,7 @@ export const PROFESSIONALS: ProfessionalProfile[] = [
     id: 'pr4', name: 'Peter Njoroge', role: 'Driver', specialization: 'Heavy Haulage / Low Bed', 
     rating: 4.8, location: 'Mombasa', verified: true,
     image: 'https://images.unsplash.com/photo-1600486913747-55e5470d6f40?auto=format&fit=crop&w=200&q=80',
-    bio: 'Long-distance heavy commercial driver with 20 years experience. Specializes in low-bed transport of excavators and abnormal loads across East Africa.',
+    bio: 'Long-distance heavy commercial driver with 20 years experience. Specializes in low-bed transport of excavators and abnormal loads across the world.',
     yearsExperience: 20,
     certifications: ['Class CE License', 'Defensive Driving'],
     portfolio: [],
@@ -609,7 +856,7 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     id: 'srv1',
     title: 'Inspection, Purchase & Commissioning',
     shortDesc: 'We safeguard your capital. Our engineers verify machine health, engine compression, and hydraulic efficiency.',
-    fullDesc: 'Buying heavy machinery is a massive investment. DAGIV acts as your technical shield. Our certified engineers conduct rigorous multi-point inspections on engines, hydraulic systems, and structural integrity to ensure you never buy a lemon. We handle the entire procurement lifecycle from sourcing to on-site commissioning.',
+    fullDesc: 'Heavy machinery isn’t a casual purchase, it’s a high-stakes investment. DAGIV becomes your technical shield. Our certified engineers carry out rigorous, multi-point inspections covering engines, hydraulic systems, electricals, and structural integrity, eliminating the risk of acquiring defective or underperforming equipment. Beyond inspection, we manage the entire procurement lifecycle; from sourcing the right equipment and verifying specifications to delivery, on-site installation, testing, and final commissioning. You get machinery that’s verified, compliant, and ready to work from day one.',
     icon: SearchCheck,
     process: ['Requirement Analysis', 'Global Sourcing', 'Technical Audit (Oil Analysis, Pressure Tests)', 'Purchase Negotiation', 'Logistics & Import', 'On-site Commissioning'],
     industries: ['Construction', 'Mining', 'Agriculture'],
@@ -620,7 +867,7 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     id: 'srv2',
     title: 'Logistics & Leasing',
     shortDesc: 'Move earth without moving your bank balance. Flexible leasing and heavy haulage logistics.',
-    fullDesc: 'DAGIV provides a comprehensive fleet for short-term and long-term lease. Whether you need a 50-ton crane for a week or a fleet of tippers for a year, we deliver. Our logistics arm specializes in low-bed transport for moving heavy plant machinery across East Africa safely.',
+    fullDesc: 'DAGIV offers a comprehensive fleet for both short-term and long-term leasing, tailored to project-specific demands. Whether you require a 50-ton crane for a week or a fleet of tippers for a year, we deliver dependable, well-maintained equipment when and where it’s needed. Our logistics arm specializes in low-bed and heavy-haul transportation, ensuring the safe, compliant movement of heavy plant machinery locally and across international borders. ',
     icon: Truck,
     process: ['Lease Application', 'Site Assessment', 'Machine Deployment', 'Operator Provision', 'Monthly Maintenance', 'Demobilization'],
     industries: ['Road Works', 'Civil Engineering', 'Transport'],
@@ -631,7 +878,7 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     id: 'srv3',
     title: 'Maintenance & Repairs',
     shortDesc: 'Zero downtime strategy. Predictive analytics and emergency response teams.',
-    fullDesc: 'Downtime costs millions. Our maintenance service is built on speed and precision. We offer scheduled preventive maintenance contracts (AMC) and 24/7 emergency breakdown response. Our teams are equipped with mobile workshops to handle engine overhauls, hydraulic repairs, and electrical diagnostics on site.',
+    fullDesc: 'Downtime doesn’t just slow you down, it costs millions. That’s why our maintenance services are built for rapid response and pinpoint accuracy. We offer preventive maintenance contracts (AMC- Annual Maintenance Contract) to stop failures before they happen, alongside 24/7 emergency breakdown support when they do. Our mobile workshops are fully equipped to carry out engine overhauls, hydraulic repairs, and advanced electrical diagnostics on site, reducing delays and maximizing uptime.',
     icon: Wrench,
     process: ['Breakdown Call/Schedule', 'Mobile Team Dispatch', 'Diagnostic & Troubleshooting', 'Part Replacement', 'Testing & Calibration', 'Service Report Generation'],
     industries: ['Manufacturing', 'Construction', 'Logistics'],
@@ -642,7 +889,7 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     id: 'srv4',
     title: 'Welding & Fabrication',
     shortDesc: 'Industrial strength solutions. Bucket repairs, structural steel, and custom modifications.',
-    fullDesc: 'From hard-facing excavator buckets to fabricating truck bodies, our metalwork division delivers precision and strength. We specialize in structural steel erection for warehouses and custom modifications for specialized industrial applications.',
+    fullDesc: 'From hard-facing excavator buckets to fabricating heavy-duty truck bodies, DAGIV’s metalwork division delivers precision, durability, and structural integrity. We specialize in structural steel fabrication and erection for warehouses, plants, and industrial facilities, as well as custom modifications tailored to specialized operational requirements.',
     icon: Flame,
     process: ['Design & CAD Modeling', 'Material Selection', 'Cutting & Forming', 'Welding (MIG/TIG/Arc)', 'Quality Testing (NDT)', 'Finishing & Painting'],
     industries: ['Industrial', 'Mining', 'Automotive'],

@@ -140,7 +140,7 @@ export const Footer: React.FC<{ setPage: (p: PageView) => void }> = ({ setPage }
             <span className="text-white font-black text-lg tracking-tight">DAGIV ENGINEERING</span>
           </div>
           <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            Kenya's premier partner for heavy machinery reliability. Inspect. Lease. Maintain.
+            World's premier partner for heavy machinery reliability. Inspect. Lease. Maintain.
           </p>
           <div className="flex space-x-4">
             {/* Social Icons (Placeholders) */}
