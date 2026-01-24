@@ -85,7 +85,6 @@ export const Navbar: React.FC<NavProps> = ({ currentPage, setPage, onLoginClick 
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
       {isOpen && (
         <div className="md:hidden bg-slate-950 border-b border-slate-800 animate-in slide-in-from-top-5">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
@@ -172,25 +171,27 @@ export const Footer: React.FC<{ setPage: (p: PageView) => void }> = ({ setPage }
           </ul>
         </div>
 
-        {/* Contact Column */}
         <div>
           <h3 className="text-white font-bold mb-4 uppercase text-xs tracking-wider">Contact</h3>
           <ul className="space-y-3 text-sm text-slate-400">
-            <li className="flex items-center group">
+            <li className="flex items-center group cursor-pointer">
                 <span className="text-yellow-500 mr-3 bg-yellow-500/10 p-1 rounded">📍</span> 
-                <a href="http://maps.google.com/?q=Industrial+Area,Enterprise+Rd,Nairobi" target="_blank" rel="noopener noreferrer" className="group-hover:text-white transition-colors">
+                {/* CHANGED: group-hover:text-white -> group-hover:text-yellow-500 */}
+                <a href="http://maps.google.com/?q=Industrial+Area,Enterprise+Rd,Nairobi" target="_blank" rel="noopener noreferrer" className="group-hover:text-yellow-500 transition-colors">
                     Industrial Area, Enterprise Rd, Nairobi
                 </a>
             </li>
-            <li className="flex items-center group">
+            <li className="flex items-center group cursor-pointer">
                 <span className="text-yellow-500 mr-3 bg-yellow-500/10 p-1 rounded">📞</span> 
-                <a href="tel:+254700000000" className="group-hover:text-white transition-colors font-mono">
-                    +254 700 000 000
+                {/* CHANGED: group-hover:text-white -> group-hover:text-yellow-500 */}
+                <a href="tel:+254704385809" className="group-hover:text-yellow-500 transition-colors font-mono">
+                    +254 704 385 809
                 </a>
             </li>
-            <li className="flex items-center group">
+            <li className="flex items-center group cursor-pointer">
                 <span className="text-yellow-500 mr-3 bg-yellow-500/10 p-1 rounded">✉️</span> 
-                <a href="mailto:info@dagiv.co.ke" className="group-hover:text-white transition-colors">
+                {/* CHANGED: group-hover:text-white -> group-hover:text-yellow-500 */}
+                <a href="mailto:info@dagiv.co.ke" className="group-hover:text-yellow-500 transition-colors">
                     info@dagiv.co.ke
                 </a>
             </li>

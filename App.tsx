@@ -10,9 +10,9 @@ import {
   Calendar, Clock, DollarSign, Tag, Check, CreditCard, LogOut, BarChart3, Settings, Users,
   ClipboardCheck, Navigation, Flame, Key, Bell, FileBarChart, Siren, PenTool, RefreshCw, BadgeCheck, HardHat, FileBadge, ArrowRight, Trash2,
   FileSpreadsheet, Download, ChevronDown, List, Grid, UserCheck, Shield, Thermometer, PlusCircle, Heart, ChevronLeft, UploadCloud, Camera,
-  Globe, Building2, FileCheck, Video, LayoutGrid, Box, TruckIcon, ShieldAlert
+  Globe, Building2, FileCheck, Video, LayoutGrid, Box, TruckIcon, ShieldAlert, Laptop
 } from 'lucide-react';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // --- MOCK DATA ---
 const INITIAL_LOGS: OperatorLog[] = [
     {
@@ -144,32 +144,38 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
 
     // --- ACTIONS ---
     const checkSeller = async () => {
-        if(!sellerIdentity.phone) return alert("Enter phone number");
-        setLoading(true);
-        try {
-            const res = await fetch('http://localhost:8000/api/sellers/check', {
-                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ phone: sellerIdentity.phone })
-            });
-            const data = await res.json();
-            if (data.exists) {
-                setSellerIdentity(prev => ({ ...prev, name: data.name, status: data.status, id: data.sellerId, location: data.location }));
-                if (data.status === 'VERIFIED') setStage('WIZARD');
-                else { alert("Verification pending. You can draft listings."); setStage('WIZARD'); }
-            } else { setStage('KYC_REGISTER'); }
-        } catch { alert("Connection Error"); } finally { setLoading(false); }
-    };
+    if(!sellerIdentity.phone) return alert("Enter phone number");
+    setLoading(true);
+    try {
+        // Updated line below: uses template literal with API_URL
+        const res = await fetch(`${API_URL}/api/sellers/check`, {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ phone: sellerIdentity.phone })
+        });
+        
+        const data = await res.json();
+        if (data.exists) {
+            setSellerIdentity(prev => ({ ...prev, name: data.name, status: data.status, id: data.sellerId, location: data.location }));
+            if (data.status === 'VERIFIED') setStage('WIZARD');
+            else { alert("Verification pending. You can draft listings."); setStage('WIZARD'); }
+        } else { setStage('KYC_REGISTER'); }
+    } catch { alert("Connection Error"); } finally { setLoading(false); }
+};
 
-    const registerSeller = async () => {
-        if(!sellerIdentity.regNumber || !sellerIdentity.doc_primary) return alert("Missing documents");
-        setLoading(true);
-        try {
-            const res = await fetch('http://localhost:8000/api/sellers/register', {
-                method: 'POST', headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ ...sellerIdentity })
-            });
-            if(res.ok) { alert("Submitted! Verification pending."); onClose(); }
-        } catch { alert("Error"); } finally { setLoading(false); }
-    };
+   const registerSeller = async () => {
+    if(!sellerIdentity.regNumber || !sellerIdentity.doc_primary) return alert("Missing documents");
+    setLoading(true);
+    try {
+        // Updated line: uses template literal with API_URL
+        const res = await fetch(`${API_URL}/api/sellers/register`, {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ ...sellerIdentity })
+        });
+        if(res.ok) { alert("Submitted! Verification pending."); onClose(); }
+    } catch { alert("Error"); } finally { setLoading(false); }
+};
 
     const handleSubmitListing = async () => {
         setLoading(true);
@@ -183,13 +189,15 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
             specs: { ...formData }
         };
         try {
-            const res = await fetch('http://localhost:8000/api/marketplace/submit', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            // Updated line: uses template literal with API_URL
+            const res = await fetch(`${API_URL}/api/marketplace/submit`, {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(payload)
             });
             if (res.ok) setStep(5);
         } catch { alert("Error"); } finally { setLoading(false); }
     };
-
     // ================= VIEWS =================
 
     // 1. WELCOME SCREEN
@@ -651,80 +659,70 @@ const SellItemModal = ({ onClose }: { onClose: () => void }) => {
         </div>
     );
 };
-// Service Request Modal Component
+
 const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onClose: () => void }) => {
     const [status, setStatus] = useState<'IDLE' | 'SENDING' | 'SUCCESS'>('IDLE');
-    const [formData, setFormData] = useState({
-        name: '',
-        company: '',
-        email: '',
-        phone: '',
-        details: '',
-        duration: '',
-        durationUnit: 'Days'
-    });
+    
+    // Split state: Static Contact info & Dynamic Service info
+    const [contactData, setContactData] = useState({ name: '', company: '', email: '', phone: '' });
+    const [dynamicData, setDynamicData] = useState<Record<string, string>>({});
 
-    const isLeasing = service.title.toLowerCase().includes('leasing') || service.title.toLowerCase().includes('hire');
+    const handleDynamicChange = (id: string, value: string) => {
+        setDynamicData(prev => ({ ...prev, [id]: value }));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setStatus('SENDING');
         
         try {
-            const payload = {
-                name: formData.name,
-                phone: formData.phone,
-                email: formData.email,
-                serviceType: service.title,
-                details: formData.details,
-                company: formData.company || "N/A",
-                duration: isLeasing ? `${formData.duration} ${formData.durationUnit}` : undefined
-            };
+            // Compile dynamic fields into a readable string for the email/backend
+            const detailsString = service.requestFields?.map(field => 
+                `${field.label}: ${dynamicData[field.id] || 'N/A'}`
+            ).join('\n') || "No details provided.";
 
-            const res = await fetch('http://localhost:8000/api/service-request', {
+            const payload = {
+                name: contactData.name,
+                phone: contactData.phone,
+                email: contactData.email,
+                company: contactData.company || "N/A",
+                serviceType: service.title,
+                details: detailsString,
+                // If 'duration' exists in dynamic fields, pass it specifically for leasing logic
+                duration: dynamicData['duration'] || undefined
+            };
+            const res = await fetch(`${API_URL}/api/service-request`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if(res.ok) setStatus('SUCCESS');
-            else {
-                alert("Server Error: Could not submit request.");
-                setStatus('IDLE');
-            }
+            else { alert("Server Error"); setStatus('IDLE'); }
 
-        } catch (error) {
-            console.error(error);
-            alert("Failed to connect to server");
-            setStatus('IDLE');
-        }
+        } catch (error) { console.error(error); alert("Connection Error"); setStatus('IDLE'); }
     };
 
     if (status === 'SUCCESS') {
         return (
-            <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.2)]">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={24}/></button>
+                    <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20">
                         <CheckCircle className="text-green-500" size={40} />
                     </div>
                     <h3 className="text-2xl font-black text-white mb-2">Request Received</h3>
-                    <p className="text-slate-400 mb-8 leading-relaxed">
-                        We have successfully logged your inquiry regarding <span className="text-yellow-500 font-bold">{service.title}</span>. 
-                        <br/><br/>
-                        Our engineering team has been notified and will contact you via email shortly.
-                    </p>
-                    <button onClick={onClose} className="bg-slate-800 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-700 transition-colors w-full border border-slate-700 hover:border-slate-600">
-                        Close & Return to Services
-                    </button>
+                    <p className="text-slate-400 mb-6">Your inquiry for <span className="text-yellow-500">{service.title}</span> has been logged.</p>
+                    <button onClick={onClose} className="bg-slate-800 text-white font-bold py-3 px-6 rounded-lg w-full border border-slate-700">Close</button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+                {/* Modal Header */}
                 <div className="px-8 py-6 border-b border-slate-800 bg-slate-950/50 flex justify-between items-start">
                     <div>
                         <div className="text-yellow-500 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -732,112 +730,61 @@ const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onC
                         </div>
                         <h3 className="text-2xl font-black text-white leading-tight">{service.title}</h3>
                     </div>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full"><X size={20}/></button>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white bg-slate-800/50 p-2 rounded-full"><X size={20}/></button>
                 </div>
 
                 <div className="p-8 overflow-y-auto custom-scrollbar">
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Static Contact Info */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="block text-slate-500 text-xs font-bold uppercase">Full Name</label>
-                                <div className="relative group">
-                                    <User className="absolute left-3 top-3.5 text-slate-600 group-focus-within:text-yellow-500 transition-colors" size={16}/>
-                                    <input 
-                                        required 
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" 
-                                        placeholder="John Doe" 
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    />
-                                </div>
+                                <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
+                                    value={contactData.name} onChange={e => setContactData({...contactData, name: e.target.value})} />
                             </div>
-                             <div className="space-y-2">
-                                <label className="block text-slate-500 text-xs font-bold uppercase">Company (Optional)</label>
-                                <div className="relative group">
-                                    <Briefcase className="absolute left-3 top-3.5 text-slate-600 group-focus-within:text-yellow-500 transition-colors" size={16}/>
-                                    <input 
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 pl-10 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" 
-                                        placeholder="Acme Construction Ltd" 
-                                        value={formData.company}
-                                        onChange={(e) => setFormData({...formData, company: e.target.value})}
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <label className="block text-slate-500 text-xs font-bold uppercase">Phone</label>
+                                <input required type="tel" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
+                                    value={contactData.phone} onChange={e => setContactData({...contactData, phone: e.target.value})} />
                             </div>
                         </div>
-                        
                         <div className="space-y-2">
-                            <label className="block text-slate-500 text-xs font-bold uppercase">Email Address</label>
-                            <input 
-                                type="email" 
-                                required 
-                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" 
-                                placeholder="john@example.com" 
-                                value={formData.email}
-                                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                            />
+                            <label className="block text-slate-500 text-xs font-bold uppercase">Email</label>
+                            <input required type="email" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
+                                value={contactData.email} onChange={e => setContactData({...contactData, email: e.target.value})} />
                         </div>
 
-                         <div className="space-y-2">
-                            <label className="block text-slate-500 text-xs font-bold uppercase">Phone Number</label>
-                            <input 
-                                type="tel" 
-                                required 
-                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" 
-                                placeholder="+254 700 000 000" 
-                                value={formData.phone}
-                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                            />
-                        </div>
-
-                        {/* NEW: Conditional Duration Input for Leasing */}
-                        {isLeasing && (
-                            <div className="space-y-2 bg-slate-800/30 p-4 rounded border border-slate-700">
-                                <label className="block text-yellow-500 text-xs font-bold uppercase mb-2">Lease Duration</label>
-                                <div className="flex gap-4">
-                                    <input 
-                                        type="number" 
-                                        min="1"
-                                        required 
-                                        className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors placeholder:text-slate-700 font-medium" 
-                                        placeholder="Duration" 
-                                        value={formData.duration}
-                                        onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                                    />
-                                    <select 
-                                        className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors"
-                                        value={formData.durationUnit}
-                                        onChange={(e) => setFormData({...formData, durationUnit: e.target.value})}
-                                    >
-                                        <option>Days</option>
-                                        <option>Hours</option>
-                                        <option>Months</option>
-                                    </select>
+                        {/* Dynamic Service Fields */}
+                        <div className="bg-slate-800/20 p-6 rounded-xl border border-slate-700/50 space-y-4">
+                            <h4 className="text-yellow-500 text-xs font-bold uppercase mb-2 flex items-center border-b border-slate-700/50 pb-2">
+                                <FileText size={14} className="mr-2"/> Service Details
+                            </h4>
+                            {service.requestFields?.map((field) => (
+                                <div key={field.id} className="space-y-1">
+                                    <label className="block text-slate-400 text-xs font-bold uppercase">
+                                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                                    </label>
+                                    {field.type === 'textarea' ? (
+                                        <textarea required={field.required} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white h-24 text-sm"
+                                            placeholder={field.placeholder} onChange={(e) => handleDynamicChange(field.id, e.target.value)} />
+                                    ) : field.type === 'select' ? (
+                                        <select className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white text-sm"
+                                            onChange={(e) => handleDynamicChange(field.id, e.target.value)}>
+                                            <option value="">Select Option...</option>
+                                            {field.options?.map(opt => <option key={opt}>{opt}</option>)}
+                                        </select>
+                                    ) : (
+                                        <input type={field.type} required={field.required} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white text-sm"
+                                            placeholder={field.placeholder} onChange={(e) => handleDynamicChange(field.id, e.target.value)} />
+                                    )}
                                 </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <label className="block text-slate-500 text-xs font-bold uppercase">Project Details / Requirements</label>
-                            <textarea 
-                                required 
-                                className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white focus:border-yellow-500 outline-none transition-colors h-32 resize-none placeholder:text-slate-700 font-medium text-sm leading-relaxed" 
-                                placeholder="Please describe your site location, equipment needs, or specific maintenance issues..."
-                                value={formData.details}
-                                onChange={(e) => setFormData({...formData, details: e.target.value})}
-                            ></textarea>
+                            ))}
                         </div>
 
-                        <div className="pt-4">
-                            <button type="submit" disabled={status === 'SENDING'} className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded-lg hover:bg-yellow-400 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] disabled:opacity-70 disabled:shadow-none">
-                                {status === 'SENDING' ? (
-                                    <span className="flex items-center"><RefreshCw className="animate-spin mr-3" /> Processing Request...</span>
-                                ) : (
-                                    <span className="flex items-center">Submit Service Request <ArrowRight size={18} className="ml-2"/></span>
-                                )}
+                        <div className="pt-2">
+                            <button type="submit" disabled={status === 'SENDING'} className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded-lg hover:bg-yellow-400 shadow-lg flex items-center justify-center">
+                                {status === 'SENDING' ? <RefreshCw className="animate-spin mr-2"/> : <span className="flex items-center">Submit Request <ArrowRight size={18} className="ml-2"/></span>}
                             </button>
-                            <p className="text-center text-slate-600 text-xs mt-6">
-                                By submitting this form, you request a formal quotation from DAGIV ENGINEERING. <br/>We respect your privacy and will not share your data.
-                            </p>
                         </div>
                     </form>
                 </div>
@@ -845,7 +792,6 @@ const ServiceRequestModal = ({ service, onClose }: { service: ServiceDetail, onC
         </div>
     );
 };
-
 // --- NEW COMPONENT: Secure Checkout Modal (Jumia Style) ---
 const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClose: () => void }) => {
     const [step, setStep] = useState(1); // 1: Summary, 2: Buyer Info, 3: Payment, 4: Success
@@ -1190,24 +1136,8 @@ const ProductDetailOverlay = ({ item, onClose, onCheckout }: { item: MarketItem;
     );
 };
 
-// --- SERVICES PAGE ---
 const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
   const [selectedService, setSelectedService] = useState<ServiceDetail | null>(null);
-
-  // SENIOR DEV PATTERN: Smart Ordering Engine
-  const getOrderedServices = () => {
-      const PRIORITY_SERVICE_ID = 'srv3'; // ID for Maintenance & Repairs from constants.ts
-      
-      const primaryService = SERVICES_CONTENT.find(s => s.id === PRIORITY_SERVICE_ID);
-      const otherServices = SERVICES_CONTENT.filter(s => s.id !== PRIORITY_SERVICE_ID);
-      
-      if (!primaryService) return SERVICES_CONTENT;
-      
-      return [primaryService, ...otherServices];
-  };
-
-  const orderedServices = getOrderedServices();
-
   return (
     <div className="min-h-screen bg-slate-950 py-12 px-4">
         <div className="max-w-7xl mx-auto">
@@ -1215,22 +1145,41 @@ const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
                 <h2 className="text-4xl font-bold text-white mb-4">Our Engineering Services</h2>
                 <p className="text-slate-400 max-w-2xl mx-auto">From procurement to maintenance, we handle the entire lifecycle of your heavy machinery.</p>
             </div>
+            
             <div className="space-y-20">
-                {orderedServices.map((service, idx) => {
+                {SERVICES_CONTENT.map((service, idx) => {
                     const Icon = service.icon;
                     return (
-                        <div key={service.id} className={`flex flex-col ${idx % 2 === 1 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 items-center`}>
-                            <div className="flex-1">
-                                <img src={service.image} alt={service.title} className="rounded-xl shadow-2xl border border-slate-800" />
+                        <div key={service.id} className={`flex flex-col ${idx % 2 === 1 ? 'md:flex-row-reverse' : 'md:flex-row'} gap-12 items-stretch`}>
+                            
+                            {/* 2. IMAGE COLUMN: h-full ensures it takes full height of the parent flex row */}
+                            <div className="flex-1 relative min-h-[400px]">
+                                <img 
+                                    src={service.image} 
+                                    alt={service.title} 
+                                    className="rounded-xl shadow-2xl border border-slate-800 w-full h-full object-cover absolute inset-0" 
+                                />
+                                {/* Note: 'absolute inset-0' combined with 'relative' on parent helps strictly conform to text height */}
                             </div>
-                            <div className="flex-1 space-y-6">
-                                <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center text-yellow-500 border border-slate-700 shadow-inner">
-                                    <Icon size={32} />
-                                </div>
-                                <h3 className="text-3xl font-bold text-white">{service.title}</h3>
-                                <p className="text-slate-300 text-lg leading-relaxed">{service.fullDesc}</p>
+
+                            {/* 3. TEXT COLUMN: Flex Column to stack Title -> Desc -> Process -> Button */}
+                            <div className="flex-1 flex flex-col py-2">
                                 
-                                <div className="bg-slate-900 p-6 rounded-lg border border-slate-800">
+                                {/* Header */}
+                                <div className="flex justify-between items-start mb-6">
+                                    <h3 className="text-3xl font-bold text-white leading-tight mt-1">{service.title}</h3>
+                                    <div className="w-14 h-14 bg-slate-900 rounded-full flex items-center justify-center text-yellow-500 border border-slate-700 shadow-inner flex-shrink-0 ml-4">
+                                        <Icon size={28} />
+                                    </div>
+                                </div>
+
+                                {/* Description */}
+                                <p className="text-slate-300 text-lg leading-relaxed mb-8">
+                                    {service.fullDesc}
+                                </p>
+                                
+                                {/* Process Box (Removed mt-auto to fix the large gap) */}
+                                <div className="bg-slate-900 p-6 rounded-lg border border-slate-800 mb-8">
                                     <h4 className="text-yellow-500 font-bold uppercase text-xs mb-4 tracking-wider">Our Process</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         {service.process.map((step, i) => (
@@ -1242,9 +1191,10 @@ const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
                                     </div>
                                 </div>
                                 
+                                {/* Action Button (Sits naturally at the bottom of the content) */}
                                 <button 
                                     onClick={() => setSelectedService(service)} 
-                                    className="px-8 py-3 bg-white text-slate-900 font-bold rounded hover:bg-slate-200 hover:scale-105 transition-all shadow-[0_4px_0_0_rgba(15,23,42,1)]"
+                                    className="w-max px-8 py-3 bg-white text-slate-900 font-bold rounded hover:bg-slate-200 hover:scale-105 transition-all shadow-[0_4px_0_0_rgba(15,23,42,1)] mt-auto md:mt-0"
                                 >
                                     Request Service
                                 </button>
@@ -1264,8 +1214,6 @@ const ServicesPage = ({ setPage }: { setPage: (p: PageView) => void }) => {
     </div>
   );
 };
-
-// --- NEW COMPONENT: Seller CTA (Become a Seller) ---
 const SellerCTA = ({ onSellClick }: { onSellClick: () => void }) => (
   <div className="bg-gradient-to-r from-yellow-600 to-yellow-500 rounded-lg p-1 text-slate-900 mb-6">
     <div className="bg-slate-950/20 backdrop-blur-sm p-4 rounded flex justify-between items-center text-white">
@@ -1282,15 +1230,12 @@ const SellerCTA = ({ onSellClick }: { onSellClick: () => void }) => (
     </div>
   </div>
 );
-
-// --- NEW COMPONENT: Marketplace Item Card (Jumia Style) ---
 const MarketplaceCard: React.FC<{ item: MarketItem; onClick: () => void }> = ({ item, onClick }) => {
   return (
     <div 
       onClick={onClick}
       className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden hover:shadow-xl hover:border-yellow-500/50 transition-all cursor-pointer group flex flex-col h-full relative"
     >
-      {/* Badges */}
       <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
         {item.promoted && <span className="bg-yellow-500 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Ad</span>}
         {item.verifiedByDagiv && <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center"><ShieldCheck size={10} className="mr-1"/> Inspected</span>}
@@ -1731,7 +1676,7 @@ const InspectionBookingPage = ({ onComplete }: { onComplete: () => void }) => {
             return;
         }
         try {
-            const response = await fetch('http://localhost:8000/api/book-inspection', {
+            const response = await fetch('${API_URL}/api/book-inspection', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bookingData)
@@ -2108,7 +2053,7 @@ const ConsultPage = () => {
       };
 
       try {
-          const res = await fetch('http://localhost:8000/api/consultation', {
+          const res = await fetch('${API_URL}/api/consultation', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload)
@@ -2346,7 +2291,7 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
         e.preventDefault();
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/api/login', {
+            const response = await fetch('${API_URL}/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(credentials)
@@ -2384,7 +2329,7 @@ const OperatorPortal = ({ onBack, onSubmit }: { onBack: () => void, onSubmit: (l
         };
 
         try {
-            const response = await fetch('http://localhost:8000/api/operator-logs', {
+            const response = await fetch('${API_URL}/api/operator-logs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
@@ -2563,5 +2508,4 @@ const App = () => {
     </div>
   );
 };
-
 export default App;

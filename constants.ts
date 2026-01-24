@@ -1,6 +1,6 @@
 // constants.ts
 import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
-import { SearchCheck, Truck, Wrench, Flame } from 'lucide-react';
+import { SearchCheck, Truck, Wrench, Flame, Laptop, ScanLineIcon} from 'lucide-react';
 
 // constants.ts
 
@@ -971,30 +971,27 @@ export const PROFESSIONALS: ProfessionalProfile[] = [
 ];
 // --- SERVICES CONTENT (With Smart IDs for Ordering) ---
 export const SERVICES_CONTENT: ServiceDetail[] = [
+
   {
     id: 'srv1',
-    title: 'Inspection, Purchase & Commissioning',
-    shortDesc: 'We safeguard your capital. Our engineers verify machine health, engine compression, and hydraulic efficiency.',
-    fullDesc: 'Heavy machinery isn’t a casual purchase, it’s a high-stakes investment. DAGIV becomes your technical shield. Our certified engineers carry out rigorous, multi-point inspections covering engines, hydraulic systems, electricals, and structural integrity, eliminating the risk of acquiring defective or underperforming equipment. Beyond inspection, we manage the entire procurement lifecycle; from sourcing the right equipment and verifying specifications to delivery, on-site installation, testing, and final commissioning. You get machinery that’s verified, compliant, and ready to work from day one.',
-    icon: SearchCheck,
-    process: ['Requirement Analysis', 'Global Sourcing', 'Technical Audit (Oil Analysis, Pressure Tests)', 'Purchase Negotiation', 'Logistics & Import', 'On-site Commissioning'],
-    industries: ['Construction', 'Mining', 'Agriculture'],
-    benefits: ['Risk Mitigation', 'Price Negotiation Leverage', 'Compliance with KEBS/DOSHS'],
-    image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80'
+    title: 'Computer Diagnosis',
+    shortDesc: 'Advanced electronic diagnostics for heavy machinery and fleet vehicles using professional OBD2 scanners.',
+    fullDesc: 'Modern machinery relies heavily on Electronic Control Units (ECUs) to manage engine performance, transmission, safety, and emissions. Our computer diagnostic service uses professional-grade scanners such as Launch, Autel, and CAT ET to accurately read fault codes, analyze live sensor data, and perform system calibrations and resets. We diagnose issues including check engine warnings, transmission faults, ABS errors, and emission system alerts, both on-site and in the field. Each diagnosis includes a clear fault explanation, system health assessment, and a practical repair roadmap, helping you make informed decisions before costly breakdowns occur.',
+    icon: Laptop,
+    process: ['On-site Deployment', 'OBD2/J1939 Connection', 'Error Code Reading', 'Live Data Analysis', 'System Reset/Calibration', 'Report Generation'],
+    industries: ['Automotive', 'Logistics', 'Construction'],
+    benefits: ['Accurate Troubleshooting', 'Preventive Health Check', 'Reset Service Lights'],
+    image: 'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=800&q=80',
+    requestFields: [
+      { id: 'make_model', label: 'Machine Make & Model', type: 'text', placeholder: 'e.g. Komatsu PC200-8 or Toyota Hilux', required: true },
+      { id: 'yom', label: 'Year of Manufacture', type: 'number', placeholder: 'e.g. 2018', required: true },
+      { id: 'symptoms', label: 'Observed Symptoms', type: 'textarea', placeholder: 'e.g. Loss of power, Black smoke, Check Engine Light on...', required: true },
+      { id: 'location', label: 'Machine Location', type: 'text', placeholder: 'e.g. Industrial Area, Road C', required: true }
+    ]
   },
+
   {
     id: 'srv2',
-    title: 'Logistics & Leasing',
-    shortDesc: 'Move earth without moving your bank balance. Flexible leasing and heavy haulage logistics.',
-    fullDesc: 'DAGIV offers a comprehensive fleet for both short-term and long-term leasing, tailored to project-specific demands. Whether you require a 50-ton crane for a week or a fleet of tippers for a year, we deliver dependable, well-maintained equipment when and where it’s needed. Our logistics arm specializes in low-bed and heavy-haul transportation, ensuring the safe, compliant movement of heavy plant machinery locally and across international borders. ',
-    icon: Truck,
-    process: ['Lease Application', 'Site Assessment', 'Machine Deployment', 'Operator Provision', 'Monthly Maintenance', 'Demobilization'],
-    industries: ['Road Works', 'Civil Engineering', 'Transport'],
-    benefits: ['Zero CAPEX Required', 'Maintenance Included', 'Immediate Availability'],
-    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80'
-  },
-  {
-    id: 'srv3',
     title: 'Maintenance & Repairs',
     shortDesc: 'Zero downtime strategy. Predictive analytics and emergency response teams.',
     fullDesc: 'Downtime doesn’t just slow you down, it costs millions. That’s why our maintenance services are built for rapid response and pinpoint accuracy. We offer preventive maintenance contracts (AMC- Annual Maintenance Contract) to stop failures before they happen, alongside 24/7 emergency breakdown support when they do. Our mobile workshops are fully equipped to carry out engine overhauls, hydraulic repairs, and advanced electrical diagnostics on site, reducing delays and maximizing uptime.',
@@ -1002,10 +999,81 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     process: ['Breakdown Call/Schedule', 'Mobile Team Dispatch', 'Diagnostic & Troubleshooting', 'Part Replacement', 'Testing & Calibration', 'Service Report Generation'],
     industries: ['Manufacturing', 'Construction', 'Logistics'],
     benefits: ['Extended Machine Life', 'Reduced Fuel Consumption', 'Higher Resale Value'],
-    image: 'https://images.unsplash.com/photo-1581092334651-ddf26d9a09d0?auto=format&fit=crop&w=800&q=80'
+    image: 'https://images.unsplash.com/photo-1581092334651-ddf26d9a09d0?auto=format&fit=crop&w=800&q=80',
+    requestFields: [
+      { id: 'machine_id', label: 'Machine Model/Plate', type: 'text', placeholder: 'e.g. CAT 320D / KBA 123A', required: true },
+      { id: 'issue_desc', label: 'Description of Failure', type: 'textarea', placeholder: 'Describe the breakdown or noise...', required: true },
+      { id: 'urgency', label: 'Urgency Level', type: 'select', options: ['Routine Service', 'Urgent Repair', 'Critical Breakdown'], required: true },
+      { id: 'engine_hours', label: 'Current Hours/Mileage', type: 'number', placeholder: 'e.g. 12,500 hrs', required: false }
+    ]
+  },
+
+  {
+    id: 'srv3',
+    title: 'Inspection, Purchase & Commissioning',
+    shortDesc: 'We safeguard your capital. Our engineers verify machine health, engine compression, and hydraulic efficiency.',
+    fullDesc: 'Heavy machinery isn’t a casual purchase, it’s a high-stakes investment. DAGIV becomes your technical shield. Our certified engineers carry out rigorous, multi-point inspections covering engines, hydraulic systems, electricals, and structural integrity, eliminating the risk of acquiring defective or underperforming equipment. Beyond inspection, we manage the entire procurement lifecycle; from sourcing the right equipment and verifying specifications to delivery, on-site installation, testing, and final commissioning. You get machinery that’s verified, compliant, and ready to work from day one.',
+    icon: SearchCheck,
+    process: ['Requirement Analysis', 'Global Sourcing', 'Technical Audit (Oil Analysis, Pressure Tests)', 'Purchase Negotiation', 'Logistics & Import', 'On-site Commissioning'],
+    industries: ['Construction', 'Mining', 'Agriculture'],
+    benefits: ['Risk Mitigation', 'Price Negotiation Leverage', 'Compliance with KEBS/DOSHS'],
+    image: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80',
+    requestFields: [
+      { id: 'machine_type', label: 'Target Machine Type', type: 'text', placeholder: 'e.g. Excavator, Wheel Loader', required: true },
+      { id: 'budget', label: 'Target Purchase Budget', type: 'text', placeholder: 'e.g. KES 5M - 8M (Machine Cost)', required: false },
+      { id: 'inspection_loc', label: 'Current Location (if identified)', type: 'text', placeholder: 'Where is the machine?', required: true },
+      { id: 'date', label: 'Preferred Inspection Date', type: 'date', required: true }
+    ]
   },
   {
     id: 'srv4',
+    title: 'Logistics & Leasing',
+    shortDesc: 'Move earth without moving your bank balance. Flexible leasing and heavy haulage logistics.',
+    fullDesc: 'DAGIV offers a comprehensive fleet for both short-term and long-term leasing, tailored to project-specific demands. Whether you require a 50-ton crane for a week or a fleet of tippers for a year, we deliver dependable, well-maintained equipment when and where it’s needed. Our logistics arm specializes in low-bed and heavy-haul transportation, ensuring the safe, compliant movement of heavy plant machinery locally and across international borders. ',
+    icon: Truck,
+    process: ['Lease Application', 'Site Assessment', 'Machine Deployment', 'Operator Provision', 'Monthly Maintenance', 'Demobilization'],
+    industries: ['Road Works', 'Civil Engineering', 'Transport'],
+    benefits: ['Zero CAPEX Required', 'Maintenance Included', 'Immediate Availability'],
+    image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
+    requestFields: [
+      { 
+        id: 'equipment', 
+        label: 'Equipment Needed', 
+        type: 'select', 
+        options: [
+          'Excavator (20T - 40T)', 
+          'Backhoe Loader', 
+          'Bulldozer (D6 - D9)', 
+          'Motor Grader', 
+          'Wheel Loader', 
+          'Tipper Truck / Dump Truck', 
+          'Compactor / Roller', 
+          'Mobile Crane', 
+          'Lowbed Trailer', 
+          'Water Bowser', 
+          'Fuel Tanker', 
+          'Concrete Mixer', 
+          'Generator', 
+          'Air Compressor',
+          'Forklift',
+        ], 
+        required: true 
+      },
+      { 
+        id: 'other_equipment', 
+        label: 'Specify Equipment', 
+        type: 'text', 
+        placeholder: 'Please describe the specific machinery needed...', 
+        required: false 
+      },
+      { id: 'duration', label: 'Duration', type: 'text', placeholder: 'e.g. 2 Months', required: true },
+      { id: 'site', label: 'Site Location', type: 'text', required: true },
+      { id: 'operator', label: 'Operator Required?', type: 'select', options: ['Yes (Wet Rate)', 'No (Dry Rate)'], required: true }
+    ]
+  },
+  
+  {
+    id: 'srv5',
     title: 'Welding & Fabrication',
     shortDesc: 'Industrial strength solutions. Bucket repairs, structural steel, and custom modifications.',
     fullDesc: 'From hard-facing excavator buckets to fabricating heavy-duty truck bodies, DAGIV’s metalwork division delivers precision, durability, and structural integrity. We specialize in structural steel fabrication and erection for warehouses, plants, and industrial facilities, as well as custom modifications tailored to specialized operational requirements.',
@@ -1013,6 +1081,11 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     process: ['Design & CAD Modeling', 'Material Selection', 'Cutting & Forming', 'Welding (MIG/TIG/Arc)', 'Quality Testing (NDT)', 'Finishing & Painting'],
     industries: ['Industrial', 'Mining', 'Automotive'],
     benefits: ['Custom Solutions', 'High Durability', 'Quick Turnaround'],
-    image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=800&q=80'
+    image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=800&q=80',
+    requestFields: [
+      { id: 'fab_type', label: 'Fabrication Type', type: 'select', options: ['Structural Steel', 'Bucket Repair', 'Tank Fabrication', 'Custom Modification'], required: true },
+      { id: 'material', label: 'Material Preference', type: 'text', placeholder: 'e.g. Mild Steel, Hardox, Aluminum', required: false },
+      { id: 'dimensions', label: 'Rough Dimensions/Scope', type: 'textarea', placeholder: 'Describe size or upload drawing link...', required: true }
+    ]
   }
 ];

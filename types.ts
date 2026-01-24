@@ -207,6 +207,16 @@ export interface ServiceDetail {
   industries: string[];
   benefits: string[];
   image: string;
+  requestFields: ServiceFormField[];
+}
+
+export interface ServiceFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select' | 'textarea';
+  options?: string[];
+  placeholder?: string;
+  required?: boolean;
 }
 
 export interface MaintenanceTask {
