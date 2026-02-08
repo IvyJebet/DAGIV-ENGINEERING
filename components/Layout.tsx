@@ -139,7 +139,7 @@ export const Footer: React.FC<{ setPage: (p: PageView) => void }> = ({ setPage }
             <span className="text-white font-black text-lg tracking-tight">DAGIV ENGINEERING</span>
           </div>
           <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            World's premier partner for heavy machinery reliability. Inspect. Lease. Maintain.
+            World's Mechanical partner for heavy machinery reliability. Inspect. Lease. Maintain.
           </p>
           <div className="flex space-x-4">
             {/* Social Icons (Placeholders) */}
@@ -191,13 +191,13 @@ export const Footer: React.FC<{ setPage: (p: PageView) => void }> = ({ setPage }
             <li className="flex items-center group cursor-pointer">
                 <span className="text-yellow-500 mr-3 bg-yellow-500/10 p-1 rounded">✉️</span> 
                 {/* CHANGED: group-hover:text-white -> group-hover:text-yellow-500 */}
-                <a href="mailto:info@dagiv.co.ke" className="group-hover:text-yellow-500 transition-colors">
-                    info@dagiv.co.ke
+                <a href="mailto:dagivengineering@gmail.com" className="group-hover:text-yellow-500 transition-colors">
+                    dagivengineering@gmail.com
                 </a>
             </li>
             <li className="flex items-center">
                 <span className="text-yellow-500 mr-3 bg-yellow-500/10 p-1 rounded">🕐</span> 
-                <span>Mon - Sat: 8:00 - 18:00</span>
+                <span>Mon - Sat: 8:00 - 17:00</span>
             </li>
           </ul>
         </div>

@@ -976,7 +976,7 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
     id: 'srv1',
     title: 'Computer Diagnosis',
     shortDesc: 'Advanced electronic diagnostics for heavy machinery and fleet vehicles using professional OBD2 scanners.',
-    fullDesc: 'Modern machinery relies heavily on Electronic Control Units (ECUs) to manage engine performance, transmission, safety, and emissions. Our computer diagnostic service uses professional-grade scanners such as Launch, Autel, and CAT ET to accurately read fault codes, analyze live sensor data, and perform system calibrations and resets. We diagnose issues including check engine warnings, transmission faults, ABS errors, and emission system alerts, both on-site and in the field. Each diagnosis includes a clear fault explanation, system health assessment, and a practical repair roadmap, helping you make informed decisions before costly breakdowns occur.',
+    fullDesc: 'Modern machinery relies heavily on Electronic Control Units (ECUs) to manage engine performance, transmission, safety, and emissions. Our computer diagnostic service uses professional-grade scanners such as Launch, Autel, and CAT ET to accurately read fault codes, analyze live sensor data, and perform system calibrations and resets. We diagnose issues including check engine warnings, transmission faults, ABS errors, and emission system alerts, both on-site and in our workshop garages. Each diagnosis includes a clear fault explanation, system health assessment, and a practical repair roadmap, helping you make informed decisions before costly breakdowns occur.',
     icon: Laptop,
     process: ['On-site Deployment', 'OBD2/J1939 Connection', 'Error Code Reading', 'Live Data Analysis', 'System Reset/Calibration', 'Report Generation'],
     industries: ['Automotive', 'Logistics', 'Construction'],
@@ -1010,7 +1010,7 @@ export const SERVICES_CONTENT: ServiceDetail[] = [
 
   {
     id: 'srv3',
-    title: 'Inspection, Purchase & Commissioning',
+    title: 'Pre-purchase Inspections & Commissioning',
     shortDesc: 'We safeguard your capital. Our engineers verify machine health, engine compression, and hydraulic efficiency.',
     fullDesc: 'Heavy machinery isn’t a casual purchase, it’s a high-stakes investment. DAGIV becomes your technical shield. Our certified engineers carry out rigorous, multi-point inspections covering engines, hydraulic systems, electricals, and structural integrity, eliminating the risk of acquiring defective or underperforming equipment. Beyond inspection, we manage the entire procurement lifecycle; from sourcing the right equipment and verifying specifications to delivery, on-site installation, testing, and final commissioning. You get machinery that’s verified, compliant, and ready to work from day one.',
     icon: SearchCheck,

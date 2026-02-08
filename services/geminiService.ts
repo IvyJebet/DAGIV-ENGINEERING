@@ -1,12 +1,9 @@
-// services/geminiService.ts
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-/**
- * Sends the engineering query to the secure DAGIV Backend.
- * The backend handles the actual communication with Google Gemini.
- */
 export const generateEngineeringAdvice = async (prompt: string): Promise<string> => {
   try {
-    const response = await fetch('http://localhost:8000/api/ai-consultant', {
+    // 2. Use the variable here
+    const response = await fetch(`${API_URL}/api/ai-consultant`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -19,8 +16,6 @@ export const generateEngineeringAdvice = async (prompt: string): Promise<string>
     }
 
     const data = await response.json();
-    
-    // The backend returns { status: "success", response: "..." }
     return data.response || "No response received from the engineering server.";
 
   } catch (error) {
