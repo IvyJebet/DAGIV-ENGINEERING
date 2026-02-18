@@ -337,12 +337,22 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
 
     const handleSubmitListing = async () => { 
         setLoading(true); 
+        
+        // 1. Get the Token from Storage
+        const token = localStorage.getItem('dagiv_seller_token');
+        if (!token) {
+            alert("Authentication Error: You are not logged in. Please log in to list items.");
+            setLoading(false);
+            return;
+        }
+
         const finalPrice = listingType === 'SALE' || listingType === 'PART' ? parseFloat(formData.price) : parseFloat(formData.rentDry) || 0; 
+        
         const payload = { 
             listingType, 
             title: formData.listingTitle, 
             sellerName: sellerIdentity.name, 
-            phone: sellerIdentity.phone, 
+            phone: sellerIdentity.phone, // Backend will ignore this and use the profile phone
             location: formData.city || sellerIdentity.location, 
             category: formData.category, 
             subCategory: formData.subCategory, 
@@ -352,17 +362,29 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             currency: listingType === 'RENT' ? formData.rentCurrency : formData.currency, 
             specs: { ...formData } 
         }; 
+        
         try { 
             const res = await fetch(`${API_URL}/api/marketplace/submit`, { 
                 method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // <--- CRITICAL ADDITION
+                }, 
                 body: JSON.stringify(payload) 
             }); 
+            
             if (res.ok) {
-                if (onListingComplete) onListingComplete(); // <--- TRIGGER REFRESH
+                if (onListingComplete) onListingComplete(); 
                 setStep(5); 
+            } else {
+                const err = await res.json();
+                alert(`Failed: ${err.detail || "Unknown Error"}`);
             }
-        } catch { alert("Error"); } finally { setLoading(false); } 
+        } catch { 
+            alert("Connection Error"); 
+        } finally { 
+            setLoading(false); 
+        } 
     };
 
     // --- VIEW 1: WELCOME SCREEN ---
