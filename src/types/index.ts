@@ -63,6 +63,7 @@ export interface SellerProfile {
 }
 
 export interface MarketItem {
+  sellerName: string;
   id: string;
   title: string;
   category: string;
