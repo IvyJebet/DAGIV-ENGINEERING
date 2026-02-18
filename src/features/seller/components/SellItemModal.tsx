@@ -170,12 +170,11 @@ const WORLD_CURRENCIES = [
 interface SellItemModalProps {
   onClose: () => void;
   onLoginSuccess?: (token: string) => void;
-  onListingComplete?: () => void; // <--- ADDED
+  onListingComplete?: () => void; 
   initialStage?: 'WELCOME' | 'GATE' | 'KYC_REGISTER' | 'WIZARD';
 }
 
 export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, onListingComplete, initialStage = 'WELCOME' }) => {
-    // Stages: 'WELCOME' -> 'GATE' -> 'KYC_REGISTER' -> 'WIZARD'
     const [stage, setStage] = useState<'WELCOME' | 'LOGIN' | 'GATE' | 'KYC_REGISTER' | 'WIZARD'>(initialStage);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -291,7 +290,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
     };
 
     const registerSeller = async () => {
-        // 1. Strict Validation
         if(!sellerIdentity.name || !sellerIdentity.email || !sellerIdentity.location || 
            !sellerIdentity.regNumber || !sellerIdentity.doc_primary || 
            !sellerIdentity.password || !sellerIdentity.phone) {
@@ -311,16 +309,13 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 })
             });
 
-            const data = await res.json(); // Parse response
+            const data = await res.json(); 
 
             if(res.ok) { 
                 alert("Submitted! Verification pending. Please Log In."); 
-                // Reset to Login Stage or Close
                 onClose(); 
             } else {
-                // 2. Show the ACTUAL error from the backend
                 console.error("Registration Validation Error:", data);
-                // If it's a validation error, data.detail is usually an array of errors
                 const errorMsg = Array.isArray(data.detail) 
                     ? data.detail.map((e: any) => `${e.loc.join('.')} - ${e.msg}`).join('\n')
                     : data.detail || "Registration failed";
@@ -338,7 +333,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
     const handleSubmitListing = async () => { 
         setLoading(true); 
         
-        // 1. Get the Token from Storage
         const token = localStorage.getItem('dagiv_seller_token');
         if (!token) {
             alert("Authentication Error: You are not logged in. Please log in to list items.");
@@ -352,7 +346,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             listingType, 
             title: formData.listingTitle, 
             sellerName: sellerIdentity.name, 
-            phone: sellerIdentity.phone, // Backend will ignore this and use the profile phone
+            phone: sellerIdentity.phone, 
             location: formData.city || sellerIdentity.location, 
             category: formData.category, 
             subCategory: formData.subCategory, 
@@ -368,7 +362,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 method: 'POST', 
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` // <--- CRITICAL ADDITION
+                    'Authorization': `Bearer ${token}` 
                 }, 
                 body: JSON.stringify(payload) 
             }); 
@@ -394,8 +388,8 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 <style>{`.glow-card:hover { box-shadow: 0 0 40px rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.5); }`}</style>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[600px] relative">
                     
-                    {/* NEW: Close Button */}
-                    <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
+                    {/* Fixed: Accessible name added */}
+                    <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
 
@@ -444,12 +438,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 shadow-2xl relative">
                     
-                    {/* NEW: Close Button */}
-                    <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
+                    {/* Fixed: Accessible name added */}
+                    <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
 
-                    <button onClick={() => setStage('WELCOME')} className="absolute top-4 left-4 text-slate-500 hover:text-white"><ChevronRight size={20} className="rotate-180"/></button>
+                    <button onClick={() => setStage('WELCOME')} aria-label="Go Back" className="absolute top-4 left-4 text-slate-500 hover:text-white"><ChevronRight size={20} className="rotate-180"/></button>
                     <h2 className="text-2xl font-bold text-white mb-6 text-center">Dashboard Login</h2>
                     <div className="space-y-4">
                         <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" 
@@ -466,6 +460,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                             <button 
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
                                 className="absolute right-3 top-3 text-slate-400 hover:text-white"
                             >
                                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -486,12 +481,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 text-center shadow-2xl relative">
                     
-                    {/* NEW: Close Button */}
-                    <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
+                    {/* Fixed: Accessible name added */}
+                    <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
 
-                    <button onClick={() => setStage('WELCOME')} className="absolute top-4 left-4 text-slate-500"><ChevronRight size={20} className="rotate-180"/></button>
+                    <button onClick={() => setStage('WELCOME')} aria-label="Go Back" className="absolute top-4 left-4 text-slate-500"><ChevronRight size={20} className="rotate-180"/></button>
                     <h2 className="text-2xl font-bold text-white mb-2">Seller Identification</h2>
                     <input className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white text-center text-lg font-bold tracking-widest mb-4 mt-6" placeholder="07XX XXX XXX" value={sellerIdentity.phone} onChange={(e) => setSellerIdentity({...sellerIdentity, phone: e.target.value})} />
                     <button onClick={checkSeller} disabled={loading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded-lg hover:bg-yellow-400 flex items-center justify-center">{loading ? <RefreshCw className="animate-spin mr-2"/> : "Continue"}</button>
@@ -506,10 +501,10 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[90vh]">
                     
-                    {/* NEW: Close Button (Header) */}
+                    {/* Fixed: Accessible name added */}
                     <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
                         <div><h2 className="text-xl font-bold text-white">Seller Verification</h2><p className="text-xs text-slate-400">Step 1 of 1: Identity Proof</p></div>
-                        <button onClick={onClose} className="p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors"><X size={20}/></button>
+                        <button onClick={onClose} aria-label="Close Modal" className="p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors"><X size={20}/></button>
                     </div>
 
                     <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
@@ -527,14 +522,13 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                 <p className="text-xs text-slate-500">For private owners/brokers.</p>
                             </button>
                         </div>
-                        {/* ... KYC Form Inputs (Names, Emails, Uploads) ... */}
+                        
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} onChange={e => setSellerIdentity({...sellerIdentity, name: e.target.value})} />
                                 <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" onChange={e => setSellerIdentity({...sellerIdentity, email: e.target.value})} />
                             </div>
 
-                            {/* Added Password Field for Registration */}
                             <div className="relative">
                                 <input 
                                     type={showPassword ? "text" : "password"}
@@ -546,6 +540,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                 <button 
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
                                     className="absolute right-3 top-3 text-slate-400 hover:text-white"
                                 >
                                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -554,7 +549,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
 
                             <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Physical Address / Yard Location" onChange={e => setSellerIdentity({...sellerIdentity, location: e.target.value})} />
                             
-                            {/* Upload Buttons Block */}
                             <div className="bg-slate-800/50 p-4 rounded border border-slate-700 mt-6">
                                 <h4 className="text-white font-bold text-sm mb-4 flex items-center"><FileCheck size={16} className="mr-2 text-green-500"/> Required Documents</h4>
                                 <div className="space-y-4">
@@ -612,7 +606,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                     {/* Header */}
                     <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
                         <div className="flex items-center gap-2"><BadgeCheck size={18} className="text-green-500"/><span className="text-white font-bold">New Listing</span></div>
-                        <button onClick={onClose}><X className="text-slate-500 hover:text-white"/></button>
+                        <button onClick={onClose} aria-label="Close Modal"><X className="text-slate-500 hover:text-white"/></button>
                     </div>
 
                     <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
@@ -650,6 +644,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     <div>
                                         <label className="text-xs text-slate-500 font-bold block mb-1">Listing Title *</label>
                                         <input 
+                                            aria-label="Listing Title"
                                             className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg focus:border-yellow-500" 
                                             placeholder={listingType === 'PART' ? "e.g. Caterpillar 320D Hydraulic Pump" : "e.g. Komatsu PC200-8 Excavator"} 
                                             value={formData.listingTitle} 
@@ -660,13 +655,13 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
                                             <label className="text-xs text-slate-500 font-bold block mb-1">Category</label>
-                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                            <select aria-label="Category" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                                                 {categories.map(c => <option key={c}>{c}</option>)}
                                             </select>
                                         </div>
                                         <div>
                                             <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Component Type' : 'Machine Type'}</label>
-                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
+                                            <select aria-label="Sub Category" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
                                                 <option value="">Select...</option>
                                                 {subCategories.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
                                             </select>
@@ -676,17 +671,17 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
                                             <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Manufacturer' : 'Brand'}</label>
-                                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Caterpillar" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} />
+                                            <input aria-label="Brand" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Caterpillar" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} />
                                         </div>
                                         {listingType === 'PART' ? (
                                             <div>
                                                 <label className="text-xs text-slate-500 font-bold block mb-1">Part Number (OEM)</label>
-                                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono" placeholder="e.g. 1U3352" value={formData.partNumber} onChange={e => setFormData({...formData, partNumber: e.target.value})} />
+                                                <input aria-label="Part Number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono" placeholder="e.g. 1U3352" value={formData.partNumber} onChange={e => setFormData({...formData, partNumber: e.target.value})} />
                                             </div>
                                         ) : (
                                             <div>
                                                 <label className="text-xs text-slate-500 font-bold block mb-1">Model</label>
-                                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 320D GC" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} />
+                                                <input aria-label="Model" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 320D GC" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} />
                                             </div>
                                         )}
                                     </div>
@@ -696,13 +691,13 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                         <div className="grid grid-cols-2 gap-6">
                                             <div>
                                                 <label className="text-xs text-slate-500 font-bold block mb-1">Year of Manufacture</label>
-                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.yom} onChange={e => setFormData({...formData, yom: e.target.value})}>
+                                                <select aria-label="Year of Manufacture" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.yom} onChange={e => setFormData({...formData, yom: e.target.value})}>
                                                     <option value="">Select Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                                                 </select>
                                             </div>
                                             <div>
                                                 <label className="text-xs text-slate-500 font-bold block mb-1">Condition</label>
-                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
+                                                <select aria-label="Condition" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
                                                     {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                             </div>
@@ -712,11 +707,11 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                         <div className="grid grid-cols-2 gap-6">
                                             <div>
                                                 <label className="text-xs text-slate-500 font-bold block mb-1">Compatible Machine Models</label>
-                                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. CAT 320D, 325D" value={formData.applicableModels} onChange={e => setFormData({...formData, applicableModels: e.target.value})} />
+                                                <input aria-label="Compatible Models" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. CAT 320D, 325D" value={formData.applicableModels} onChange={e => setFormData({...formData, applicableModels: e.target.value})} />
                                             </div>
                                             <div>
                                                 <label className="text-xs text-slate-500 font-bold block mb-1">Part Condition</label>
-                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
+                                                <select aria-label="Part Condition" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
                                                     {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                             </div>
@@ -728,13 +723,13 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                 <div className="pt-4 border-t border-slate-800">
                                     <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><MapPin size={16} className="mr-2"/> Location</h4>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs text-slate-500 block mb-1">Country</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Kenya" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">Region / State</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi County" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">City / Town</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">{listingType === 'RENT' ? 'Pickup Location' : 'Specific Address'}</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Industrial Area, Road A" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Country</label><input aria-label="Country" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Kenya" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Region / State</label><input aria-label="Region" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi County" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">City / Town</label><input aria-label="City" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">{listingType === 'RENT' ? 'Pickup Location' : 'Specific Address'}</label><input aria-label="Address" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Industrial Area, Road A" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
                                     </div>
                                     {listingType === 'RENT' && (
-                                        <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Availability Start Date</label><input type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.availabilityDate} onChange={e => setFormData({...formData, availabilityDate: e.target.value})} /></div>
+                                        <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Availability Start Date</label><input aria-label="Availability Date" type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.availabilityDate} onChange={e => setFormData({...formData, availabilityDate: e.target.value})} /></div>
                                     )}
                                 </div>
                             </div>
@@ -754,6 +749,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                                 <div className="w-1/3">
                                                     <label className="text-xs text-slate-500 block mb-1">Currency</label>
                                                     <select 
+                                                        aria-label="Currency"
                                                         className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold custom-select" 
                                                         value={formData.currency} 
                                                         onChange={e => setFormData({...formData, currency: e.target.value})}
@@ -763,7 +759,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                                 </div>
                                                 <div className="flex-1">
                                                     <label className="text-xs text-slate-500 block mb-1">Selling Price</label>
-                                                    <input type="number" disabled={formData.priceOnRequest} className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold text-lg disabled:opacity-50" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                                                    <input aria-label="Selling Price" type="number" disabled={formData.priceOnRequest} className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold text-lg disabled:opacity-50" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
                                                 </div>
                                             </div>
                                             <div className="flex items-center">
@@ -779,34 +775,36 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                                     <label className="text-xs text-slate-400 block mb-1">Dry Rate (Machine Only)</label>
                                                     <div className="flex gap-2">
                                                         <select 
+                                                            aria-label="Rent Currency Dry"
                                                             className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" 
                                                             value={formData.rentCurrency} 
                                                             onChange={e => setFormData({...formData, rentCurrency: e.target.value})}
                                                         >
                                                             {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                                         </select>
-                                                        <input type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
-                                                        <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                        <input aria-label="Rent Rate Dry" type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
+                                                        <select aria-label="Rent Period Dry" className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <label className="text-xs text-slate-400 block mb-1">Wet Rate (With Operator/Fuel)</label>
                                                     <div className="flex gap-2">
                                                         <select 
+                                                            aria-label="Rent Currency Wet"
                                                             className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" 
                                                             value={formData.rentCurrency} 
                                                             onChange={e => setFormData({...formData, rentCurrency: e.target.value})}
                                                         >
                                                             {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
                                                         </select>
-                                                        <input type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
-                                                        <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                        <input aria-label="Rent Rate Wet" type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
+                                                        <select aria-label="Rent Period Wet" className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div>
                                                 <label className="text-xs text-slate-500 block mb-1">Additional Cost Terms</label>
-                                                <input className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white text-sm" placeholder="e.g. Mobilization fee, min hours per day..." value={formData.additionalCostTerms} onChange={e => setFormData({...formData, additionalCostTerms: e.target.value})} />
+                                                <input aria-label="Additional Cost Terms" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white text-sm" placeholder="e.g. Mobilization fee, min hours per day..." value={formData.additionalCostTerms} onChange={e => setFormData({...formData, additionalCostTerms: e.target.value})} />
                                             </div>
                                         </div>
                                     )}
@@ -818,31 +816,31 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     
                                     {listingType === 'PART' ? (
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
-                                            <div><label className="text-xs text-slate-500 block mb-1">Dimensions (L x W x H)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 50x30x20 cm" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input aria-label="Weight" type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Dimensions (L x W x H)</label><input aria-label="Dimensions" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 50x30x20 cm" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} /></div>
                                         </div>
                                     ) : (
                                         <>
                                             {/* Engine & Power */}
                                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                                <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Power</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="kW / HP" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Fuel Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}><option>Diesel</option><option>Petrol</option><option>Electric</option></select></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Emission</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.emissionStandard} onChange={e => setFormData({...formData, emissionStandard: e.target.value})}><option value="">Standard</option><option>Euro 3</option><option>Euro 4</option><option>Euro 5</option><option>Tier 4F</option></select></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input aria-label="Engine Brand" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Power</label><input aria-label="Engine Power" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="kW / HP" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Fuel Type</label><select aria-label="Fuel Type" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}><option>Diesel</option><option>Petrol</option><option>Electric</option></select></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Emission</label><select aria-label="Emission Standard" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.emissionStandard} onChange={e => setFormData({...formData, emissionStandard: e.target.value})}><option value="">Standard</option><option>Euro 3</option><option>Euro 4</option><option>Euro 5</option><option>Tier 4F</option></select></div>
                                             </div>
 
                                             {/* Usage & Dimensions */}
                                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
                                                 <div className="col-span-2 flex gap-2">
-                                                    <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage / Mileage</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
-                                                    <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
+                                                    <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage / Mileage</label><input aria-label="Usage" type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
+                                                    <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label><select aria-label="Usage Unit" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
                                                 </div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Axles / Tracks</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Config" value={formData.axles} onChange={e => setFormData({...formData, axles: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label><input aria-label="Net Weight" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Axles / Tracks</label><input aria-label="Axles Tracks" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Config" value={formData.axles} onChange={e => setFormData({...formData, axles: e.target.value})} /></div>
                                             </div>
 
                                             {/* Performance */}
-                                            <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Performance Specs</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Dig Depth: 6m, Lift: 4T, Bucket Cap: 1.2m3" value={formData.performanceSpecs} onChange={e => setFormData({...formData, performanceSpecs: e.target.value})} /></div>
+                                            <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Performance Specs</label><input aria-label="Performance Specs" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Dig Depth: 6m, Lift: 4T, Bucket Cap: 1.2m3" value={formData.performanceSpecs} onChange={e => setFormData({...formData, performanceSpecs: e.target.value})} /></div>
                                         </>
                                     )}
                                 </div>
@@ -865,7 +863,8 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                                 <span className="text-white font-bold text-sm block">Upload Photos *</span>
                                                 <span className="text-xs text-slate-500">Min 1 required. Max 10.</span>
                                             </label>
-                                            {formData.images.length > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{formData.images.slice(0,4).map((src, i) => <div key={i} className="h-12 bg-cover rounded border border-slate-700" style={{backgroundImage: `url(${src})`}}></div>)}</div>}
+                                            {/* Fixed: Replaced inline style div with img tag */}
+                                            {formData.images.length > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{formData.images.slice(0,4).map((src, i) => <img key={i} src={src} alt={`Uploaded ${i}`} className="h-12 w-full object-cover rounded border border-slate-700" />)}</div>}
                                         </div>
                                         {/* Videos */}
                                         <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
@@ -898,21 +897,21 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     <h4 className="text-white font-bold mb-4 flex items-center"><List className="mr-2 text-green-500"/> Additional Details</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                                         {listingType === 'PART' ? (
-                                            <div><label className="text-xs text-slate-500 block mb-1">Shipping / Packaging Info</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.shippingInfo} onChange={e => setFormData({...formData, shippingInfo: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Shipping / Packaging Info</label><input aria-label="Shipping Info" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.shippingInfo} onChange={e => setFormData({...formData, shippingInfo: e.target.value})} /></div>
                                         ) : (
                                             <>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Warranty Details</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 6 Months Dealer" value={formData.warrantyDetails} onChange={e => setFormData({...formData, warrantyDetails: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Original Paint?</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.originalPaint} onChange={e => setFormData({...formData, originalPaint: e.target.value})}><option>Yes</option><option>No</option></select></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Warranty Details</label><input aria-label="Warranty Details" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 6 Months Dealer" value={formData.warrantyDetails} onChange={e => setFormData({...formData, warrantyDetails: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Original Paint?</label><select aria-label="Original Paint" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.originalPaint} onChange={e => setFormData({...formData, originalPaint: e.target.value})}><option>Yes</option><option>No</option></select></div>
                                             </>
                                         )}
                                     </div>
                                     <div className="mb-4">
                                          <label className="text-xs text-slate-500 block mb-1">Seller Terms / Remarks</label>
-                                         <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Sold as is, Buyer arranges transport" value={formData.sellerTerms} onChange={e => setFormData({...formData, sellerTerms: e.target.value})} />
+                                         <input aria-label="Seller Terms" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Sold as is, Buyer arranges transport" value={formData.sellerTerms} onChange={e => setFormData({...formData, sellerTerms: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="text-xs text-slate-500 block mb-1">Detailed Description</label>
-                                        <textarea className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white h-32" placeholder="Mention specific condition, recent repairs, or included attachments..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                                        <textarea aria-label="Description" className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white h-32" placeholder="Mention specific condition, recent repairs, or included attachments..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
                                     </div>
                                 </div>
                             </div>
