@@ -1,31 +1,65 @@
 import React, { useState } from 'react';
-import { ShoppingCart, ShieldCheck, X, Check, Phone, Building2, Lock, RefreshCw, CheckCircle, Clock } from 'lucide-react';
-import { MarketItem } from '@/types';
+import { 
+  ShoppingCart, ShieldCheck, X, Check, CheckCircle, 
+  Phone, Building2, Lock, Clock, RefreshCw 
+} from 'lucide-react';
+import { MarketItem } from '../../../types';
 
-interface SecureCheckoutModalProps {
-  item: MarketItem;
-  onClose: () => void;
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, onClose }) => {
-    const [step, setStep] = useState(1);
+export const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClose: () => void }) => {
+    const [step, setStep] = useState(1); // 1: Review, 2: Details, 3: Payment, 4: Success
     const [loading, setLoading] = useState(false);
     const [rentalDuration, setRentalDuration] = useState<number>(1);
+    const [paymentMethod, setPaymentMethod] = useState<'MPESA' | 'BANK'>('MPESA');
     
     // Order Calculation
     const isRental = item.listingType === 'Rent';
     const basePrice = isRental ? (item.price * rentalDuration) : item.price;
-    const taxRate = 0.16;
+    const taxRate = 0.16; // 16% VAT
     const logisticsCost = item.deliveryOptions === 'Nationwide Delivery' ? 15000 : 0;
     const subTotal = basePrice;
     const total = subTotal + (subTotal * taxRate) + logisticsCost;
 
-    const handleConfirm = () => {
+    const handleConfirmOrder = async () => {
+        const token = localStorage.getItem('dagiv_seller_token'); // Or buyer token
+        if (!token) {
+            alert("Please log in to complete your purchase.");
+            return;
+        }
+
         setLoading(true);
-        setTimeout(() => {
+        try {
+            const payload = {
+                listing_id: item.id,
+                quantity: 1,
+                payment_method: paymentMethod,
+                duration: isRental ? rentalDuration : 0,
+                shipping_cost: logisticsCost
+            };
+
+            const res = await fetch(`${API_URL}/api/orders/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            
+            if (res.ok) {
+                setStep(4); // Success screen
+            } else {
+                alert(data.detail || "Order failed. Please try again.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Connection error. Is the server running?");
+        } finally {
             setLoading(false);
-            setStep(4);
-        }, 2000);
+        }
     };
 
     return (
@@ -37,7 +71,7 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                     <h3 className="text-white font-bold text-lg mb-6 flex items-center"><ShoppingCart className="mr-2 text-yellow-500"/> Order Summary</h3>
                     
                     <div className="flex gap-4 mb-6">
-                        <img src={item.images[0]} className="w-20 h-20 object-cover rounded border border-slate-800" alt="product"/>
+                        <img src={item.images[0]} className="w-20 h-20 object-cover rounded border border-slate-800"/>
                         <div>
                             <div className="text-xs text-slate-500 uppercase">{item.brand}</div>
                             <div className="text-sm font-bold text-white line-clamp-2">{item.title}</div>
@@ -69,6 +103,7 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                 <div className="w-full md:w-2/3 p-8 bg-slate-900 relative flex flex-col">
                     <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X/></button>
                     
+                    {/* Steps Header */}
                     <div className="flex mb-8 gap-4 border-b border-slate-800 pb-4">
                         {['Review', 'Details', 'Payment', 'Done'].map((s, i) => (
                             <div key={s} className={`flex items-center text-sm font-bold ${step === i + 1 ? 'text-yellow-500' : step > i + 1 ? 'text-green-500' : 'text-slate-600'}`}>
@@ -80,8 +115,8 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                         ))}
                     </div>
 
+                    {/* Step Content */}
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
-                        {/* Step 1: Review */}
                         {step === 1 && (
                             <div className="space-y-6 animate-in fade-in">
                                 <h2 className="text-2xl font-bold text-white">Review Order</h2>
@@ -115,7 +150,6 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                             </div>
                         )}
 
-                        {/* Step 2: Details */}
                         {step === 2 && (
                             <div className="space-y-4 animate-in slide-in-from-right-8">
                                 <h2 className="text-2xl font-bold text-white">Buyer Details</h2>
@@ -133,21 +167,24 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                             </div>
                         )}
 
-                        {/* Step 3: Payment */}
                         {step === 3 && (
                             <div className="space-y-6 animate-in slide-in-from-right-8">
                                 <h2 className="text-2xl font-bold text-white">Secure Payment</h2>
                                 <div className="space-y-3">
-                                    <label className="flex items-center justify-between p-4 bg-slate-950 border border-yellow-500 rounded cursor-pointer relative overflow-hidden">
+                                    <label onClick={() => setPaymentMethod('MPESA')} className={`flex items-center justify-between p-4 bg-slate-950 border rounded cursor-pointer relative overflow-hidden transition-all ${paymentMethod === 'MPESA' ? 'border-yellow-500' : 'border-slate-800 hover:border-slate-600'}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-5 h-5 rounded-full border-2 border-yellow-500 flex items-center justify-center"><div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div></div>
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'MPESA' ? 'border-yellow-500' : 'border-slate-600'}`}>
+                                                {paymentMethod === 'MPESA' && <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>}
+                                            </div>
                                             <div><div className="font-bold text-white">M-Pesa / Mobile Money</div><div className="text-xs text-slate-400">Instant Escrow Deposit</div></div>
                                         </div>
                                         <Phone className="text-slate-500"/>
                                     </label>
-                                    <label className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded cursor-pointer hover:border-slate-600">
+                                    <label onClick={() => setPaymentMethod('BANK')} className={`flex items-center justify-between p-4 bg-slate-950 border rounded cursor-pointer relative overflow-hidden transition-all ${paymentMethod === 'BANK' ? 'border-yellow-500' : 'border-slate-800 hover:border-slate-600'}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-5 h-5 rounded-fullQX border-2 border-slate-600"></div>
+                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'BANK' ? 'border-yellow-500' : 'border-slate-600'}`}>
+                                                {paymentMethod === 'BANK' && <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>}
+                                            </div>
                                             <div><div className="font-bold text-white">Bank Transfer (EFT/RTGS)</div><div className="text-xs text-slate-400">KCB, Equity, StanChart</div></div>
                                         </div>
                                         <Building2 className="text-slate-500"/>
@@ -158,7 +195,7 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                                 </div>
                                 <div className="flex gap-4 mt-8">
                                     <button onClick={() => setStep(2)} className="px-6 py-3 rounded text-slate-400 font-bold hover:bg-slate-800">Back</button>
-                                    <button onClick={handleConfirm} disabled={loading} className="px-6 py-3 bg-green-600 text-white font-boldPc rounded hover:bg-green-500 flex-1 flex items-center justify-center">
+                                    <button onClick={handleConfirmOrder} disabled={loading} className="px-6 py-3 bg-green-600 text-white font-bold rounded hover:bg-green-500 flex-1 flex items-center justify-center">
                                         {loading ? <RefreshCw className="animate-spin mr-2"/> : <Lock className="mr-2" size={18}/>} 
                                         {item.listingType === 'Sale' ? 'Pay & Secure Item' : 'Pay Deposit'}
                                     </button>
@@ -166,18 +203,17 @@ export const SecureCheckoutModal: React.FC<SecureCheckoutModalProps> = ({ item, 
                             </div>
                         )}
 
-                        {/* Step 4: Success */}
                         {step === 4 && (
                             <div className="text-center py-10 animate-in zoom-in-95">
                                 <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]"><CheckCircle size={40} className="text-white"/></div>
                                 <h2 className="text-3xl font-bold text-white mb-2">Order Confirmed!</h2>
-                                <p className="text-slate-400 mb-8">Order #DGV-{Math.floor(Math.random()*100000)}<br/>A confirmation email has been sent to you.</p>
-                                <div className="bg-slate-900 p-6 rounded border border-slate-800 text-left max-w-sm mx-auto mb-8">
+                                <p className="text-slate-400 mb-8">Status: <span className="text-yellow-500 font-bold">PENDING PAYMENT</span>.<br/>Check your email for payment instructions.</p>
+                                <div className="bg-slate-950 p-6 rounded border border-slate-800 text-left max-w-sm mx-auto mb-8">
                                     <h4 className="text-yellow-500 font-bold text-xs uppercase mb-2">Next Steps</h4>
                                     <ul className="text-sm text-slate-300 space-y-2">
-                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Funds secured in Escrow.</li>
-                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Seller notified to prepare item.</li>
-                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> {item.listingType === 'Sale' ? 'Engineer assigned for inspection.' : 'Logistics team coordinating pickup.'}</li>
+                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Order created in system.</li>
+                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Proceed to make payment.</li>
+                                        <li className="flex gap-2"><Check size={14} className="mt-1 text-green-500"/> Logistics team will contact you.</li>
                                     </ul>
                                 </div>
                                 <button onClick={onClose} className="px-8 py-3 bg-slate-800 text-white font-bold rounded hover:bg-slate-700 border border-slate-600">Return to Marketplace</button>

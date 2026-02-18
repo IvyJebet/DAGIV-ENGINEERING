@@ -1,5 +1,5 @@
 // constants.ts
-import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from './types';
+import { EquipmentItem, SparePart, ProfessionalProfile, ServiceDetail, MarketItem, SellerProfile } from '@/types/index';
 import { SearchCheck, Truck, Wrench, Flame, Laptop, ScanLineIcon} from 'lucide-react';
 
 // constants.ts

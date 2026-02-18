@@ -18,9 +18,9 @@ import { ERPDashboard } from '@/features/fleet/components/ERPDashboard';
 import { OperatorPortal } from '@/features/fleet/components/OperatorPortal';
 
 // Types
-import { OperatorLog } from '@/types';
+import { OperatorLog, PageView } from '@/types'; // Added PageView for compatibility
 
-// Mock Data (Ideally move to a separate mock file later)
+// Mock Data
 const INITIAL_LOGS: OperatorLog[] = [
     {
         id: 'LOG-1002', machineId: 'e1', operatorName: 'John Kamau', date: '2023-10-25',
@@ -74,7 +74,10 @@ const AppContent = () => {
   };
 
   // Mock function to satisfy legacy prop requirements until full refactor
-  const setPageMock = () => {}; 
+  const setPageMock = (p: PageView) => {
+      // Basic routing mapping for legacy components that might emit setPage
+      console.log("Legacy navigation requested:", p);
+  }; 
 
   // --- UPDATED: Inspection Mode with onClose ---
   if (inspectionMode) {
@@ -93,6 +96,7 @@ const AppContent = () => {
           <Route path="/" element={
             <HomePage setPage={setPageMock} onBookInspection={() => setInspectionMode(true)} onSellClick={handleSellClick} />
           } />
+          {/* UPDATED: Marketplace now receives real API logic via the Component itself */}
           <Route path="/marketplace" element={
             <MarketplaceLayout mode="BUY" setPage={setPageMock} onSellClick={handleSellClick} isSpareParts={false} />
           } />

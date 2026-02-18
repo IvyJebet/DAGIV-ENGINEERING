@@ -4,19 +4,177 @@ import {
   DollarSign, Camera, Video, FileText, UploadCloud, 
   Check, List, ShieldCheck, RefreshCw, ChevronRight, 
   User, Building2, FileCheck, 
-  CheckCircle
+  CheckCircle, Eye, EyeOff 
 } from 'lucide-react';
 import { CATEGORY_STRUCTURE } from '@/config/constants';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+const WORLD_CURRENCIES = [
+    { code: "USD", name: "United States Dollar" },
+    { code: "KES", name: "Kenyan Shilling" },
+    { code: "EUR", name: "Euro" },
+    { code: "GBP", name: "British Pound Sterling" },
+    { code: "AED", name: "United Arab Emirates Dirham" },
+    { code: "AFN", name: "Afghan Afghani" },
+    { code: "ALL", name: "Albanian Lek" },
+    { code: "AMD", name: "Armenian Dram" },
+    { code: "ANG", name: "Netherlands Antillean Guilder" },
+    { code: "AOA", name: "Angolan Kwanza" },
+    { code: "ARS", name: "Argentine Peso" },
+    { code: "AUD", name: "Australian Dollar" },
+    { code: "AWG", name: "Aruban Florin" },
+    { code: "AZN", name: "Azerbaijani Manat" },
+    { code: "BAM", name: "Bosnia-Herzegovina Mark" },
+    { code: "BBD", name: "Barbadian Dollar" },
+    { code: "BDT", name: "Bangladeshi Taka" },
+    { code: "BGN", name: "Bulgarian Lev" },
+    { code: "BHD", name: "Bahraini Dinar" },
+    { code: "BIF", name: "Burundian Franc" },
+    { code: "BMD", name: "Bermudan Dollar" },
+    { code: "BND", name: "Brunei Dollar" },
+    { code: "BOB", name: "Bolivian Boliviano" },
+    { code: "BRL", name: "Brazilian Real" },
+    { code: "BSD", name: "Bahamian Dollar" },
+    { code: "BTN", name: "Bhutanese Ngultrum" },
+    { code: "BWP", name: "Botswanan Pula" },
+    { code: "BYN", name: "Belarusian Ruble" },
+    { code: "BZD", name: "Belize Dollar" },
+    { code: "CAD", name: "Canadian Dollar" },
+    { code: "CDF", name: "Congolese Franc" },
+    { code: "CHF", name: "Swiss Franc" },
+    { code: "CLP", name: "Chilean Peso" },
+    { code: "CNY", name: "Chinese Yuan" },
+    { code: "COP", name: "Colombian Peso" },
+    { code: "CRC", name: "Costa Rican Colón" },
+    { code: "CUP", name: "Cuban Peso" },
+    { code: "CVE", name: "Cape Verdean Escudo" },
+    { code: "CZK", name: "Czech Republic Koruna" },
+    { code: "DJF", name: "Djiboutian Franc" },
+    { code: "DKK", name: "Danish Krone" },
+    { code: "DOP", name: "Dominican Peso" },
+    { code: "DZD", name: "Algerian Dinar" },
+    { code: "EGP", name: "Egyptian Pound" },
+    { code: "ERN", name: "Eritrean Nakfa" },
+    { code: "ETB", name: "Ethiopian Birr" },
+    { code: "FJD", name: "Fijian Dollar" },
+    { code: "FKP", name: "Falkland Islands Pound" },
+    { code: "GEL", name: "Georgian Lari" },
+    { code: "GHS", name: "Ghanaian Cedi" },
+    { code: "GIP", name: "Gibraltar Pound" },
+    { code: "GMD", name: "Gambian Dalasi" },
+    { code: "GNF", name: "Guinean Franc" },
+    { code: "GTQ", name: "Guatemalan Quetzal" },
+    { code: "GYD", name: "Guyanaese Dollar" },
+    { code: "HKD", name: "Hong Kong Dollar" },
+    { code: "HNL", name: "Honduran Lempira" },
+    { code: "HRK", name: "Croatian Kuna" },
+    { code: "HTG", name: "Haitian Gourde" },
+    { code: "HUF", name: "Hungarian Forint" },
+    { code: "IDR", name: "Indonesian Rupiah" },
+    { code: "ILS", name: "Israeli New Sheqel" },
+    { code: "INR", name: "Indian Rupee" },
+    { code: "IQD", name: "Iraqi Dinar" },
+    { code: "IRR", name: "Iranian Rial" },
+    { code: "ISK", name: "Icelandic Króna" },
+    { code: "JMD", name: "Jamaican Dollar" },
+    { code: "JOD", name: "Jordanian Dinar" },
+    { code: "JPY", name: "Japanese Yen" },
+    { code: "KGS", name: "Kyrgystani Som" },
+    { code: "KHR", name: "Cambodian Riel" },
+    { code: "KMF", name: "Comorian Franc" },
+    { code: "KPW", name: "North Korean Won" },
+    { code: "KRW", name: "South Korean Won" },
+    { code: "KWD", name: "Kuwaiti Dinar" },
+    { code: "KYD", name: "Cayman Islands Dollar" },
+    { code: "KZT", name: "Kazakhstani Tenge" },
+    { code: "LAK", name: "Laotian Kip" },
+    { code: "LBP", name: "Lebanese Pound" },
+    { code: "LKR", name: "Sri Lankan Rupee" },
+    { code: "LRD", name: "Liberian Dollar" },
+    { code: "LSL", name: "Lesotho Loti" },
+    { code: "LYD", name: "Libyan Dinar" },
+    { code: "MAD", name: "Moroccan Dirham" },
+    { code: "MDL", name: "Moldovan Leu" },
+    { code: "MGA", name: "Malagasy Ariary" },
+    { code: "MKD", name: "Macedonian Denar" },
+    { code: "MMK", name: "Myanma Kyat" },
+    { code: "MNT", name: "Mongolian Tugrik" },
+    { code: "MOP", name: "Macanese Pataca" },
+    { code: "MRU", name: "Mauritanian Ouguiya" },
+    { code: "MUR", name: "Mauritian Rupee" },
+    { code: "MVR", name: "Maldivian Rufiyaa" },
+    { code: "MWK", name: "Malawian Kwacha" },
+    { code: "MXN", name: "Mexican Peso" },
+    { code: "MYR", name: "Malaysian Ringgit" },
+    { code: "MZN", name: "Mozambican Metical" },
+    { code: "NAD", name: "Namibian Dollar" },
+    { code: "NGN", name: "Nigerian Naira" },
+    { code: "NIO", name: "Nicaraguan Córdoba" },
+    { code: "NOK", name: "Norwegian Krone" },
+    { code: "NPR", name: "Nepalese Rupee" },
+    { code: "NZD", name: "New Zealand Dollar" },
+    { code: "OMR", name: "Omani Rial" },
+    { code: "PAB", name: "Panamanian Balboa" },
+    { code: "PEN", name: "Peruvian Nuevo Sol" },
+    { code: "PGK", name: "Papua New Guinean Kina" },
+    { code: "PHP", name: "Philippine Peso" },
+    { code: "PKR", name: "Pakistani Rupee" },
+    { code: "PLN", name: "Polish Zloty" },
+    { code: "PYG", name: "Paraguayan Guarani" },
+    { code: "QAR", name: "Qatari Rial" },
+    { code: "RON", name: "Romanian Leu" },
+    { code: "RSD", name: "Serbian Dinar" },
+    { code: "RUB", name: "Russian Ruble" },
+    { code: "RWF", name: "Rwandan Franc" },
+    { code: "SAR", name: "Saudi Riyal" },
+    { code: "SBD", name: "Solomon Islands Dollar" },
+    { code: "SCR", name: "Seychellois Rupee" },
+    { code: "SDG", name: "Sudanese Pound" },
+    { code: "SEK", name: "Swedish Krona" },
+    { code: "SGD", name: "Singapore Dollar" },
+    { code: "SHP", name: "Saint Helena Pound" },
+    { code: "SLL", name: "Sierra Leonean Leone" },
+    { code: "SOS", name: "Somali Shilling" },
+    { code: "SRD", name: "Surinamese Dollar" },
+    { code: "STN", name: "São Tomé and Príncipe Dobra" },
+    { code: "SYP", name: "Syrian Pound" },
+    { code: "SZL", name: "Swazi Lilangeni" },
+    { code: "THB", name: "Thai Baht" },
+    { code: "TJS", name: "Tajikistani Somoni" },
+    { code: "TMT", name: "Turkmenistani Manat" },
+    { code: "TND", name: "Tunisian Dinar" },
+    { code: "TOP", name: "Tongan Pa'anga" },
+    { code: "TRY", name: "Turkish Lira" },
+    { code: "TTD", name: "Trinidad and Tobago Dollar" },
+    { code: "TWD", name: "New Taiwan Dollar" },
+    { code: "TZS", name: "Tanzanian Shilling" },
+    { code: "UAH", name: "Ukrainian Hryvnia" },
+    { code: "UGX", name: "Ugandan Shilling" },
+    { code: "UYU", name: "Uruguayan Peso" },
+    { code: "UZS", name: "Uzbekistan Som" },
+    { code: "VES", name: "Venezuelan Bolívar" },
+    { code: "VND", name: "Vietnamese Dong" },
+    { code: "VUV", name: "Vanuatu Vatu" },
+    { code: "WST", name: "Samoan Tala" },
+    { code: "XAF", name: "CFA Franc BEAC" },
+    { code: "XCD", name: "East Caribbean Dollar" },
+    { code: "XOF", name: "CFA Franc BCEAO" },
+    { code: "XPF", name: "CFP Franc" },
+    { code: "YER", name: "Yemeni Rial" },
+    { code: "ZAR", name: "South African Rand" },
+    { code: "ZMW", name: "Zambian Kwacha" },
+    { code: "ZWL", name: "Zimbabwean Dollar" }
+];
+
 interface SellItemModalProps {
   onClose: () => void;
-  onLoginSuccess: (token: string) => void;
+  onLoginSuccess?: (token: string) => void;
+  onListingComplete?: () => void; // <--- ADDED
   initialStage?: 'WELCOME' | 'GATE' | 'KYC_REGISTER' | 'WIZARD';
 }
 
-export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, initialStage = 'WELCOME' }) => {
+export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, onListingComplete, initialStage = 'WELCOME' }) => {
     // Stages: 'WELCOME' -> 'GATE' -> 'KYC_REGISTER' -> 'WIZARD'
     const [stage, setStage] = useState<'WELCOME' | 'LOGIN' | 'GATE' | 'KYC_REGISTER' | 'WIZARD'>(initialStage);
     const [step, setStep] = useState(1);
@@ -24,6 +182,9 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
     
     // Auth State for Login
     const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+
+    // State for Password Visibility
+    const [showPassword, setShowPassword] = useState(false); 
 
     // File Input References
     const docPrimaryRef = useRef<HTMLInputElement>(null);
@@ -33,7 +194,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
     const mediaDocRef = useRef<HTMLInputElement>(null);
     
     // Constants
-    const CURRENCIES = ["KES", "USD", "EUR", "GBP", "AED"].sort();
     const YEARS = Array.from({length: 37}, (_, i) => (2026 - i).toString());
     const USAGE_UNITS = ["Hours", "Km", "Miles"];
     const RENT_PERIODS = ["Hour", "Day", "Week", "Month"];
@@ -41,7 +201,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
     
     // Seller State
     const [sellerIdentity, setSellerIdentity] = useState({ 
-        phone: '', name: '', status: '', id: '', location: '', email: '',
+        phone: '', name: '', status: '', id: '', location: '', email: '', password: '', countryCode: '+254', 
         businessType: 'Company', regNumber: '',
         doc_primary: '', doc_secondary: '', doc_proof: '',
         doc_primary_name: '', doc_secondary_name: '', doc_proof_name: ''
@@ -104,7 +264,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             }); 
             const data = await res.json(); 
             if (res.ok) { 
-                onLoginSuccess(data.access_token); 
+                if (onLoginSuccess) onLoginSuccess(data.access_token); 
             } else { 
                 alert(data.detail || "Login failed"); 
             } 
@@ -130,17 +290,49 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         } catch { alert("Connection Error"); } finally { setLoading(false); } 
     };
 
-    const registerSeller = async () => { 
-        if(!sellerIdentity.regNumber || !sellerIdentity.doc_primary) return alert("Missing documents"); 
-        setLoading(true); 
-        try { 
-            const res = await fetch(`${API_URL}/api/sellers/register`, { 
+    const registerSeller = async () => {
+        // 1. Strict Validation
+        if(!sellerIdentity.name || !sellerIdentity.email || !sellerIdentity.location || 
+           !sellerIdentity.regNumber || !sellerIdentity.doc_primary || 
+           !sellerIdentity.password || !sellerIdentity.phone) {
+            return alert("Please fill in ALL fields (Name, Email, Location, ID, Document, Password).");
+        }
+        
+        setLoading(true);
+        const fullPhone = `${sellerIdentity.countryCode}${sellerIdentity.phone}`;
+
+        try {
+            const res = await fetch(`${API_URL}/api/sellers/register`, {
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ ...sellerIdentity }) 
-            }); 
-            if(res.ok) { alert("Submitted! Verification pending."); onClose(); } 
-        } catch { alert("Error"); } finally { setLoading(false); } 
+                body: JSON.stringify({ 
+                    ...sellerIdentity,
+                    phone: fullPhone 
+                })
+            });
+
+            const data = await res.json(); // Parse response
+
+            if(res.ok) { 
+                alert("Submitted! Verification pending. Please Log In."); 
+                // Reset to Login Stage or Close
+                onClose(); 
+            } else {
+                // 2. Show the ACTUAL error from the backend
+                console.error("Registration Validation Error:", data);
+                // If it's a validation error, data.detail is usually an array of errors
+                const errorMsg = Array.isArray(data.detail) 
+                    ? data.detail.map((e: any) => `${e.loc.join('.')} - ${e.msg}`).join('\n')
+                    : data.detail || "Registration failed";
+                
+                alert(`Error: ${errorMsg}`);
+            }
+        } catch (err) { 
+            console.error(err);
+            alert("Connection Error. Ensure Backend is running."); 
+        } finally { 
+            setLoading(false); 
+        }
     };
 
     const handleSubmitListing = async () => { 
@@ -166,7 +358,10 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify(payload) 
             }); 
-            if (res.ok) setStep(5); 
+            if (res.ok) {
+                if (onListingComplete) onListingComplete(); // <--- TRIGGER REFRESH
+                setStep(5); 
+            }
         } catch { alert("Error"); } finally { setLoading(false); } 
     };
 
@@ -237,8 +432,23 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                     <div className="space-y-4">
                         <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" 
                             value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
-                        <input type="password" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Password" 
-                            value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} />
+                        {/* Modern Password Input */}
+                        <div className="relative">
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white pr-10" 
+                                placeholder="Password" 
+                                value={loginForm.password} 
+                                onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
+                            />
+                            <button 
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
                         <button onClick={handleSecureLogin} disabled={loading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded-lg hover:bg-yellow-400 flex items-center justify-center">
                             {loading ? <RefreshCw className="animate-spin mr-2"/> : "Access Dashboard"}
                         </button>
@@ -301,6 +511,25 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                 <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} onChange={e => setSellerIdentity({...sellerIdentity, name: e.target.value})} />
                                 <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" onChange={e => setSellerIdentity({...sellerIdentity, email: e.target.value})} />
                             </div>
+
+                            {/* Added Password Field for Registration */}
+                            <div className="relative">
+                                <input 
+                                    type={showPassword ? "text" : "password"}
+                                    className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white pr-10" 
+                                    placeholder="Create Password" 
+                                    value={sellerIdentity.password} 
+                                    onChange={e => setSellerIdentity({...sellerIdentity, password: e.target.value})} 
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
+
                             <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Physical Address / Yard Location" onChange={e => setSellerIdentity({...sellerIdentity, location: e.target.value})} />
                             
                             {/* Upload Buttons Block */}
@@ -344,75 +573,341 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         );
     }
 
-    // --- VIEW 5: WIZARD (Listing Form) ---
     if (stage === 'WIZARD') {
         return (
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <style>{`
-                    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+                    input[type=number]::-webkit-inner-spin-button, 
+                    input[type=number]::-webkit-outer-spin-button { 
+                        -webkit-appearance: none; margin: 0; 
+                    }
                     input[type=number] { -moz-appearance: textfield; }
                     .custom-select { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto; }
                 `}</style>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh] relative">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
+                    
                     {/* Header */}
-                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl pr-16">
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
                         <div className="flex items-center gap-2"><BadgeCheck size={18} className="text-green-500"/><span className="text-white font-bold">New Listing</span></div>
+                        <button onClick={onClose}><X className="text-slate-500 hover:text-white"/></button>
                     </div>
 
-                    {/* NEW: Close Button */}
-                    <button onClick={onClose} className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
-                        <X size={20} />
-                    </button>
-
                     <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
-                         {/* Step 1: Type Selection */}
-                         {step === 1 && (
+                        
+                        {/* STEP 1: SERVICE TYPE */}
+                        {step === 1 && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-right-4">
-                                <button onClick={() => { setListingType('SALE'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-yellow-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center"><div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-yellow-500 group-hover:scale-110 transition-transform shadow-lg"><Truck size={32}/></div><h3 className="font-bold text-xl text-white mb-2">Sell Machine</h3></button>
-                                <button onClick={() => { setListingType('RENT'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-blue-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center"><div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform shadow-lg"><Clock size={32}/></div><h3 className="font-bold text-xl text-white mb-2">Rent Out</h3></button>
-                                <button onClick={() => { setListingType('PART'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-green-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center"><div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform shadow-lg"><Settings size={32}/></div><h3 className="font-bold text-xl text-white mb-2">Sell Part</h3></button>
+                                <button onClick={() => { setListingType('SALE'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-yellow-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-yellow-500 group-hover:scale-110 transition-transform shadow-lg"><Truck size={32}/></div>
+                                    <h3 className="font-bold text-xl text-white mb-2">Sell Machine</h3>
+                                    <p className="text-slate-400 text-sm">Excavators, Loaders, Trucks</p>
+                                </button>
+                                <button onClick={() => { setListingType('RENT'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-blue-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform shadow-lg"><Clock size={32}/></div>
+                                    <h3 className="font-bold text-xl text-white mb-2">Rent Out</h3>
+                                    <p className="text-slate-400 text-sm">Lease your fleet</p>
+                                </button>
+                                <button onClick={() => { setListingType('PART'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-green-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform shadow-lg"><Settings size={32}/></div>
+                                    <h3 className="font-bold text-xl text-white mb-2">Sell Part</h3>
+                                    <p className="text-slate-400 text-sm">Spares & Attachments</p>
+                                </button>
                             </div>
                         )}
-                        
-                        {/* ... Steps 2, 3, 4 ... (Kept existing structure) */}
-                        {step > 1 && step < 5 && (
-                            <div className="animate-in slide-in-from-right-4">
-                                {/* Title Input */}
-                                {step === 2 && (
-                                    <div className="space-y-6">
-                                         <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2 mb-4">
-                                            {listingType === 'PART' ? 'Part Details & Location' : 'Primary Details & Location'}
-                                        </h3>
-                                        <div><label className="text-xs text-slate-500 font-bold block mb-1">Listing Title *</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg focus:border-yellow-500" placeholder="e.g. Komatsu PC200-8" value={formData.listingTitle} onChange={e => setFormData({...formData, listingTitle: e.target.value})} /></div>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div><label className="text-xs text-slate-500 font-bold block mb-1">Category</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c}>{c}</option>)}</select></div>
-                                            <div><label className="text-xs text-slate-500 font-bold block mb-1">Sub-Category</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>{subCategories.map(sc => <option key={sc} value={sc}>{sc}</option>)}</select></div>
+
+                        {/* STEP 2: PRIMARY DETAILS & LOCATION */}
+                        {step === 2 && (
+                            <div className="space-y-6 animate-in slide-in-from-right-4">
+                                <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2 mb-4">
+                                    {listingType === 'PART' ? 'Part Details & Location' : 'Primary Details & Location'}
+                                </h3>
+                                
+                                {/* Section 1: Core Identifiers */}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Listing Title *</label>
+                                        <input 
+                                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-bold text-lg focus:border-yellow-500" 
+                                            placeholder={listingType === 'PART' ? "e.g. Caterpillar 320D Hydraulic Pump" : "e.g. Komatsu PC200-8 Excavator"} 
+                                            value={formData.listingTitle} 
+                                            onChange={e => setFormData({...formData, listingTitle: e.target.value})} 
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Category</label>
+                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                                {categories.map(c => <option key={c}>{c}</option>)}
+                                            </select>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div><label className="text-xs text-slate-500 font-bold block mb-1">Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} /></div>
-                                            <div><label className="text-xs text-slate-500 font-bold block mb-1">Model</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} /></div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Component Type' : 'Machine Type'}</label>
+                                            <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
+                                                <option value="">Select...</option>
+                                                {subCategories.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
+                                            </select>
                                         </div>
                                     </div>
-                                )}
-                                
-                                {/* Just minimal placeholders for Steps 3 & 4 to save space, but logic is preserved */}
-                                {step === 3 && <div className="text-white">Pricing & Technical Specs Form (Step 3 Content)</div>}
-                                {step === 4 && <div className="text-white">Media & Docs Upload (Step 4 Content)</div>}
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Manufacturer' : 'Brand'}</label>
+                                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Caterpillar" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} />
+                                        </div>
+                                        {listingType === 'PART' ? (
+                                            <div>
+                                                <label className="text-xs text-slate-500 font-bold block mb-1">Part Number (OEM)</label>
+                                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono" placeholder="e.g. 1U3352" value={formData.partNumber} onChange={e => setFormData({...formData, partNumber: e.target.value})} />
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label className="text-xs text-slate-500 font-bold block mb-1">Model</label>
+                                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 320D GC" value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Year & Condition */}
+                                    {listingType !== 'PART' && (
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="text-xs text-slate-500 font-bold block mb-1">Year of Manufacture</label>
+                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.yom} onChange={e => setFormData({...formData, yom: e.target.value})}>
+                                                    <option value="">Select Year</option>{YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-500 font-bold block mb-1">Condition</label>
+                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
+                                                    {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {listingType === 'PART' && (
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="text-xs text-slate-500 font-bold block mb-1">Compatible Machine Models</label>
+                                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. CAT 320D, 325D" value={formData.applicableModels} onChange={e => setFormData({...formData, applicableModels: e.target.value})} />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-500 font-bold block mb-1">Part Condition</label>
+                                                <select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})}>
+                                                    {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Section 2: Location */}
+                                <div className="pt-4 border-t border-slate-800">
+                                    <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><MapPin size={16} className="mr-2"/> Location</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-xs text-slate-500 block mb-1">Country</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Kenya" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Region / State</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi County" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">City / Town</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">{listingType === 'RENT' ? 'Pickup Location' : 'Specific Address'}</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Industrial Area, Road A" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
+                                    </div>
+                                    {listingType === 'RENT' && (
+                                        <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Availability Start Date</label><input type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.availabilityDate} onChange={e => setFormData({...formData, availabilityDate: e.target.value})} /></div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
-                        {/* Step 5: Success */}
+                        {/* STEP 3: TECHNICAL SPECS & PRICING */}
+                        {step === 3 && (
+                            <div className="space-y-8 animate-in slide-in-from-right-4">
+                                
+                                {/* --- PRICING SECTION --- */}
+                                <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
+                                    <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><DollarSign size={16} className="mr-2"/> Pricing & Terms</h4>
+                                    
+                                    {listingType === 'SALE' || listingType === 'PART' ? (
+                                        <div className="space-y-4">
+                                            <div className="flex gap-4 items-end">
+                                                <div className="w-1/3">
+                                                    <label className="text-xs text-slate-500 block mb-1">Currency</label>
+                                                    <select 
+                                                        className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold custom-select" 
+                                                        value={formData.currency} 
+                                                        onChange={e => setFormData({...formData, currency: e.target.value})}
+                                                    >
+                                                        {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="text-xs text-slate-500 block mb-1">Selling Price</label>
+                                                    <input type="number" disabled={formData.priceOnRequest} className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold text-lg disabled:opacity-50" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <input type="checkbox" id="por" className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-yellow-500 focus:ring-yellow-500" checked={formData.priceOnRequest} onChange={e => setFormData({...formData, priceOnRequest: e.target.checked})} />
+                                                <label htmlFor="por" className="ml-2 text-sm text-slate-300">Price on Request (Hide Price)</label>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* RENT PRICING */
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">Dry Rate (Machine Only)</label>
+                                                    <div className="flex gap-2">
+                                                        <select 
+                                                            className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" 
+                                                            value={formData.rentCurrency} 
+                                                            onChange={e => setFormData({...formData, rentCurrency: e.target.value})}
+                                                        >
+                                                            {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                                        </select>
+                                                        <input type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
+                                                        <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">Wet Rate (With Operator/Fuel)</label>
+                                                    <div className="flex gap-2">
+                                                        <select 
+                                                            className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" 
+                                                            value={formData.rentCurrency} 
+                                                            onChange={e => setFormData({...formData, rentCurrency: e.target.value})}
+                                                        >
+                                                            {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                                        </select>
+                                                        <input type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
+                                                        <select className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-500 block mb-1">Additional Cost Terms</label>
+                                                <input className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white text-sm" placeholder="e.g. Mobilization fee, min hours per day..." value={formData.additionalCostTerms} onChange={e => setFormData({...formData, additionalCostTerms: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* --- TECHNICAL SPECS --- */}
+                                <div className="space-y-4">
+                                    <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Technical Specifications</h4>
+                                    
+                                    {listingType === 'PART' ? (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
+                                            <div><label className="text-xs text-slate-500 block mb-1">Dimensions (L x W x H)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 50x30x20 cm" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} /></div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Engine & Power */}
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Power</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="kW / HP" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Fuel Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}><option>Diesel</option><option>Petrol</option><option>Electric</option></select></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Emission</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.emissionStandard} onChange={e => setFormData({...formData, emissionStandard: e.target.value})}><option value="">Standard</option><option>Euro 3</option><option>Euro 4</option><option>Euro 5</option><option>Tier 4F</option></select></div>
+                                            </div>
+
+                                            {/* Usage & Dimensions */}
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                                                <div className="col-span-2 flex gap-2">
+                                                    <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage / Mileage</label><input type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
+                                                    <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
+                                                </div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Axles / Tracks</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Config" value={formData.axles} onChange={e => setFormData({...formData, axles: e.target.value})} /></div>
+                                            </div>
+
+                                            {/* Performance */}
+                                            <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Performance Specs</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Dig Depth: 6m, Lift: 4T, Bucket Cap: 1.2m3" value={formData.performanceSpecs} onChange={e => setFormData({...formData, performanceSpecs: e.target.value})} /></div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP 4: MEDIA, DOCS & EXTRAS */}
+                        {step === 4 && (
+                            <div className="space-y-8 animate-in slide-in-from-right-4">
+                                
+                                {/* Media Section */}
+                                <div>
+                                    <h4 className="text-white font-bold mb-4 flex items-center"><Camera className="mr-2 text-yellow-500"/> Media Gallery</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Photos */}
+                                        <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
+                                            <input type="file" multiple id="listingImages" hidden onChange={(e) => handleFileSelect(e, null, true, 'images')} accept="image/*" />
+                                            <label htmlFor="listingImages" className="cursor-pointer block">
+                                                <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2"><Camera size={24} className="text-slate-400"/></div>
+                                                <span className="text-white font-bold text-sm block">Upload Photos *</span>
+                                                <span className="text-xs text-slate-500">Min 1 required. Max 10.</span>
+                                            </label>
+                                            {formData.images.length > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{formData.images.slice(0,4).map((src, i) => <div key={i} className="h-12 bg-cover rounded border border-slate-700" style={{backgroundImage: `url(${src})`}}></div>)}</div>}
+                                        </div>
+                                        {/* Videos */}
+                                        <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
+                                            <input type="file" ref={mediaVideoRef} hidden onChange={(e) => handleFileSelect(e, null, true, 'videos')} accept="video/*" />
+                                            <button onClick={() => mediaVideoRef.current?.click()} className="w-full h-full flex flex-col items-center justify-center">
+                                                <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2"><Video size={24} className="text-slate-400"/></div>
+                                                <span className="text-white font-bold text-sm block">Add Video (Optional)</span>
+                                                <span className="text-xs text-slate-500">Walkthroughs increase trust.</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Documents Section */}
+                                <div>
+                                    <h4 className="text-white font-bold mb-4 flex items-center"><FileText className="mr-2 text-blue-500"/> Documentation</h4>
+                                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex items-center justify-between">
+                                        <div>
+                                            <div className="text-sm font-bold text-white">Compliance & Manuals</div>
+                                            <div className="text-xs text-slate-500">Upload service history, logbooks, or specs (PDF).</div>
+                                        </div>
+                                        <input type="file" ref={mediaDocRef} hidden accept=".pdf" onChange={(e) => handleFileSelect(e, null, true, 'complianceDocs')} />
+                                        <button onClick={() => mediaDocRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-xs font-bold flex items-center"><UploadCloud size={14} className="mr-2"/> Upload PDF</button>
+                                    </div>
+                                    {formData.complianceDocs.length > 0 && <div className="mt-2 text-xs text-green-500 flex items-center"><Check size={12} className="mr-1"/> {formData.complianceDocs.length} Document(s) Attached</div>}
+                                </div>
+
+                                {/* Additional Info */}
+                                <div>
+                                    <h4 className="text-white font-bold mb-4 flex items-center"><List className="mr-2 text-green-500"/> Additional Details</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                        {listingType === 'PART' ? (
+                                            <div><label className="text-xs text-slate-500 block mb-1">Shipping / Packaging Info</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.shippingInfo} onChange={e => setFormData({...formData, shippingInfo: e.target.value})} /></div>
+                                        ) : (
+                                            <>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Warranty Details</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 6 Months Dealer" value={formData.warrantyDetails} onChange={e => setFormData({...formData, warrantyDetails: e.target.value})} /></div>
+                                                <div><label className="text-xs text-slate-500 block mb-1">Original Paint?</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.originalPaint} onChange={e => setFormData({...formData, originalPaint: e.target.value})}><option>Yes</option><option>No</option></select></div>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="mb-4">
+                                         <label className="text-xs text-slate-500 block mb-1">Seller Terms / Remarks</label>
+                                         <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Sold as is, Buyer arranges transport" value={formData.sellerTerms} onChange={e => setFormData({...formData, sellerTerms: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 block mb-1">Detailed Description</label>
+                                        <textarea className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white h-32" placeholder="Mention specific condition, recent repairs, or included attachments..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP 5: SUCCESS */}
                         {step === 5 && (
                             <div className="text-center py-12 animate-in zoom-in-95">
                                 <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]"><Check className="text-white" size={48}/></div>
                                 <h2 className="text-3xl font-bold text-white mb-2">Listing Published!</h2>
+                                <p className="text-slate-400 mb-8 max-w-md mx-auto">{sellerIdentity.status === 'VERIFIED' ? "Your verified listing is now LIVE on the marketplace." : "Your listing has been submitted for engineering review."}</p>
                                 <button onClick={onClose} className="bg-slate-800 text-white font-bold py-4 px-12 rounded-xl hover:bg-slate-700 border border-slate-700">Return to Dashboard</button>
                             </div>
                         )}
                     </div>
 
-                    {/* Footer Nav */}
+                    {/* FOOTER NAV */}
                     {step < 5 && (
                         <div className="p-6 border-t border-slate-800 flex justify-between bg-slate-950 rounded-b-2xl">
                             {step > 1 ? <button onClick={() => setStep(step-1)} className="text-slate-400 font-bold px-6 hover:text-white transition-colors">Back</button> : <div></div>}
