@@ -39,9 +39,10 @@ export const InspectionBookingPage: React.FC<InspectionBookingProps> = ({ onComp
         <div className="fixed inset-0 z-[90] min-h-screen bg-slate-950/95 backdrop-blur-sm py-16 px-4 overflow-y-auto">
             <div className="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl mt-10 relative">
                 
-                {/* NEW: Close Button */}
+                {/* NEW: Close Button with Accessibility Fix */}
                 <button 
                     onClick={onClose} 
+                    aria-label="Close"
                     className="absolute top-4 right-4 z-10 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors"
                 >
                     <X size={20} />
@@ -65,11 +66,25 @@ export const InspectionBookingPage: React.FC<InspectionBookingProps> = ({ onComp
                         <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2">Step 1: Machine Details</h3>
                         <div>
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Machine Type</label>
-                            <select name="machineType" value={bookingData.machineType} onChange={handleChange} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4">
+                            <select 
+                                name="machineType" 
+                                value={bookingData.machineType} 
+                                onChange={handleChange} 
+                                aria-label="Machine Type"
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4"
+                            >
                                 <option>Excavator</option><option>Truck</option><option>Generator</option><option>Backhoe Loader</option><option>Grader</option><option>Other</option>
                             </select>
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Location of Machine</label>
-                            <input name="location" value={bookingData.location} onChange={handleChange} type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Athi River Site" />
+                            <input 
+                                name="location" 
+                                value={bookingData.location} 
+                                onChange={handleChange} 
+                                type="text" 
+                                aria-label="Location of Machine"
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" 
+                                placeholder="e.g. Athi River Site" 
+                            />
                         </div>
                         <button onClick={() => { if (canProceedToStep2()) setStep(2); else alert("Please enter the machine location."); }} className={`w-full font-bold py-3 rounded transition-colors ${canProceedToStep2() ? 'bg-yellow-500 text-slate-900 hover:bg-yellow-400' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>Next Step</button>
                     </div>
@@ -81,11 +96,34 @@ export const InspectionBookingPage: React.FC<InspectionBookingProps> = ({ onComp
                         <h3 className="text-white font-bold text-lg border-b border-slate-800 pb-2">Step 2: Contact Info</h3>
                         <div>
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Contact Person</label>
-                            <input name="contactPerson" value={bookingData.contactPerson} onChange={handleChange} type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4" placeholder="Full Name" />
+                            <input 
+                                name="contactPerson" 
+                                value={bookingData.contactPerson} 
+                                onChange={handleChange} 
+                                type="text" 
+                                aria-label="Contact Person"
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4" 
+                                placeholder="Full Name" 
+                            />
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Phone Number</label>
-                            <input name="phone" value={bookingData.phone} onChange={handleChange} type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4" placeholder="0700 000 000" />
+                            <input 
+                                name="phone" 
+                                value={bookingData.phone} 
+                                onChange={handleChange} 
+                                type="text" 
+                                aria-label="Phone Number"
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4" 
+                                placeholder="0700 000 000" 
+                            />
                             <label className="block text-slate-500 text-xs font-bold uppercase mb-2">Preferred Date</label>
-                            <input name="date" value={bookingData.date} onChange={handleChange} type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" />
+                            <input 
+                                name="date" 
+                                value={bookingData.date} 
+                                onChange={handleChange} 
+                                type="date" 
+                                aria-label="Preferred Date"
+                                className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" 
+                            />
                         </div>
                         <div className="flex gap-4">
                             <button onClick={() => setStep(1)} className="flex-1 bg-slate-800 text-white font-bold py-3 rounded hover:bg-slate-700">Back</button>

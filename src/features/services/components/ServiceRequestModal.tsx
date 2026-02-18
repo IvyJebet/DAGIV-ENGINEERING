@@ -51,7 +51,8 @@ export const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ servic
         return (
             <div className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={24}/></button>
+                    {/* Fixed: Added accessible name */}
+                    <button onClick={onClose} aria-label="Close" className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={24}/></button>
                     <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20">
                         <CheckCircle className="text-green-500" size={40} />
                     </div>
@@ -73,7 +74,8 @@ export const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ servic
                         </div>
                         <h3 className="text-2xl font-black text-white leading-tight">{service.title}</h3>
                     </div>
-                    <button onClick={onClose} className="text-slate-500 hover:text-white bg-slate-800/50 p-2 rounded-full"><X size={20}/></button>
+                    {/* Fixed: Added accessible name */}
+                    <button onClick={onClose} aria-label="Close" className="text-slate-500 hover:text-white bg-slate-800/50 p-2 rounded-full"><X size={20}/></button>
                 </div>
 
                 <div className="p-8 overflow-y-auto custom-scrollbar">
@@ -81,18 +83,21 @@ export const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ servic
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="block text-slate-500 text-xs font-bold uppercase">Full Name</label>
-                                <input required className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
+                                {/* Fixed: Added accessible label */}
+                                <input required aria-label="Full Name" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
                                     value={contactData.name} onChange={e => setContactData({...contactData, name: e.target.value})} />
                             </div>
                             <div className="space-y-2">
                                 <label className="block text-slate-500 text-xs font-bold uppercase">Phone</label>
-                                <input required type="tel" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
+                                {/* Fixed: Added accessible label */}
+                                <input required aria-label="Phone" type="tel" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
                                     value={contactData.phone} onChange={e => setContactData({...contactData, phone: e.target.value})} />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <label className="block text-slate-500 text-xs font-bold uppercase">Email</label>
-                            <input required type="email" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
+                            {/* Fixed: Added accessible label */}
+                            <input required aria-label="Email" type="email" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
                                 value={contactData.email} onChange={e => setContactData({...contactData, email: e.target.value})} />
                         </div>
 
@@ -105,17 +110,18 @@ export const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ servic
                                     <label className="block text-slate-400 text-xs font-bold uppercase">
                                         {field.label} {field.required && <span className="text-red-500">*</span>}
                                     </label>
+                                    {/* Fixed: Added accessible labels to dynamic inputs */}
                                     {field.type === 'textarea' ? (
-                                        <textarea required={field.required} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white h-24 text-sm"
+                                        <textarea required={field.required} aria-label={field.label} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white h-24 text-sm"
                                             placeholder={field.placeholder} onChange={(e) => handleDynamicChange(field.id, e.target.value)} />
                                     ) : field.type === 'select' ? (
-                                        <select className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white text-sm"
+                                        <select aria-label={field.label} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white text-sm"
                                             onChange={(e) => handleDynamicChange(field.id, e.target.value)}>
                                             <option value="">Select Option...</option>
                                             {field.options?.map(opt => <option key={opt}>{opt}</option>)}
                                         </select>
                                     ) : (
-                                        <input type={field.type} required={field.required} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white text-sm"
+                                        <input type={field.type} required={field.required} aria-label={field.label} className="w-full bg-slate-950 border border-slate-600 p-3 rounded-lg text-white text-sm"
                                             placeholder={field.placeholder} onChange={(e) => handleDynamicChange(field.id, e.target.value)} />
                                     )}
                                 </div>

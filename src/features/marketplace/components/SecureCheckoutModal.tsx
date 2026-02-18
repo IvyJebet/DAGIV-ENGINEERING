@@ -71,7 +71,8 @@ export const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClo
                     <h3 className="text-white font-bold text-lg mb-6 flex items-center"><ShoppingCart className="mr-2 text-yellow-500"/> Order Summary</h3>
                     
                     <div className="flex gap-4 mb-6">
-                        <img src={item.images[0]} className="w-20 h-20 object-cover rounded border border-slate-800"/>
+                        {/* FIX 1: Added alt text */}
+                        <img src={item.images[0]} alt={item.title} className="w-20 h-20 object-cover rounded border border-slate-800"/>
                         <div>
                             <div className="text-xs text-slate-500 uppercase">{item.brand}</div>
                             <div className="text-sm font-bold text-white line-clamp-2">{item.title}</div>
@@ -101,7 +102,8 @@ export const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClo
 
                 {/* Right: Steps */}
                 <div className="w-full md:w-2/3 p-8 bg-slate-900 relative flex flex-col">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X/></button>
+                    {/* FIX 2: Added aria-label for button */}
+                    <button onClick={onClose} aria-label="Close" className="absolute top-4 right-4 text-slate-500 hover:text-white"><X/></button>
                     
                     {/* Steps Header */}
                     <div className="flex mb-8 gap-4 border-b border-slate-800 pb-4">
@@ -124,17 +126,19 @@ export const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClo
                                 
                                 {isRental && (
                                     <div className="bg-slate-950 border border-yellow-500/30 p-4 rounded text-sm">
-                                        <h4 className="font-bold text-yellow-500 mb-2 flex items-center"><Clock size={16} className="mr-2"/> Rental Duration</h4>
-                                        <div className="flex items-center gap-4">
-                                            <label className="text-slate-400 text-xs uppercase font-bold">Number of {item.priceUnit?.replace('per ', '') || 'Days'}:</label>
-                                            <input 
-                                                type="number" 
-                                                min="1" 
-                                                value={rentalDuration} 
-                                                onChange={(e) => setRentalDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                                                className="bg-slate-900 border border-slate-700 rounded p-2 text-white w-24 text-center font-bold focus:border-yellow-500 outline-none"
-                                            />
-                                        </div>
+                                            <h4 className="font-bold text-yellow-500 mb-2 flex items-center"><Clock size={16} className="mr-2"/> Rental Duration</h4>
+                                            <div className="flex items-center gap-4">
+                                                <label className="text-slate-400 text-xs uppercase font-bold">Number of {item.priceUnit?.replace('per ', '') || 'Days'}:</label>
+                                                {/* FIX 3: Added aria-label for input */}
+                                                <input 
+                                                    type="number" 
+                                                    min="1" 
+                                                    value={rentalDuration} 
+                                                    onChange={(e) => setRentalDuration(Math.max(1, parseInt(e.target.value) || 1))}
+                                                    className="bg-slate-900 border border-slate-700 rounded p-2 text-white w-24 text-center font-bold focus:border-yellow-500 outline-none"
+                                                    aria-label="Rental Duration"
+                                                />
+                                            </div>
                                     </div>
                                 )}
 
@@ -154,12 +158,13 @@ export const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClo
                             <div className="space-y-4 animate-in slide-in-from-right-8">
                                 <h2 className="text-2xl font-bold text-white">Buyer Details</h2>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-xs font-bold text-slate-500">First Name</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
-                                    <div><label className="text-xs font-bold text-slate-500">Last Name</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                    {/* FIX 4: Added aria-labels to all form inputs */}
+                                    <div><label className="text-xs font-bold text-slate-500">First Name</label><input aria-label="First Name" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                    <div><label className="text-xs font-bold text-slate-500">Last Name</label><input aria-label="Last Name" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
                                 </div>
-                                <div><label className="text-xs font-bold text-slate-500">Email Address</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
-                                <div><label className="text-xs font-bold text-slate-500">Phone Number</label><input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
-                                <div><label className="text-xs font-bold text-slate-500">Delivery Address / Site Location</label><textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-24"/></div>
+                                <div><label className="text-xs font-bold text-slate-500">Email Address</label><input aria-label="Email Address" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                <div><label className="text-xs font-bold text-slate-500">Phone Number</label><input aria-label="Phone Number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white"/></div>
+                                <div><label className="text-xs font-bold text-slate-500">Delivery Address / Site Location</label><textarea aria-label="Delivery Address" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-24"/></div>
                                 <div className="flex gap-4 mt-8">
                                     <button onClick={() => setStep(1)} className="px-6 py-3 rounded text-slate-400 font-bold hover:bg-slate-800">Back</button>
                                     <button onClick={() => setStep(3)} className="px-6 py-3 bg-yellow-500 text-slate-900 font-bold rounded hover:bg-yellow-400 flex-1">Proceed to Payment</button>
@@ -172,22 +177,22 @@ export const SecureCheckoutModal = ({ item, onClose }: { item: MarketItem; onClo
                                 <h2 className="text-2xl font-bold text-white">Secure Payment</h2>
                                 <div className="space-y-3">
                                     <label onClick={() => setPaymentMethod('MPESA')} className={`flex items-center justify-between p-4 bg-slate-950 border rounded cursor-pointer relative overflow-hidden transition-all ${paymentMethod === 'MPESA' ? 'border-yellow-500' : 'border-slate-800 hover:border-slate-600'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'MPESA' ? 'border-yellow-500' : 'border-slate-600'}`}>
-                                                {paymentMethod === 'MPESA' && <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>}
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'MPESA' ? 'border-yellow-500' : 'border-slate-600'}`}>
+                                                    {paymentMethod === 'MPESA' && <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>}
+                                                </div>
+                                                <div><div className="font-bold text-white">M-Pesa / Mobile Money</div><div className="text-xs text-slate-400">Instant Escrow Deposit</div></div>
                                             </div>
-                                            <div><div className="font-bold text-white">M-Pesa / Mobile Money</div><div className="text-xs text-slate-400">Instant Escrow Deposit</div></div>
-                                        </div>
-                                        <Phone className="text-slate-500"/>
+                                            <Phone className="text-slate-500"/>
                                     </label>
                                     <label onClick={() => setPaymentMethod('BANK')} className={`flex items-center justify-between p-4 bg-slate-950 border rounded cursor-pointer relative overflow-hidden transition-all ${paymentMethod === 'BANK' ? 'border-yellow-500' : 'border-slate-800 hover:border-slate-600'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'BANK' ? 'border-yellow-500' : 'border-slate-600'}`}>
-                                                {paymentMethod === 'BANK' && <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>}
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'BANK' ? 'border-yellow-500' : 'border-slate-600'}`}>
+                                                    {paymentMethod === 'BANK' && <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>}
+                                                </div>
+                                                <div><div className="font-bold text-white">Bank Transfer (EFT/RTGS)</div><div className="text-xs text-slate-400">KCB, Equity, StanChart</div></div>
                                             </div>
-                                            <div><div className="font-bold text-white">Bank Transfer (EFT/RTGS)</div><div className="text-xs text-slate-400">KCB, Equity, StanChart</div></div>
-                                        </div>
-                                        <Building2 className="text-slate-500"/>
+                                            <Building2 className="text-slate-500"/>
                                     </label>
                                 </div>
                                 <div className="p-4 bg-blue-900/20 rounded border border-blue-500/30 text-xs text-blue-200">

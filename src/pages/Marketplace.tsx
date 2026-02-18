@@ -156,6 +156,7 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
                             <div className="h-48 bg-slate-950 relative">
                                 <img 
                                     src={item.images?.[0] || "https://via.placeholder.com/300?text=No+Image"} 
+                                    alt={item.title || "Product Image"} // Fixed: Added alt attribute
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     onError={(e) => { (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Image+Error"; }}
                                 />

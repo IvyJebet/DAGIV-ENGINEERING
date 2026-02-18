@@ -27,7 +27,6 @@ export const ContactPage = () => (
                         <span>dagivengineering@gmail.com</span>
                     </a>
 
-                    {/* --- THIS IS THE SECTION THAT WAS MISSING --- */}
                     <div className="flex items-center border-t border-slate-900/10 pt-6 mt-2">
                         <Clock className="mr-4 w-6 h-6 opacity-75" />
                         <div>
@@ -42,16 +41,16 @@ export const ContactPage = () => (
             <div className="p-10 md:w-1/2 bg-slate-900">
                 <form className="space-y-4">
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
-                        <input type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors" />
+                        <label htmlFor="contactName" className="text-xs font-bold text-slate-500 uppercase mb-1 block">Full Name</label>
+                        <input id="contactName" type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors" />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Email Address</label>
-                        <input type="email" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors" />
+                        <label htmlFor="contactEmail" className="text-xs font-bold text-slate-500 uppercase mb-1 block">Email Address</label>
+                        <input id="contactEmail" type="email" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors" />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Message</label>
-                        <textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-32 focus:border-yellow-500 outline-none transition-colors resize-none"></textarea>
+                        <label htmlFor="contactMessage" className="text-xs font-bold text-slate-500 uppercase mb-1 block">Message</label>
+                        <textarea id="contactMessage" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-32 focus:border-yellow-500 outline-none transition-colors resize-none"></textarea>
                     </div>
                     <button className="w-full bg-white text-slate-900 font-bold py-4 rounded hover:bg-slate-200 transition-colors shadow-lg">
                         Send Message

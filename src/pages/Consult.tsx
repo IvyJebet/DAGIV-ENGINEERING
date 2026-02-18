@@ -41,11 +41,28 @@ export const ConsultPage = () => {
                 ) : (
                     <form onSubmit={handleHumanSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label className="block text-slate-500 text-xs font-bold uppercase mb-2">Your Name</label><input type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" required value={humanForm.name} onChange={(e) => setHumanForm({...humanForm, name: e.target.value})} /></div>
-                            <div><label className="block text-slate-500 text-xs font-bold uppercase mb-2">Phone</label><input type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="+254..." required value={humanForm.phone} onChange={(e) => setHumanForm({...humanForm, phone: e.target.value})} /></div>
+                            <div>
+                                <label htmlFor="consult-name" className="block text-slate-500 text-xs font-bold uppercase mb-2">Your Name</label>
+                                <input id="consult-name" type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" required value={humanForm.name} onChange={(e) => setHumanForm({...humanForm, name: e.target.value})} />
+                            </div>
+                            <div>
+                                <label htmlFor="consult-phone" className="block text-slate-500 text-xs font-bold uppercase mb-2">Phone</label>
+                                <input id="consult-phone" type="text" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="+254..." required value={humanForm.phone} onChange={(e) => setHumanForm({...humanForm, phone: e.target.value})} />
+                            </div>
                         </div>
-                        <div><label className="block text-slate-500 text-xs font-bold uppercase mb-2">Consultation Type</label><select className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={humanForm.type} onChange={(e) => setHumanForm({...humanForm, type: e.target.value})}><option>General Technical Advice (Free)</option><option>Site Inspection Request (Paid)</option><option>Machine Valuation (Paid)</option><option>Project Feasibility Study (Paid)</option></select></div>
-                        <div><label className="block text-slate-500 text-xs font-bold uppercase mb-2">Details</label><textarea className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-32" required value={humanForm.details} onChange={(e) => setHumanForm({...humanForm, details: e.target.value})}></textarea></div>
+                        <div>
+                            <label htmlFor="consult-type" className="block text-slate-500 text-xs font-bold uppercase mb-2">Consultation Type</label>
+                            <select id="consult-type" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={humanForm.type} onChange={(e) => setHumanForm({...humanForm, type: e.target.value})}>
+                                <option>General Technical Advice (Free)</option>
+                                <option>Site Inspection Request (Paid)</option>
+                                <option>Machine Valuation (Paid)</option>
+                                <option>Project Feasibility Study (Paid)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="consult-details" className="block text-slate-500 text-xs font-bold uppercase mb-2">Details</label>
+                            <textarea id="consult-details" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white h-32" required value={humanForm.details} onChange={(e) => setHumanForm({...humanForm, details: e.target.value})}></textarea>
+                        </div>
                         <button type="submit" disabled={formStatus === 'SUBMITTING'} className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded hover:bg-yellow-400 transition-colors">{formStatus === 'SUBMITTING' ? 'Scheduling...' : 'SCHEDULE CONSULTATION'}</button>
                     </form>
                 )}

@@ -203,8 +203,8 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, onBookInspection, onSellCl
 
     {/* ERP Teaser */}
     <div className="py-24 bg-slate-900 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'radial-gradient(#eab308 1px, transparent 1px)', backgroundSize: '30px 30px'}}></div>
+        {/* Background Pattern - FIXED: Replaced inline style with Tailwind arbitrary values */}
+        <div className="absolute inset-0 opacity-5 bg-[radial-gradient(#eab308_1px,transparent_1px)] bg-[length:30px_30px]"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">

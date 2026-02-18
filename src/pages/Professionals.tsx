@@ -56,11 +56,15 @@ export const ProfessionalsPage = () => {
             {selectedPro && (
                 <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur overflow-y-auto p-4 sm:p-8 flex items-center justify-center">
                     <div className="bg-slate-900 w-full max-w-4xl rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col relative max-h-[90vh]">
-                        <button onClick={() => setSelectedPro(null)} className="absolute top-4 right-4 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-red-500 transition-colors"><X size={20}/></button>
+                        
+                        {/* Fixed: Added aria-label for accessibility */}
+                        <button onClick={() => setSelectedPro(null)} aria-label="Close profile details" className="absolute top-4 right-4 z-10 bg-black/50 p-2 rounded-full text-white hover:bg-red-500 transition-colors"><X size={20}/></button>
+                        
                         <div className="h-32 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 relative border-b border-slate-800">
                             <div className="absolute -bottom-12 left-8">
                                 <div className="w-24 h-24 rounded-full border-4 border-slate-900 overflow-hidden bg-slate-800">
-                                    {selectedPro.image ? <img src={selectedPro.image} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-2xl">{selectedPro.name.charAt(0)}</div>}
+                                    {/* Fixed: Added alt text */}
+                                    {selectedPro.image ? <img src={selectedPro.image} alt={selectedPro.name} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-2xl">{selectedPro.name.charAt(0)}</div>}
                                 </div>
                             </div>
                         </div>

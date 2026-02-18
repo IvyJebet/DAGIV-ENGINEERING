@@ -18,7 +18,8 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
         <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col lg:flex-row overflow-hidden animate-in slide-in-from-right-10">
             {/* LEFT: Visual Command Center */}
             <div className="w-full lg:w-3/5 bg-black relative flex flex-col h-[40vh] lg:h-full">
-                <button onClick={onClose} className="absolute top-4 left-4 z-20 bg-black/50 p-2 rounded-full text-white hover:bg-slate-800"><ChevronLeft/></button>
+                {/* Fixed: Added aria-label for accessibility */}
+                <button onClick={onClose} aria-label="Close" className="absolute top-4 left-4 z-20 bg-black/50 p-2 rounded-full text-white hover:bg-slate-800"><ChevronLeft/></button>
                 
                 {/* Main Stage */}
                 <div className="flex-1 relative flex items-center justify-center bg-slate-900">
