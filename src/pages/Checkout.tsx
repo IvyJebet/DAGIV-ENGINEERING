@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { 
   ShieldCheck, Truck, CreditCard, Building, Smartphone, 
-  ChevronRight, Lock, Loader2, MapPin, CheckCircle, Copy, AlertCircle
+  ChevronRight, Lock, Loader2, MapPin, CheckCircle, Copy, AlertCircle, X
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -36,7 +36,7 @@ export default function Checkout() {
     // Form Handling
     const { register, handleSubmit, formState: { errors, isValid }, trigger, getValues } = useForm<ShippingFormValues>({
         resolver: zodResolver(shippingSchema),
-        mode: 'onChange' // Validate on every keystroke
+        mode: 'onChange' 
     });
 
     // Payment State
@@ -72,7 +72,7 @@ export default function Checkout() {
     }, [navigate]);
 
     const handleContinueToPayment = async () => {
-        const isFormValid = await trigger(); // Manually trigger validation
+        const isFormValid = await trigger(); 
         if (isFormValid) {
             setStep(2);
             window.scrollTo(0, 0);
@@ -85,20 +85,10 @@ export default function Checkout() {
             return;
         }
         
-        // For card, we will just simulate for now as the backend redirect is a mock
-        if (paymentMethod === 'CARD') {
-             setProcessing(true);
-             setTimeout(() => {
-                 setProcessing(false);
-                 // In a real app, this would be the redirect to the card gateway
-                 alert("Redirecting to secure card payment gateway..."); 
-             }, 1500);
-             return;
-        }
-
+        // REMOVED THE FAKE MOCK BLOCK! This will now correctly process ALL payments.
         setProcessing(true);
         const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
-        const shippingData = getValues(); // Get validated form data
+        const shippingData = getValues(); 
 
         try {
             const res = await fetch(`${API_URL}/api/checkout/process`, {
@@ -457,6 +447,35 @@ export default function Checkout() {
                                     <button disabled className="bg-yellow-500/50 text-slate-900 font-bold py-3 px-8 rounded-lg cursor-not-allowed opacity-70">
                                         Track Order (Coming Soon)
                                     </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- PESAPAL IFRAME OVERLAY --- */}
+                        {step === 3 && orderResult?.payment_info?.type === 'CARD' && orderResult.payment_info.url && (
+                            <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-10 animate-in fade-in zoom-in-95">
+                                <div className="bg-white rounded-2xl overflow-hidden w-full max-w-4xl h-full max-h-[800px] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] relative">
+                                    <div className="bg-slate-900 p-4 flex justify-between items-center border-b border-slate-800">
+                                        <div className="flex items-center">
+                                            <ShieldCheck className="text-green-500 mr-2" size={24}/>
+                                            <span className="text-white font-bold tracking-widest uppercase text-sm">Secure Checkout Gateway</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => window.location.href = '/marketplace'} 
+                                            className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full transition-colors"
+                                            title="Close Payment Gateway"
+                                            aria-label="Close Payment Gateway"
+                                        >
+                                            <X size={20}/>
+                                        </button>
+                                    </div>
+                                    <iframe 
+                                        src={orderResult.payment_info.url} 
+                                        className="flex-1 w-full bg-slate-50" 
+                                        frameBorder="0"
+                                        title="Pesapal Secure Payment"
+                                        allow="payment"
+                                    ></iframe>
                                 </div>
                             </div>
                         )}
