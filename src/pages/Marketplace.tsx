@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Filter, PlusCircle, RefreshCw, MapPin, AlertCircle } from 'lucide-react';
 import { MarketItem, PageView, SpecificationGroup, SellerProfile } from '@/types';
 import { CATEGORY_STRUCTURE } from '@/config/constants';
-import { SecureCheckoutModal } from '@/features/marketplace/components/SecureCheckoutModal';
 import { ProductDetailOverlay } from '@/features/marketplace/components/ProductDetailOverlay';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -159,7 +158,6 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
   const [error, setError] = useState<string | null>(null);
 
   const [viewItem, setViewItem] = useState<MarketItem | null>(null);
-  const [checkoutItem, setCheckoutItem] = useState<MarketItem | null>(null);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -316,19 +314,10 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
             )}
         </div>
       </div>
-
       {viewItem && (
           <ProductDetailOverlay 
             item={viewItem} 
             onClose={() => setViewItem(null)} 
-            onCheckout={() => { setViewItem(null); setCheckoutItem(viewItem); }} 
-          />
-      )}
-      
-      {checkoutItem && (
-          <SecureCheckoutModal 
-            item={checkoutItem} 
-            onClose={() => setCheckoutItem(null)} 
           />
       )}
     </div>
