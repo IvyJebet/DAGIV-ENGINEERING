@@ -13,6 +13,14 @@
       ::-webkit-scrollbar-track { background: #0f172a; }
       ::-webkit-scrollbar-thumb { background: #eab308; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #ca8a04; }
+      @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .animate-gradient {
+        animation: gradient 3s ease infinite;
+      }
     </style>
     
     </head>

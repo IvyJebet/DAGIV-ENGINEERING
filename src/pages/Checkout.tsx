@@ -34,7 +34,7 @@ export default function Checkout() {
     const [orderResult, setOrderResult] = useState<any>(null);
 
     // Form Handling
-    const { register, handleSubmit, formState: { errors, isValid }, trigger, getValues } = useForm<ShippingFormValues>({
+    const { register, handleSubmit, formState: { errors, isValid, touchedFields }, trigger, getValues } = useForm<ShippingFormValues>({
         resolver: zodResolver(shippingSchema),
         mode: 'onChange' 
     });
@@ -80,15 +80,18 @@ export default function Checkout() {
     };
 
     const handlePlaceOrder = async () => {
-        if (paymentMethod === 'MPESA' && !/^(07|01|\+2547|\+2541)[0-9]{8}$/.test(mpesaPhone)) {
-            alert("Please enter a valid M-Pesa phone number");
+        // Updated Regex: strictly checks for exactly 9 digits starting with 7 or 1
+        if (paymentMethod === 'MPESA' && !/^(7|1)[0-9]{8}$/.test(mpesaPhone)) {
+            alert("Please enter a valid 9-digit M-Pesa number (e.g., 712345678)");
             return;
         }
         
-        // REMOVED THE FAKE MOCK BLOCK! This will now correctly process ALL payments.
         setProcessing(true);
         const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
         const shippingData = getValues(); 
+        
+        // Format the phone number perfectly for Safaricom Daraja API
+        const formattedMpesaPhone = paymentMethod === 'MPESA' ? `254${mpesaPhone}` : null;
 
         try {
             const res = await fetch(`${API_URL}/api/checkout/process`, {
@@ -99,7 +102,7 @@ export default function Checkout() {
                 },
                 body: JSON.stringify({
                     payment_method: paymentMethod,
-                    mpesa_phone: paymentMethod === 'MPESA' ? mpesaPhone : null,
+                    mpesa_phone: formattedMpesaPhone, // Send the fully formatted number
                     shipping_details: shippingData
                 })
             });
@@ -131,7 +134,7 @@ export default function Checkout() {
     }
 
     const subtotal = cart.summary?.total_value || 0;
-    const shippingCost = 15000; 
+    const shippingCost = 0.0; 
     const total = subtotal + shippingCost;
     const currency = cart.summary?.currency || 'KES';
 
@@ -158,13 +161,13 @@ export default function Checkout() {
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 border-2 ${step >= 1 ? 'border-yellow-500 bg-yellow-500 text-slate-900' : 'border-slate-700 bg-slate-900'}`}>
                                 {step > 1 ? <CheckCircle size={18}/> : '1'}
                             </div>
-                            Shipping
+                            Shipping Address
                         </div>
                         <div className={`flex items-center ${step >= 2 ? 'text-yellow-500' : ''}`}>
                            <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 border-2 ${step >= 2 ? 'border-yellow-500 bg-yellow-500 text-slate-900' : 'border-slate-700 bg-slate-900'}`}>
                                 {step > 2 ? <CheckCircle size={18}/> : '2'}
                             </div>
-                            Payment
+                            Payment Method
                         </div>
                         <div className={`flex items-center ${step === 3 ? 'text-green-500' : ''}`}>
                            <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 border-2 ${step === 3 ? 'border-green-500 bg-green-500 text-white' : 'border-slate-700 bg-slate-900'}`}>
@@ -181,216 +184,420 @@ export default function Checkout() {
                     <div className="flex-1 space-y-8">
                         
                         {/* STEP 1: SHIPPING & CONTACT */}
-                        {step === 1 && (
-                            <div className="bg-slate-900 rounded-2xl border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.1)] overflow-hidden animate-in fade-in slide-in-from-left-4">
-                                <div className="bg-slate-950 p-4 border-b border-slate-800 flex items-center justify-between">
-                                    <h2 className="text-lg font-bold text-white flex items-center"><Truck className="mr-2 text-yellow-500" size={20}/> Delivery Details</h2>
-                                </div>
-                                
-                                <form className="p-6 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1 font-bold">First Name <span className="text-red-500">*</span></label>
-                                            <input {...register('firstName')} className={`w-full bg-slate-950 border ${errors.firstName ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="John"/>
-                                            {errors.firstName && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.firstName.message}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1 font-bold">Last Name <span className="text-red-500">*</span></label>
-                                            <input {...register('lastName')} className={`w-full bg-slate-950 border ${errors.lastName ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="Doe"/>
-                                            {errors.lastName && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.lastName.message}</p>}
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1 font-bold">Email Address <span className="text-red-500">*</span></label>
-                                            <input type="email" {...register('email')} className={`w-full bg-slate-950 border ${errors.email ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="john@company.com"/>
-                                            {errors.email && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.email.message}</p>}
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1 font-bold">Phone Number <span className="text-red-500">*</span></label>
-                                            <input type="tel" {...register('phone')} className={`w-full bg-slate-950 border ${errors.phone ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="07XX XXX XXX"/>
-                                            {errors.phone && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.phone.message}</p>}
-                                        </div>
-                                    </div>
-                                    <div className="border-t border-slate-800 pt-4 mt-4">
-                                        <h3 className="text-sm font-bold text-slate-300 mb-4 flex items-center"><MapPin size={16} className="mr-2"/> Site / Yard Location</h3>
-                                        <div className="grid grid-cols-2 gap-4 mb-4">
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1 font-bold">Region / County <span className="text-red-500">*</span></label>
-                                                <input {...register('region')} className={`w-full bg-slate-950 border ${errors.region ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="e.g. Nairobi"/>
-                                                {errors.region && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.region.message}</p>}
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-1 font-bold">City / Town <span className="text-red-500">*</span></label>
-                                                <input {...register('city')} className={`w-full bg-slate-950 border ${errors.city ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="e.g. Industrial Area"/>
-                                                {errors.city && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.city.message}</p>}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1 font-bold">Specific Address / Plot No. <span className="text-red-500">*</span></label>
-                                            <input {...register('address')} className={`w-full bg-slate-950 border ${errors.address ? 'border-red-500' : 'border-slate-700'} p-3 rounded text-white focus:border-yellow-500 outline-none transition-colors`} placeholder="Street name, building, landmark..."/>
-                                            {errors.address && <p className="text-red-500 text-xs mt-1 flex items-center"><AlertCircle size={12} className="mr-1"/>{errors.address.message}</p>}
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        type="button"
-                                        onClick={handleContinueToPayment}
-                                        disabled={!isValid}
-                                        className="w-full bg-yellow-500 text-slate-900 font-black py-4 rounded-lg mt-6 hover:bg-yellow-400 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center"
-                                    >
-                                        CONTINUE TO PAYMENT <ChevronRight size={20} className="ml-2"/>
-                                    </button>
-                                </form>
-                            </div>
-                        )}
+{step === 1 && (
+    <div className="bg-slate-900 rounded-2xl border border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.1)] overflow-hidden animate-in fade-in slide-in-from-left-4">
+        <div className="bg-slate-950 p-6 border-b border-slate-800">
+            <h2 className="text-xl font-black text-white flex items-center tracking-wide">
+                <Truck className="mr-3 text-yellow-500" size={24}/> Delivery Details
+            </h2>
+            <p className="text-sm text-slate-400 mt-2 ml-9">Where should we deliver your item?</p>
+        </div>
+        
+        <form className="p-6 md:p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* First Name */}
+                <div className="relative group">
+                    <input 
+                        {...register('firstName')} 
+                        id="firstName"
+                        placeholder="e.g. John"
+                        className={`peer w-full bg-slate-950 border-2 ${errors.firstName ? 'border-red-500/50 focus:border-red-500' : touchedFields.firstName && !errors.firstName ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner`}
+                    />
+                    <label htmlFor="firstName" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.firstName ? 'text-red-400' : touchedFields.firstName && !errors.firstName ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                        First Name <span className="text-red-500">*</span>
+                    </label>
+                    <div className="absolute right-4 top-4 pointer-events-none">
+                        {errors.firstName ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.firstName && !errors.firstName ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                    </div>
+                    {errors.firstName && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.firstName.message}</p>}
+                </div>
 
-                        {/* STEP 2: PAYMENT METHOD */}
+                {/* Last Name */}
+                <div className="relative group">
+                    <input 
+                        {...register('lastName')} 
+                        id="lastName"
+                        placeholder="e.g. Doe"
+                        className={`peer w-full bg-slate-950 border-2 ${errors.lastName ? 'border-red-500/50 focus:border-red-500' : touchedFields.lastName && !errors.lastName ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner`}
+                    />
+                    <label htmlFor="lastName" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.lastName ? 'text-red-400' : touchedFields.lastName && !errors.lastName ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                        Last Name <span className="text-red-500">*</span>
+                    </label>
+                    <div className="absolute right-4 top-4 pointer-events-none">
+                        {errors.lastName ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.lastName && !errors.lastName ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                    </div>
+                    {errors.lastName && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.lastName.message}</p>}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Email */}
+                <div className="relative group">
+                    <input 
+                        {...register('email')} 
+                        type="email"
+                        id="email"
+                        placeholder="john@company.com"
+                        className={`peer w-full bg-slate-950 border-2 ${errors.email ? 'border-red-500/50 focus:border-red-500' : touchedFields.email && !errors.email ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner`}
+                    />
+                    <label htmlFor="email" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.email ? 'text-red-400' : touchedFields.email && !errors.email ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                        Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <div className="absolute right-4 top-4 pointer-events-none">
+                        {errors.email ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.email && !errors.email ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                    </div>
+                    {errors.email && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.email.message}</p>}
+                </div>
+
+                {/* Phone */}
+                <div className="relative group">
+                    <input 
+                        {...register('phone')} 
+                        type="tel"
+                        id="phone"
+                        placeholder="07XX XXX XXX"
+                        className={`peer w-full bg-slate-950 border-2 ${errors.phone ? 'border-red-500/50 focus:border-red-500' : touchedFields.phone && !errors.phone ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner font-mono`}
+                    />
+                    <label htmlFor="phone" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.phone ? 'text-red-400' : touchedFields.phone && !errors.phone ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                        Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <div className="absolute right-4 top-4 pointer-events-none">
+                        {errors.phone ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.phone && !errors.phone ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                    </div>
+                    {errors.phone && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.phone.message}</p>}
+                </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-8 mt-4">
+                <h3 className="text-sm font-black text-white mb-6 flex items-center tracking-widest uppercase">
+                    <MapPin size={18} className="mr-2 text-yellow-500"/> Site / Yard Location
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Region */}
+                    <div className="relative group">
+                        <input 
+                            {...register('region')} 
+                            id="region"
+                            placeholder="e.g. Nairobi"
+                            className={`peer w-full bg-slate-950 border-2 ${errors.region ? 'border-red-500/50 focus:border-red-500' : touchedFields.region && !errors.region ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner`}
+                        />
+                        <label htmlFor="region" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.region ? 'text-red-400' : touchedFields.region && !errors.region ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                            Region / County <span className="text-red-500">*</span>
+                        </label>
+                        <div className="absolute right-4 top-4 pointer-events-none">
+                            {errors.region ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.region && !errors.region ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                        </div>
+                        {errors.region && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.region.message}</p>}
+                    </div>
+
+                    {/* City */}
+                    <div className="relative group">
+                        <input 
+                            {...register('city')} 
+                            id="city"
+                            placeholder="e.g. Industrial Area"
+                            className={`peer w-full bg-slate-950 border-2 ${errors.city ? 'border-red-500/50 focus:border-red-500' : touchedFields.city && !errors.city ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner`}
+                        />
+                        <label htmlFor="city" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.city ? 'text-red-400' : touchedFields.city && !errors.city ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                            City / Town <span className="text-red-500">*</span>
+                        </label>
+                        <div className="absolute right-4 top-4 pointer-events-none">
+                            {errors.city ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.city && !errors.city ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                        </div>
+                        {errors.city && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.city.message}</p>}
+                    </div>
+                </div>
+
+                {/* Address */}
+                <div className="relative group">
+                    <input 
+                        {...register('address')} 
+                        id="address"
+                        placeholder="Street name, building, warehouse number..."
+                        className={`peer w-full bg-slate-950 border-2 ${errors.address ? 'border-red-500/50 focus:border-red-500' : touchedFields.address && !errors.address ? 'border-green-500/50 focus:border-green-500' : 'border-slate-800 hover:border-slate-700 focus:border-yellow-500'} px-4 pt-7 pb-2.5 rounded-xl text-white outline-none transition-all shadow-inner`}
+                    />
+                    <label htmlFor="address" className={`absolute left-4 top-2 text-[10px] font-black uppercase tracking-wider transition-colors pointer-events-none ${errors.address ? 'text-red-400' : touchedFields.address && !errors.address ? 'text-green-400' : 'text-slate-500 group-focus-within:text-yellow-500'}`}>
+                        Specific Address / Plot No. <span className="text-red-500">*</span>
+                    </label>
+                    <div className="absolute right-4 top-4 pointer-events-none">
+                        {errors.address ? <AlertCircle size={20} className="text-red-500 animate-in zoom-in"/> : touchedFields.address && !errors.address ? <CheckCircle size={20} className="text-green-500 animate-in zoom-in"/> : null}
+                    </div>
+                    {errors.address && <p className="text-red-500 text-xs mt-1.5 flex items-start animate-in fade-in slide-in-from-top-1"><AlertCircle size={12} className="mr-1 mt-0.5 flex-shrink-0"/>{errors.address.message}</p>}
+                </div>
+            </div>
+            
+            <div className="pt-4">
+                <button 
+                    type="button"
+                    onClick={handleContinueToPayment}
+                    disabled={!isValid}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 text-slate-950 font-black py-4 rounded-xl shadow-[0_10px_30px_-10px_rgba(234,179,8,0.4)] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center tracking-wide text-lg"
+                >
+                    CONTINUE TO PAYMENT <ChevronRight size={22} className="ml-2"/>
+                </button>
+            </div>
+        </form>
+    </div>
+)}
+
+                       {/* STEP 2: PAYMENT METHOD */}
                         {step === 2 && (
                             <div className="bg-slate-900 rounded-2xl border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.1)] transition-all overflow-hidden animate-in fade-in slide-in-from-right-4">
                                 <div className="bg-slate-950 p-4 border-b border-slate-800 flex justify-between items-center">
                                     <h2 className="text-lg font-bold text-white flex items-center"><CreditCard className="mr-2 text-yellow-500" size={20}/> Payment Method</h2>
-                                    <button onClick={() => setStep(1)} className="text-xs text-slate-400 hover:text-white underline">Edit Shipping</button>
+                                    <button onClick={() => setStep(1)} className="text-xs text-slate-400 hover:text-white underline transition-colors">Edit Shipping</button>
                                 </div>
                                 
-                                <div className="p-6 space-y-4">
-                                    <div className="bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg flex items-start mb-6">
-                                        <ShieldCheck className="text-blue-400 flex-shrink-0 mr-3" size={24}/>
+                                <div className="p-6 space-y-5">
+                                    {/* TRUST BADGE */}
+                                    <div className="bg-gradient-to-r from-blue-900/30 to-slate-900 border border-blue-500/30 p-4 rounded-xl flex items-center mb-8 shadow-inner">
+                                        <div className="bg-blue-500/20 p-2 rounded-full mr-4 shadow-[0_0_10px_rgba(59,130,246,0.2)]">
+                                            <ShieldCheck className="text-blue-400" size={28}/>
+                                        </div>
                                         <div>
-                                            <h4 className="text-white font-bold text-sm">DAGIV Escrow Protection</h4>
-                                            <p className="text-xs text-slate-400 leading-relaxed">Your payment is held securely in trust. The seller only receives funds once you inspect and accept the equipment.</p>
+                                            <h4 className="text-white font-black text-sm tracking-wide">DAGIV Escrow Protection</h4>
+                                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">Your payment is encrypted and held securely. The seller only receives funds once you inspect and accept the machinery.</p>
                                         </div>
                                     </div>
                                     
-                                    {/* M-PESA */}
-                                    <label className={`block border-2 rounded-xl p-4 cursor-pointer transition-all ${paymentMethod === 'MPESA' ? 'border-green-500 bg-green-900/10 shadow-md' : 'border-slate-700 hover:border-slate-600 bg-slate-950'}`}>
-                                        <div className="flex items-center">
-                                            <input type="radio" name="payment" value="MPESA" checked={paymentMethod === 'MPESA'} onChange={() => setPaymentMethod('MPESA')} className="w-5 h-5 text-green-600 bg-slate-900 border-slate-700 focus:ring-green-600"/>
-                                            <div className="h-10 w-16 bg-white rounded ml-4 flex items-center justify-center p-1"><img src="/mpesa-logo.png" alt="M-Pesa" className="max-h-full object-contain"/></div>
-                                            <div className="flex-1 ml-4">
-                                                <div className="font-bold text-white text-lg">M-Pesa Express</div>
-                                                <div className="text-xs text-slate-400">Instant STK Push to your phone</div>
-                                            </div>
-                                        </div>
-                                        {paymentMethod === 'MPESA' && (
-                                            <div className="mt-4 ml-12 animate-in fade-in slide-in-from-top-2">
-                                                <label className="block text-xs text-slate-400 mb-1 font-bold">M-Pesa Phone Number</label>
-                                                <input type="tel" placeholder="e.g., 0712345678" value={mpesaPhone} onChange={e=>setMpesaPhone(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-sm focus:border-green-500 outline-none transition-colors"/>
-                                            </div>
-                                        )}
-                                    </label>
-
-                                    {/* BANK TRANSFER */}
-                                    <label className={`block border-2 rounded-xl p-4 cursor-pointer transition-all ${paymentMethod === 'BANK' ? 'border-blue-500 bg-blue-900/10 shadow-md' : 'border-slate-700 hover:border-slate-600 bg-slate-950'}`}>
-                                        <div className="flex items-center">
-                                            <input type="radio" name="payment" value="BANK" checked={paymentMethod === 'BANK'} onChange={() => setPaymentMethod('BANK')} className="w-5 h-5 text-blue-600 bg-slate-900 border-slate-700 focus:ring-blue-600"/>
-                                            <div className="h-10 w-16 bg-white rounded ml-4 flex items-center justify-center p-1"><Building className="text-blue-800" size={24}/></div>
-                                            <div className="flex-1 ml-4">
-                                                <div className="font-bold text-white text-lg">Bank Transfer (KCB)</div>
-                                                <div className="text-xs text-slate-400">RTGS/EFT for large amounts</div>
-                                            </div>
-                                        </div>
-                                        {paymentMethod === 'BANK' && (
-                                            <div className="mt-6 ml-12 bg-slate-950 border border-slate-800 rounded-lg p-5 animate-in fade-in slide-in-from-top-2">
-                                                <h4 className="text-white font-bold mb-4 flex items-center text-sm uppercase tracking-wider"><Building size={16} className="text-blue-500 mr-2"/> Payment Instructions</h4>
-                                                
-                                                <div className="grid grid-cols-2 gap-6">
-                                                    <div>
-                                                        <p className="text-xs text-slate-500 font-bold uppercase mb-1">Bank Name</p>
-                                                        <p className="text-white font-medium">KCB Bank Kenya</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs text-slate-500 font-bold uppercase mb-1">Account Name</p>
-                                                        <p className="text-white font-medium">DAGIV Engineering Ltd</p>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-6 pt-6 border-t border-slate-800 grid grid-cols-2 gap-6">
-                                                    <div className="bg-slate-900 p-3 rounded border border-slate-700">
-                                                        <p className="text-xs text-slate-500 font-bold uppercase mb-1">Paybill Number</p>
-                                                        <p className="text-2xl font-black text-white font-mono flex items-center justify-between">
-                                                            522522
-                                                            <button onClick={() => navigator.clipboard.writeText('522522')} className="text-slate-500 hover:text-blue-500 transition-colors" title="Copy Paybill" aria-label="Copy Paybill"><Copy size={16}/></button>
-                                                        </p>
-                                                    </div>
-                                                    <div className="bg-slate-900 p-3 rounded border border-slate-700">
-                                                        <p className="text-xs text-slate-500 font-bold uppercase mb-1">Account Number</p>
-                                                        <p className="text-xl font-black text-yellow-500 font-mono flex items-center justify-between">
-                                                            1280877812
-                                                            <button onClick={() => navigator.clipboard.writeText('1280877812')} className="text-slate-500 hover:text-yellow-500 transition-colors" title="Copy Account No." aria-label="Copy Account Number"><Copy size={16}/></button>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <p className="text-xs text-slate-400 mt-4 flex items-start"><AlertCircle size={14} className="mr-2 flex-shrink-0 text-blue-400"/> Please use your Order ID as the transaction reference if possible.</p>
-                                            </div>
-                                        )}
-                                    </label>
-
-                                    {/* CARD */}
-                                    <label className={`block border-2 rounded-xl p-4 cursor-pointer transition-all ${paymentMethod === 'CARD' ? 'border-purple-500 bg-purple-900/10 shadow-md' : 'border-slate-700 hover:border-slate-600 bg-slate-950'}`}>
-                                        <div className="flex items-center mb-4">
-                                            <input type="radio" name="payment" value="CARD" checked={paymentMethod === 'CARD'} onChange={() => setPaymentMethod('CARD')} className="w-5 h-5 text-purple-600 bg-slate-900 border-slate-700 focus:ring-purple-600"/>
-                                            <div className="flex ml-4 gap-2">
-                                                <div className="h-8 w-12 bg-white rounded flex items-center justify-center"><CreditCard className="text-slate-900" size={20}/></div>
-                                                <div className="h-8 w-12 bg-white rounded flex items-center justify-center"><span className="font-bold text-blue-800 text-xs">VISA</span></div>
-                                                <div className="h-8 w-12 bg-white rounded flex items-center justify-center"><span className="font-bold text-red-600 text-xs">MC</span></div>
-                                            </div>
-                                            <div className="flex-1 ml-4">
-                                                <div className="font-bold text-white text-lg">Credit / Debit Card</div>
-                                                <div className="text-xs text-slate-400">Securely pay with Visa, Mastercard</div>
-                                            </div>
-                                        </div>
-                                        {paymentMethod === 'CARD' && (
-                                            <div className="mt-4 ml-12 p-6 bg-slate-950 border border-slate-800 rounded-xl animate-in fade-in slide-in-from-top-2 relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 -mt-4 -mr-4 text-slate-800 opacity-20 pointer-events-none">
-                                                    <CreditCard size={150}/>
-                                                </div>
-                                                
-                                                <div className="space-y-4 relative z-10">
-                                                    <div>
-                                                        <label className="block text-xs text-slate-400 mb-1 font-bold">Card Number</label>
-                                                        <div className="relative">
-                                                            <input type="text" placeholder="XXXX XXXX XXXX XXXX" className="w-full bg-slate-900 border border-slate-700 p-3 pl-12 rounded text-white font-mono focus:border-purple-500 outline-none transition-colors"/>
-                                                            <CreditCard className="absolute left-4 top-3.5 text-slate-500" size={20}/>
-                                                        </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="block text-xs text-slate-400 mb-1 font-bold">Expiry Date</label>
-                                                            <input type="text" placeholder="MM/YY" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-mono focus:border-purple-500 outline-none transition-colors text-center"/>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs text-slate-400 mb-1 font-bold">CVV / CVC</label>
-                                                            <input type="text" placeholder="XXX" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-mono focus:border-purple-500 outline-none transition-colors text-center"/>
-                                                        </div>
-                                                    </div>
-                                                     <div>
-                                                        <label className="block text-xs text-slate-400 mb-1 font-bold">Cardholder Name</label>
-                                                        <input type="text" placeholder="e.g. JOHN DOE" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white focus:border-purple-500 outline-none transition-colors uppercase"/>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </label>
-
-                                    <div className="mt-8">
-                                        <button 
-                                            onClick={handlePlaceOrder}
-                                            disabled={processing || (paymentMethod === 'MPESA' && !mpesaPhone)}
-                                            className="w-full bg-green-600 text-white font-black py-4 rounded-xl hover:bg-green-500 shadow-[0_0_20px_rgba(22,163,74,0.3)] transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
+                                    <div className="space-y-4 relative">
+                                        
+                                        {/* --- 1. M-PESA CARD --- */}
+                                        <div 
+                                            onClick={() => setPaymentMethod('MPESA')}
+                                            className={`relative overflow-hidden block border-2 rounded-2xl p-5 cursor-pointer transition-all duration-300 ${paymentMethod === 'MPESA' ? 'border-green-500 bg-gradient-to-br from-green-900/20 to-transparent shadow-[0_0_20px_rgba(34,197,94,0.15)] ring-1 ring-green-500' : 'border-slate-800 hover:border-slate-600 bg-slate-900/50'}`}
                                         >
-                                            {processing ? <Loader2 className="animate-spin mr-2"/> : <Lock className="mr-2" size={20}/>}
-                                            {processing ? "PROCESSING SECURELY..." : `PAY ${currency} ${total.toLocaleString()}`}
+                                            <div className="absolute top-0 right-0 bg-green-500 text-slate-950 text-[9px] font-black px-3 py-1 rounded-bl-lg uppercase tracking-widest shadow-md">
+                                                Fastest
+                                            </div>
+                                            <div className="flex items-center">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition-colors ${paymentMethod === 'MPESA' ? 'border-green-500' : 'border-slate-600'}`}>
+                                                    {paymentMethod === 'MPESA' && <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-in zoom-in"></div>}
+                                                </div>
+                                                <div className="h-10 w-16 bg-white rounded shadow-md flex items-center justify-center p-1 border border-slate-200 shrink-0">
+                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/1/15/M-PESA_LOGO-01.svg" alt="M-Pesa" className="max-h-full object-contain"/>
+                                                </div>
+                                                <div className="flex-1 ml-4">
+                                                    <div className={`font-black text-lg transition-colors ${paymentMethod === 'MPESA' ? 'text-green-400' : 'text-white'}`}>M-Pesa Express</div>
+                                                    <div className="text-xs text-slate-400">Instant STK Push to your phone</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className={`grid transition-all duration-300 ease-in-out ${paymentMethod === 'MPESA' ? 'grid-rows-[1fr] opacity-100 mt-5' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                <div className="overflow-hidden">
+                                                    <div className="ml-9 pl-5 border-l-2 border-slate-800 space-y-2">
+                                                        <label className="block text-xs text-slate-400 font-bold uppercase tracking-wider">M-Pesa Number</label>
+                                                        <div className="relative flex items-center group">
+    <div className="absolute left-0 top-0 bottom-0 flex items-center justify-center w-24 bg-slate-900 rounded-l-lg border border-slate-700 group-focus-within:border-green-500 transition-colors shadow-inner z-10 px-3">
+        {/* SVG Flag ensures it renders perfectly on Windows, Mac, and Mobile */}
+        <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Kenya.svg" 
+            alt="KE" 
+            className="w-5 h-auto mr-2 rounded-[2px] shadow-sm object-cover" 
+        />
+        <span className="text-slate-300 font-mono text-sm font-bold">+254</span>
+    </div>
+    <input 
+        type="tel" 
+        placeholder="7XX XXX XXX" 
+        value={mpesaPhone} 
+        onChange={(e) => {
+            // Senior UX: Auto-clean the input. If user pastes "0712...", it strips the "0" automatically!
+            let val = e.target.value.replace(/[^0-9]/g, '');
+            if (val.startsWith('254')) val = val.substring(3);
+            if (val.startsWith('0')) val = val.substring(1);
+            setMpesaPhone(val);
+        }} 
+        maxLength={9} // Prevents typing too many numbers
+        className="w-full bg-slate-950 border border-slate-700 pl-28 p-3.5 rounded-lg text-white font-mono text-lg tracking-widest focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all shadow-inner relative"
+    />
+</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* --- 2. CARD PAYMENT CARD --- */}
+                                        <div 
+                                            onClick={() => setPaymentMethod('CARD')}
+                                            className={`relative overflow-hidden block border-2 rounded-2xl p-5 cursor-pointer transition-all duration-300 ${paymentMethod === 'CARD' ? 'border-purple-500 bg-gradient-to-br from-purple-900/20 to-transparent shadow-[0_0_20px_rgba(168,85,247,0.15)] ring-1 ring-purple-500' : 'border-slate-800 hover:border-slate-600 bg-slate-900/50'}`}
+                                        >
+                                            <div className="flex items-center">
+                                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition-colors ${paymentMethod === 'CARD' ? 'border-purple-500' : 'border-slate-600'}`}>
+                                                    {paymentMethod === 'CARD' && <div className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-in zoom-in"></div>}
+                                                </div>
+                                                <div className="flex gap-2 shrink-0">
+                                                    {/* High Quality Visa SVG */}
+                                                    <div className="h-10 w-14 bg-white rounded shadow-md flex items-center justify-center border border-slate-200 p-1.5">
+                                                        {/* Fixed Visa Logo visibility by changing the URL */}
+                                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg/1280px-Visa_Inc._logo_%282021%E2%80%93present%29.svg.png" alt="Visa" className="h-full object-contain"/>
+                                                    </div>
+                                                    {/* High Quality Mastercard SVG */}
+                                                    <div className="h-10 w-14 bg-white rounded shadow-md flex items-center justify-center border border-slate-200 p-1.5">
+                                                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-full object-contain"/>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 ml-4">
+                                                    <div className={`font-black text-lg transition-colors ${paymentMethod === 'CARD' ? 'text-purple-400' : 'text-white'}`}>Credit / Debit Card</div>
+                                                    <div className="text-xs text-slate-400">Secure gateway via Pesapal</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className={`grid transition-all duration-300 ease-in-out ${paymentMethod === 'CARD' ? 'grid-rows-[1fr] opacity-100 mt-5' : 'grid-rows-[0fr] opacity-0'}`}>
+                                                <div className="overflow-hidden">
+                                                    <div className="ml-9 pl-5 border-l-2 border-slate-800">
+                                                        <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex items-start gap-4 shadow-inner">
+                                                            <Lock className="text-purple-500 shrink-0 mt-1" size={20}/>
+                                                            <div>
+                                                                <p className="text-sm text-white font-bold">PCI-DSS Compliant Gateway</p>
+                                                                <p className="text-xs text-slate-400 mt-1">Clicking "Pay" will seamlessly open a secure gateway. DAGIV does not store your card details.</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* --- 3. BANK TRANSFER CARD (KCB UI) --- */}
+        <label className={`block border-2 rounded-2xl p-5 cursor-pointer transition-all duration-300 ${paymentMethod === 'BANK' ? 'border-blue-500 bg-gradient-to-br from-blue-900/20 to-transparent shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-1 ring-blue-500' : 'border-slate-800 hover:border-slate-600 bg-slate-950'}`}>
+            <div className="flex items-center">
+                <input 
+                    type="radio" 
+                    name="payment" 
+                    value="BANK" 
+                    checked={paymentMethod === 'BANK'} 
+                    onChange={() => setPaymentMethod('BANK')} 
+                    className="sr-only" 
+                />
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 transition-colors ${paymentMethod === 'BANK' ? 'border-blue-500' : 'border-slate-600'}`}>
+                    {paymentMethod === 'BANK' && <div className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-in zoom-in"></div>}
+                </div>
+                {/* KCB Logo Container Adjusted */}
+                <div className="h-10 w-16 bg-white rounded shadow-md flex items-center justify-center border border-slate-200 p-1 shrink-0">
+                    <img 
+                        src="https://vectorseek.com/wp-content/uploads/2023/09/Kcb-Group-Plc-Logo-Vector.svg-.png" 
+                        alt="KCB" 
+                        className="h-full w-full object-cover scale-150 object-center" 
+                    />
+                </div>
+                <div className="flex-1 ml-4">
+                    <div className={`font-black text-lg transition-colors ${paymentMethod === 'BANK' ? 'text-blue-400' : 'text-white'}`}>Bank Transfer (KCB)</div>
+                    <div className="text-xs text-slate-400">RTGS/EFT for heavy machinery</div>
+                </div>
+            </div>
+            
+            <div className={`grid transition-all duration-300 ease-in-out ${paymentMethod === 'BANK' ? 'grid-rows-[1fr] opacity-100 mt-5' : 'grid-rows-[0fr] opacity-0'}`}>
+                <div className="overflow-hidden">
+                    <div className="ml-9 pl-5 border-l-2 border-slate-800">
+                        <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 shadow-inner">
+                            <h4 className="text-white font-bold mb-5 flex items-center text-sm uppercase tracking-wider">
+                                <Building size={16} className="text-blue-500 mr-2"/> KCB Payment Instructions
+                            </h4>
+                            
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-xs text-slate-500 font-bold uppercase mb-1">Bank Name</p>
+                                    <p className="text-white font-medium">KCB Bank Kenya</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-500 font-bold uppercase mb-1">Account Name</p>
+                                    <p className="text-white font-medium">DAGIV Engineering Ltd</p>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-5 pt-5 border-t border-slate-800 grid grid-cols-2 gap-6">
+                                <div className="bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-sm">
+                                    <p className="text-xs text-slate-500 font-bold uppercase mb-1">Paybill Number</p>
+                                    <p className="text-xl font-black text-white font-mono flex items-center justify-between">
+                                        522522
+                                        <button 
+                                            onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText('522522'); }} 
+                                            className="text-slate-500 hover:text-blue-500 transition-colors p-1" 
+                                            title="Copy Paybill"
+                                        >
+                                            <Copy size={16}/>
                                         </button>
-                                        <p className="text-center text-xs text-slate-500 mt-4 flex items-center justify-center">
-                                            <Lock size={12} className="mr-1"/> By clicking Pay, you agree to DAGIV's Terms of Service.
-                                        </p>
+                                    </p>
+                                </div>
+                                <div className="bg-slate-900 p-3 rounded-lg border border-slate-700 shadow-sm">
+                                    <p className="text-xs text-slate-500 font-bold uppercase mb-1">Account Number</p>
+                                    <p className="text-lg sm:text-xl font-black text-yellow-500 font-mono flex items-center justify-between">
+                                        1280877812
+                                        <button 
+                                            onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText('1280877812'); }} 
+                                            className="text-slate-500 hover:text-yellow-500 transition-colors p-1" 
+                                            title="Copy Account No."
+                                        >
+                                            <Copy size={16}/>
+                                        </button>
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="bg-blue-900/20 border border-blue-900/50 rounded p-3 mt-4 flex items-start">
+                                <AlertCircle size={16} className="mr-2 flex-shrink-0 text-blue-400 mt-0.5"/> 
+                                <p className="text-xs text-slate-300 leading-relaxed">
+                                    Please use your Order ID as the transaction reference. Manual verification takes 1-2 business hours.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </label>
+
                                     </div>
+
+                                    {/* PREMIUM PAY BUTTON (DYNAMIC) */}
+    <div className="pt-6 mt-4 border-t border-slate-800">
+        <button 
+            onClick={handlePlaceOrder}
+            disabled={processing || (paymentMethod === 'MPESA' && mpesaPhone.length < 9)}
+            className={`group relative w-full overflow-hidden rounded-xl font-black py-4 transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99] ${
+                paymentMethod === 'CARD' ? 'shadow-[0_10px_40px_-10px_rgba(168,85,247,0.5)]' : 
+                paymentMethod === 'BANK' ? 'shadow-[0_10px_40px_-10px_rgba(59,130,246,0.5)]' : 
+                'shadow-[0_10px_40px_-10px_rgba(34,197,94,0.5)]'
+            }`}
+        >
+            {/* Animated Button Background - Smoothly morphs color based on selected method */}
+            <div className={`absolute inset-0 bg-gradient-to-r bg-[length:200%_auto] animate-gradient transition-colors duration-500 ${
+                paymentMethod === 'CARD' ? 'from-purple-600 via-fuchsia-500 to-purple-600' : 
+                paymentMethod === 'BANK' ? 'from-blue-600 via-cyan-500 to-blue-600' : 
+                'from-green-600 via-emerald-500 to-green-600'
+            }`}></div>
+            
+            <div className="relative flex items-center justify-center text-white text-lg tracking-wide">
+                {processing ? (
+                    <>
+                        <Loader2 className="animate-spin mr-3" size={24}/>
+                        <span className="animate-pulse">
+                            {paymentMethod === 'CARD' ? 'ESTABLISHING SECURE CONNECTION...' : 
+                             paymentMethod === 'BANK' ? 'GENERATING INVOICE...' : 
+                             'INITIATING STK PUSH...'}
+                        </span>
+                    </>
+                ) : (
+                    <>
+                        <Lock className="mr-3 text-white/90 group-hover:scale-110 transition-transform" size={22}/>
+                        <span>
+                            {paymentMethod === 'CARD' ? `OPEN SECURE GATEWAY • ${currency} ${total.toLocaleString()}` : 
+                             paymentMethod === 'BANK' ? `CONFIRM ORDER • ${currency} ${total.toLocaleString()}` : 
+                             `SECURE PAY • ${currency} ${total.toLocaleString()}`}
+                        </span>
+                    </>
+                )}
+            </div>
+        </button>
+        <p className="text-center text-[11px] text-slate-500 mt-4 flex items-center justify-center font-medium">
+            <Lock size={12} className="mr-1.5"/> 256-Bit SSL Encryption • Your data is safe
+        </p>
+    </div>
                                 </div>
                             </div>
                         )}
 
                         {/* STEP 3: SUCCESS & INSTRUCTIONS */}
-                        {step === 3 && orderResult && (
+                        {step === 3 && orderResult && orderResult.payment_info?.type !== 'CARD' && (
                             <div className="bg-slate-900 rounded-2xl border border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.1)] p-8 text-center animate-in zoom-in-95">
                                 <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
                                     <CheckCircle size={40} className="text-white"/>
@@ -452,33 +659,51 @@ export default function Checkout() {
                         )}
 
                         {/* --- PESAPAL IFRAME OVERLAY --- */}
-                        {step === 3 && orderResult?.payment_info?.type === 'CARD' && orderResult.payment_info.url && (
-                            <div className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-10 animate-in fade-in zoom-in-95">
-                                <div className="bg-white rounded-2xl overflow-hidden w-full max-w-4xl h-full max-h-[800px] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] relative">
-                                    <div className="bg-slate-900 p-4 flex justify-between items-center border-b border-slate-800">
-                                        <div className="flex items-center">
-                                            <ShieldCheck className="text-green-500 mr-2" size={24}/>
-                                            <span className="text-white font-bold tracking-widest uppercase text-sm">Secure Checkout Gateway</span>
-                                        </div>
-                                        <button 
-                                            onClick={() => window.location.href = '/marketplace'} 
-                                            className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full transition-colors"
-                                            title="Close Payment Gateway"
-                                            aria-label="Close Payment Gateway"
-                                        >
-                                            <X size={20}/>
-                                        </button>
-                                    </div>
-                                    <iframe 
-                                        src={orderResult.payment_info.url} 
-                                        className="flex-1 w-full bg-slate-50" 
-                                        frameBorder="0"
-                                        title="Pesapal Secure Payment"
-                                        allow="payment"
-                                    ></iframe>
-                                </div>
-                            </div>
-                        )}
+{step === 3 && orderResult?.payment_info?.type === 'CARD' && orderResult.payment_info.url && (
+    <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in zoom-in-95">
+        <div className="bg-white rounded-2xl overflow-hidden w-full max-w-3xl h-[85vh] flex flex-col shadow-[0_20px_70px_rgba(0,0,0,0.7)] relative border border-slate-700">
+            
+            {/* Professional Header */}
+            <div className="bg-slate-900 p-5 flex justify-between items-center shadow-lg z-20">
+                <div className="flex items-center">
+                    <Lock className="text-green-500 mr-3" size={24}/>
+                    <div>
+                        <div className="text-white font-black tracking-widest uppercase text-sm">Pesapal Secure Gateway</div>
+                        <div className="text-green-400 text-[10px] flex items-center mt-1 font-mono">
+                            <ShieldCheck size={12} className="mr-1"/> PCI-DSS Compliant • 256-bit Encryption
+                        </div>
+                    </div>
+                </div>
+                <button 
+                    onClick={() => window.location.href = '/marketplace'} 
+                    className="text-slate-400 hover:text-white bg-slate-800 hover:bg-red-500 p-2 rounded-full transition-colors group"
+                    title="Cancel Payment"
+                    aria-label="Cancel Payment"
+                >
+                    <X size={20} className="group-hover:rotate-90 transition-transform"/>
+                </button>
+            </div>
+
+            {/* Iframe Container */}
+            <div className="flex-1 w-full relative bg-slate-50 flex items-center justify-center">
+                
+                {/* Loading State Behind Iframe */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none">
+                    <div className="w-12 h-12 border-4 border-slate-200 border-t-yellow-500 rounded-full animate-spin mb-4 shadow-lg"></div>
+                    <span className="text-sm font-bold tracking-wide">Establishing secure connection...</span>
+                </div>
+                
+                {/* The Actual Secure Iframe */}
+                <iframe 
+                    src={orderResult.payment_info.url} 
+                    className="absolute inset-0 w-full h-full z-10 border-0 bg-transparent"
+                    title="Pesapal Secure Payment"
+                    allow="payment"
+                />
+            </div>
+        </div>
+    </div>
+)}
 
                     </div>
 
