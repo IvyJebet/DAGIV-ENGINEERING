@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 
 // Features & Pages
 import HomePage from '@/pages/Home';
-import CheckoutPage from './pages/Checkout';
+import CheckoutPage from '@/pages/Checkout';
 import MarketplaceLayout from '@/pages/Marketplace';
 import ServicesPage from '@/pages/Services';
 import ProfessionalsPage from '@/pages/Professionals';
