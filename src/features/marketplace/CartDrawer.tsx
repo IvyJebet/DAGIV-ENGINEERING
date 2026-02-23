@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle, Lock } from 'lucide-react';
+import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -21,8 +21,8 @@ interface CartItem {
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
-    const [items, setItems] = useState<CartItem[]>([]);
     const navigate = useNavigate();
+    const [items, setItems] = useState<CartItem[]>([]);
     const [summary, setSummary] = useState({ item_count: 0, total_value: 0, currency: 'KES' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -206,7 +206,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                             className="w-full bg-yellow-500 text-slate-900 font-black py-4 rounded-xl hover:bg-yellow-400 transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center shadow-lg shadow-yellow-500/20"
                             onClick={() => {
                                 onClose();
-                                navigate('/checkout'); // <-- Route to our new page
+                                navigate('/checkout');
                             }}
                         >
                             PROCEED TO SECURE CHECKOUT <ArrowRight className="ml-2" size={20} />
