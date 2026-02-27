@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, User, ShoppingCart, Activity, Truck, Wrench, Search } from 'lucide-react';
+import { Menu, X, User, ShoppingCart, Activity, Truck, Wrench, Search, ClipboardCheck } from 'lucide-react';
 import { CartDrawer } from '@/features/marketplace/CartDrawer';
+import { useAuth } from '@/context/AuthContext';
 
-interface NavbarProps {
-  onLoginClick: () => void;
-}
-
-export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
+export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, token, logout, setShowAuthModal } = useAuth();
   
-  // --- TASK 1.2: Cart State ---
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
 
@@ -27,29 +24,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // --- TASK 1.2: Sync Cart Badge Count ---
   const fetchCartCount = async () => {
-      const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
-      if (!token) return;
+      // Use the global token from our new AuthContext if available, fallback to localStorage
+      const currentToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+      if (!currentToken) {
+          setCartCount(0);
+          return;
+      }
       try {
           const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/cart`, {
-              headers: { 'Authorization': `Bearer ${token}` }
+              headers: { 'Authorization': `Bearer ${currentToken}` }
           });
           if (res.ok) {
               const data = await res.json();
-              setCartCount(data.summary.item_count || 0);
+              setCartCount(data.summary?.item_count || 0);
           }
       } catch (e) {
-          console.error("Cart count error", e);
+          console.warn("Backend not reachable for cart count");
       }
   };
 
   useEffect(() => {
       fetchCartCount();
-      // Listen to the custom event triggered by ProductDetailOverlay and CartDrawer
       window.addEventListener('cartUpdated', fetchCartCount);
       return () => window.removeEventListener('cartUpdated', fetchCartCount);
-  }, []);
+  }, [token]); // Re-fetch if the user logs in/out
 
   return (
     <>
@@ -67,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
               </div>
             </Link>
             
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation Links */}
             <div className="hidden lg:block">
               <div className="ml-10 flex items-baseline space-x-4">
                 {navItems.map((item) => (
@@ -86,9 +85,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
               </div>
             </div>
 
-            {/* Right Actions */}
+            {/* Desktop Right Actions */}
             <div className="hidden md:flex items-center space-x-4">
-               {/* TASK 1.2: CART ICON */}
+               {/* Cart Icon */}
                <button 
                   onClick={() => setIsCartOpen(true)}
                   className="relative p-2.5 text-slate-300 hover:text-yellow-500 transition-colors group"
@@ -104,6 +103,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
 
                <div className="h-6 w-px bg-slate-800 mx-2"></div>
 
+               {/* Operator Log Button */}
+               <button 
+                  onClick={() => window.dispatchEvent(new Event('openOperatorPortal'))}
+                  className="text-slate-300 font-bold text-xs px-4 py-2 border border-slate-700 rounded hover:bg-slate-800 transition-colors flex items-center gap-2"
+               >
+                  <ClipboardCheck size={14} /> OPERATOR LOG
+               </button>
+
+               {/* ERP Login Button */}
                <Link 
                   to="/erp"
                   className="text-yellow-500 font-bold text-xs px-4 py-2 border border-yellow-500/30 rounded hover:bg-yellow-500/10 transition-colors flex items-center gap-2 shadow-[0_0_10px_rgba(234,179,8,0.1)] hover:shadow-[0_0_15px_rgba(234,179,8,0.2)]"
@@ -111,17 +119,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
                   <Activity size={14} /> ERP LOGIN
                </Link>
                
-               {/* Account / User Button */}
-               <button 
-                  onClick={onLoginClick} 
-                  className="bg-slate-800 p-2.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700 transition-all"
-                  title="Account Dashboard"
-               >
-                  <User size={18} />
-               </button>
+               {/* User Account / Auth Dropdown */}
+               {user ? (
+                   <div className="relative group">
+                       <button className="bg-slate-800 px-4 py-2 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700 transition-all flex items-center gap-2 font-bold text-sm">
+                           <User size={16} /> {user.username}
+                       </button>
+                       {/* Dropdown Menu */}
+                       <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden">
+                           <div className="px-4 py-3 border-b border-slate-800">
+                               <p className="text-xs text-slate-500 uppercase font-bold">Signed in as</p>
+                               <p className="text-sm text-white font-bold truncate">{user.username}</p>
+                           </div>
+                           <Link to="/buyer/dashboard" className="px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-yellow-500 transition-colors">Buyer Dashboard</Link>
+                           {user.role === 'SELLER' && (
+                               <Link to="/seller/dashboard" className="px-4 py-3 text-sm text-slate-300 hover:bg-slate-800 hover:text-yellow-500 transition-colors">Seller Dashboard</Link>
+                           )}
+                           <button onClick={logout} className="px-4 py-3 text-sm text-left text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors border-t border-slate-800">Log Out</button>
+                       </div>
+                   </div>
+               ) : (
+                   <button 
+                       onClick={() => setShowAuthModal(true)} 
+                       className="bg-slate-800 px-4 py-2 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700 transition-all flex items-center gap-2 font-bold text-sm"
+                   >
+                       <User size={16} /> Login / Register
+                   </button>
+               )}
             </div>
 
-            {/* Mobile Menu Buttons */}
+            {/* Mobile Menu Toggle */}
             <div className="-mr-2 flex items-center md:hidden gap-4">
               <button 
                   onClick={() => setIsCartOpen(true)}
@@ -175,18 +202,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick }) => {
                 >
                   ACCESS ERP DASHBOARD
                 </Link>
-                <button
-                  onClick={() => { onLoginClick(); setIsOpen(false); }}
-                  className="text-slate-300 bg-slate-800 font-bold uppercase tracking-wider block px-3 py-3 rounded-md text-base w-full text-center mt-2 border border-slate-700"
-                >
-                  ACCOUNT LOGIN
-                </button>
+                {user ? (
+                    <button
+                      onClick={() => { logout(); setIsOpen(false); }}
+                      className="text-red-400 bg-slate-800 font-bold uppercase tracking-wider block px-3 py-3 rounded-md text-base w-full text-center mt-2 border border-slate-700"
+                    >
+                      LOG OUT
+                    </button>
+                ) : (
+                    <button
+                      onClick={() => { setShowAuthModal(true); setIsOpen(false); }}
+                      className="text-slate-300 bg-slate-800 font-bold uppercase tracking-wider block px-3 py-3 rounded-md text-base w-full text-center mt-2 border border-slate-700"
+                    >
+                      LOGIN / REGISTER
+                    </button>
+                )}
             </div>
           </div>
         )}
       </nav>
 
-      {/* RENDER THE DRAWER OUTSIDE THE NAV FLOW */}
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );

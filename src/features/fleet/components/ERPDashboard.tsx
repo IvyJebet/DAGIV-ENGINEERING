@@ -19,7 +19,7 @@ export const ERPDashboard: React.FC<ERPDashboardProps> = ({ hasAccess, onSubscri
                 <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=2000&q=80')] bg-cover bg-center filter blur-sm"></div>
                 <div className="relative z-10 max-w-lg bg-slate-900/90 backdrop-blur-xl border border-yellow-500/30 p-10 rounded-2xl text-center shadow-2xl">
                     
-                    {/* NEW: Close Button */}
+                    {/* Close Button */}
                     <button 
                         onClick={() => navigate('/')} 
                         className="absolute top-4 right-4 text-slate-500 hover:text-white p-2 transition-colors"
@@ -100,7 +100,7 @@ export const ERPDashboard: React.FC<ERPDashboardProps> = ({ hasAccess, onSubscri
                 <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
                     <div className="p-6 border-b border-slate-800 flex justify-between items-center">
                         <h3 className="text-white font-bold">Recent Operator Logs</h3>
-                        <button className="text-yellow-500 text-sm font-bold">View All</button>
+                        <button className="text-yellow-500 text-sm font-bold hover:underline">View All</button>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left text-slate-400">
@@ -117,16 +117,32 @@ export const ERPDashboard: React.FC<ERPDashboardProps> = ({ hasAccess, onSubscri
                             <tbody>
                                 {logs.map((log) => (
                                     <tr key={log.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                        <td className="px-6 py-4 font-medium text-white">{log.id}</td>
+                                        <td className="px-6 py-4 font-mono text-xs text-white">{log.id}</td>
                                         <td className="px-6 py-4">{log.date}</td>
                                         <td className="px-6 py-4">{log.operatorName}</td>
-                                        <td className="px-6 py-4">{log.machineId}</td>
+                                        <td className="px-6 py-4 font-bold">{log.machineId}</td>
                                         <td className="px-6 py-4">{log.location}</td>
                                         <td className="px-6 py-4">
-                                            <span className="bg-green-500/10 text-green-500 px-2 py-1 rounded-full text-xs font-bold">Verified</span>
+                                            {/* AI INJECTED LOGIC: Check if checklist is perfect */}
+                                            {Object.values(log.checklist).every(v => v) ? (
+                                                <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-xs font-bold border border-green-500/20">
+                                                    CLEARED
+                                                </span>
+                                            ) : (
+                                                <span className="bg-red-500/10 text-red-500 px-3 py-1 rounded-full text-xs font-bold border border-red-500/20">
+                                                    MAINTENANCE REQ
+                                                </span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
+                                {logs.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                            No operator logs submitted yet.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

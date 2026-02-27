@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthModal } from '@/features/auth/AuthModal';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Features & Pages
 import HomePage from '@/pages/Home';
@@ -11,7 +14,7 @@ import ProfessionalsPage from '@/pages/Professionals';
 import ConsultPage from '@/pages/Consult';
 import ContactPage from '@/pages/Contact';
 import { InspectionBookingPage } from '@/pages/InspectionBooking';
-
+import { BuyerDashboard } from '@/pages/BuyerDashboard';
 
 // Feature Components
 import { SellerDashboard } from '@/features/seller/SellerDashboard';
@@ -20,7 +23,7 @@ import { ERPDashboard } from '@/features/fleet/components/ERPDashboard';
 import { OperatorPortal } from '@/features/fleet/components/OperatorPortal';
 
 // Types
-import { OperatorLog, PageView } from '@/types'; // Added PageView for compatibility
+import { OperatorLog, PageView } from '@/types';
 
 // Mock Data
 const INITIAL_LOGS: OperatorLog[] = [
@@ -41,47 +44,54 @@ const INITIAL_LOGS: OperatorLog[] = [
 ];
 
 const AppContent = () => {
+  const { user, token, showAuthModal, setShowAuthModal, logout } = useAuth();
   const [erpAccess, setErpAccess] = useState(false);
   const [operatorLogs, setOperatorLogs] = useState<OperatorLog[]>(INITIAL_LOGS);
   const [showOperatorPortal, setShowOperatorPortal] = useState(false);
   const [inspectionMode, setInspectionMode] = useState(false);
   const [isSelling, setIsSelling] = useState(false);
-  const [sellerToken, setSellerToken] = useState<string | null>(localStorage.getItem('dagiv_seller_token'));
   
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleOpenOperator = () => setShowOperatorPortal(true);
+    window.addEventListener('openOperatorPortal', handleOpenOperator);
+    
+    // 🛠️ FIX: Add listener for the Seller Portal
+    const handleOpenSeller = () => setIsSelling(true);
+    window.addEventListener('openSellerPortal', handleOpenSeller);
+    
+    return () => {
+        window.removeEventListener('openOperatorPortal', handleOpenOperator);
+        window.removeEventListener('openSellerPortal', handleOpenSeller);
+    };
+  }, []);
 
   const handleLogSubmit = (newLog: OperatorLog) => {
     setOperatorLogs([newLog, ...operatorLogs]);
   };
 
-  const handleSellerLogin = (token: string) => {
-    setSellerToken(token);
-    localStorage.setItem('dagiv_seller_token', token);
-    navigate('/seller/dashboard');
+  const handleSellerLogin = (newToken: string) => {
     setIsSelling(false);
+    navigate('/seller/dashboard');
   };
 
   const handleSellerLogout = () => {
-    setSellerToken(null);
-    localStorage.removeItem('dagiv_seller_token');
+    logout();
     navigate('/');
   };
 
-  const handleSellClick = () => {
-    if (sellerToken) {
+const handleSellClick = () => {
+    if (token && user?.role === 'SELLER') {
         navigate('/seller/dashboard');
     } else {
         setIsSelling(true);
     }
   };
-
-  // Mock function to satisfy legacy prop requirements until full refactor
   const setPageMock = (p: PageView) => {
-      // Basic routing mapping for legacy components that might emit setPage
       console.log("Legacy navigation requested:", p);
   }; 
 
-  // --- UPDATED: Inspection Mode with onClose ---
   if (inspectionMode) {
       return (
           <InspectionBookingPage 
@@ -94,11 +104,10 @@ const AppContent = () => {
   return (
     <>
       <Routes>
-        <Route element={<MainLayout onLoginClick={() => setShowOperatorPortal(true)} />}>
+        <Route element={<MainLayout />}>
           <Route path="/" element={
             <HomePage setPage={setPageMock} onBookInspection={() => setInspectionMode(true)} onSellClick={handleSellClick} />
           } />
-          {/* UPDATED: Marketplace now receives real API logic via the Component itself */}
           <Route path="/marketplace" element={
             <MarketplaceLayout mode="BUY" setPage={setPageMock} onSellClick={handleSellClick} isSpareParts={false} />
           } />
@@ -117,9 +126,13 @@ const AppContent = () => {
           <Route path="/contact" element={<ContactPage />} />
         </Route>
 
+        <Route path="/buyer/dashboard" element={
+          token ? <BuyerDashboard /> : <Navigate to="/" />
+        } />
+        
         <Route path="/seller/dashboard" element={
-          sellerToken ? (
-            <SellerDashboard token={sellerToken} onLogout={handleSellerLogout} setPage={setPageMock} />
+          token && user?.role === 'SELLER' ? (
+            <SellerDashboard token={token} onLogout={handleSellerLogout} setPage={setPageMock} />
           ) : (
             <Navigate to="/" />
           )
@@ -130,7 +143,6 @@ const AppContent = () => {
         
       </Routes>
 
-      {/* Global Overlays */}
       {showOperatorPortal && (
         <OperatorPortal onBack={() => setShowOperatorPortal(false)} onSubmit={handleLogSubmit} />
       )}
@@ -138,15 +150,21 @@ const AppContent = () => {
       {isSelling && (
           <SellItemModal onClose={() => setIsSelling(false)} onLoginSuccess={handleSellerLogin} />
       )}
+
+      {showAuthModal && <AuthModal />}
     </>
   );
 };
 
 const App = () => {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"}>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   );
 };
 
