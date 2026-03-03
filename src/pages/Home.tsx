@@ -111,7 +111,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, onBookInspection, onSellCl
                         <Activity size={32} />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3">Our Vision</h3>
-                    <p className="text-slate-400 text-sm">To be the undisputed leader in industrial engineering solutions across the world, driving infrastructure growth through reliability.</p>
+                    <p className="text-slate-400 text-sm">To be the undisputed leader in mechanical engineering solutions across the world, driving infrastructure growth through reliability.</p>
                 </div>
                 <div className="text-center p-6 bg-slate-950 rounded-xl border border-slate-800 hover:border-yellow-500/50 transition-colors">
                     <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-500 shadow-inner border border-slate-800">

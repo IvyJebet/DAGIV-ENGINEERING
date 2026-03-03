@@ -17,7 +17,7 @@ export const Footer = () => {
     <span className="text-xl font-black text-white tracking-tight">DAGIV<span className="text-yellow-500">.</span></span>
   </div>
   <p className="text-slate-400 text-sm leading-relaxed mb-6">
-    The premier industrial marketplace for heavy machinery, parts, and certified professionals in East Africa.
+    The premier industrial marketplace for heavy machinery, parts, and certified professionals around the world.
   </p>
   <div className="flex gap-4">
     <a href="#" aria-label="Visit our Facebook page" title="Facebook" className="text-slate-500 hover:text-yellow-500 transition-colors">

@@ -16,7 +16,7 @@ export const Navbar: React.FC = () => {
     { label: 'Home', path: '/' },
     { label: 'Services', path: '/services' },
     { label: 'Buy Equipment', path: '/marketplace' },
-    { label: 'Plant Hire', path: '/rentals' },
+    { label: 'Lease Equipment', path: '/rentals' },
     { label: 'Spare Parts', path: '/parts' },
     { label: 'Professionals', path: '/professionals' },
     { label: 'Consult', path: '/consult' },
@@ -188,7 +188,7 @@ export const Navbar: React.FC = () => {
                   }`}
                 >
                   {item.label === 'Buy Equipment' && <ShoppingCart size={16} className="mr-3"/>}
-                  {item.label === 'Plant Hire' && <Truck size={16} className="mr-3"/>}
+                  {item.label === 'Lease Equipment' && <Truck size={16} className="mr-3"/>}
                   {item.label === 'Services' && <Wrench size={16} className="mr-3"/>}
                   {item.label === 'Professionals' && <User size={16} className="mr-3"/>}
                   {item.label === 'Consult' && <Search size={16} className="mr-3"/>}
