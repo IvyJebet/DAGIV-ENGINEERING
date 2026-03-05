@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';

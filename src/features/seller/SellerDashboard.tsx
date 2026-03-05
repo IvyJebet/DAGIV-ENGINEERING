@@ -261,7 +261,7 @@ export const SellerDashboard = ({
                                     <td className="px-6 py-4 font-bold text-yellow-500">{order.currency} {order.amount.toLocaleString()}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded text-xs font-bold border ${
-                                            order.status === 'COMPLETED' ? 'bg-green-900/20 border-green-500 text-green-500' :
+                                            order.status === 'RELEASED' ? 'bg-green-900/20 border-green-500 text-green-500' :
                                             order.status === 'PENDING_PAYMENT' ? 'bg-yellow-900/20 border-yellow-500 text-yellow-500' :
                                             'bg-blue-900/20 border-blue-500 text-blue-500'
                                         }`}>
