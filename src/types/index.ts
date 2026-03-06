@@ -1,5 +1,13 @@
 // types.ts
 
+// --- GOOGLE TRANSLATE GLOBAL TYPES ---
+declare global {
+  interface Window {
+    googleTranslateElementInit: () => void;
+    google: any;
+  }
+}
+
 export enum PageView {
   HOME = 'home',
   MARKETPLACE_BUY = 'marketplace-buy',

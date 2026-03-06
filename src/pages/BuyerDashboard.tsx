@@ -20,7 +20,7 @@ interface OrderItem {
   image: string;
   quantity: number;
   price: number;
-  category: 'Heavy Equipment' | 'Spare Parts' | 'Leasing';
+  category: string;
   listing_type: 'SALE' | 'RENT';
   lease_end_date?: string;
 }
@@ -38,16 +38,15 @@ interface Order {
   };
 }
 
-// Fallback colors
-const COLORS = ['#eab308', '#3b82f6', '#10b981', '#f43f5e'];
-
-// DYNAMIC CATEGORY COLOR MAPPING
+// DYNAMIC CATEGORY COLOR MAPPING FOR ANALYTICS
 const CATEGORY_COLORS: Record<string, string> = {
-  'Heavy Equipment': '#eab308', // DAGIV Yellow
-  'Spare Parts': '#3b82f6',     // Blue
-  'Leasing': '#10b981',         // Emerald Green
-  'Other': '#f43f5e'            // Rose
+  'Purchased Equipment': '#eab308',   // DAGIV Yellow
+  'Purchased Spare Parts': '#3b82f6',     // Blue
+  'Leased Equipment': '#10b981', // Emerald Green
+  'Other': '#f43f5e'            // Rose (Fallback)
 };
+
+const COLORS = ['#eab308', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#ec4899'];
 
 export const BuyerDashboard = () => {
   const { user, token } = useAuth();
@@ -136,7 +135,7 @@ export const BuyerDashboard = () => {
             date: '2023-10-05T09:00:00Z',
             total: 862750,
             currency: 'KES',
-            status: 'RELEASED',
+            status: 'DELIVERED', // Updated to show it moving to history
             items: [
               {
                 id: 'ITEM-3',
@@ -288,14 +287,12 @@ export const BuyerDashboard = () => {
   // --- DYNAMIC UI HELPERS ---
   
   const getStatusIndex = (status: OrderStatus) => {
-    // Perfectly matches backend simulate-flow steps
     const statuses = ['PENDING_PAYMENT', 'FUNDS_SECURED', 'INSPECTION_SCHEDULED', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'RELEASED'];
     const idx = statuses.indexOf(status);
     return idx === -1 ? 0 : idx; 
   };
 
   const getStatusBadgeStyle = (status: OrderStatus | string) => {
-    // Dynamic Badging Implementation
     switch (status) {
         case 'RELEASED':
         case 'COMPLETED': 
@@ -323,20 +320,20 @@ export const BuyerDashboard = () => {
   };
 
   const renderPipeline = (currentStatus: OrderStatus) => {
-    if (currentStatus === 'RELEASED' || currentStatus === 'COMPLETED') return null;
+    // Pipeline hides if it's already in history
+    if (['DELIVERED', 'RELEASED', 'COMPLETED'].includes(currentStatus)) return null;
 
     const steps = [
       { id: 'PENDING_PAYMENT', label: 'Payment', icon: Clock },
       { id: 'FUNDS_SECURED', label: 'Secured', icon: ShieldCheck },
       { id: 'INSPECTION_SCHEDULED', label: 'Inspection', icon: Search },
       { id: 'DISPATCHED', label: 'Dispatched', icon: Package },
-      { id: 'IN_TRANSIT', label: 'In Transit', icon: Truck },
-      { id: 'DELIVERED', label: 'Delivered', icon: CheckCircle }
+      { id: 'IN_TRANSIT', label: 'In Transit', icon: Truck }
     ];
 
     const currentIndex = getStatusIndex(currentStatus);
-    const widthClasses = ['w-0', 'w-1/5', 'w-2/5', 'w-3/5', 'w-4/5', 'w-full'];
-    const progressWidth = widthClasses[Math.min(currentIndex, 5)] || 'w-0';
+    const widthClasses = ['w-0', 'w-1/4', 'w-2/4', 'w-3/4', 'w-full'];
+    const progressWidth = widthClasses[Math.min(currentIndex, 4)] || 'w-0';
 
     return (
       <div className="relative pt-8 pb-4">
@@ -375,17 +372,27 @@ export const BuyerDashboard = () => {
     return <Navigate to="/" />;
   }
 
-  // Derived Data
-  const ongoingOrders = orders.filter(o => o.status !== 'RELEASED' && o.status !== 'COMPLETED');
-  const historyOrders = orders.filter(o => o.status === 'RELEASED' || o.status === 'COMPLETED');
+  // --- DERIVED DATA & BUCKETING ---
+  
+  // History statuses mapped exactly as requested
+  const historyStatuses = ['DELIVERED', 'RELEASED', 'COMPLETED'];
+  
+  const ongoingOrders = orders.filter(o => !historyStatuses.includes(o.status));
+  const historyOrders = orders.filter(o => historyStatuses.includes(o.status));
   const leasedItems = orders.flatMap(o => o.items.filter(i => i.listing_type === 'RENT').map(i => ({ ...i, orderId: o.id, orderDate: o.date })));
   
-  // Analytics Data
+  // Analytics Data: Strictly grouping into 3 categories
   const spendByCategory = orders.reduce((acc, order) => {
     order.items.forEach(item => {
-      // Safely handle missing categories
-      const cat = item.category || 'Other';
-      acc[cat] = (acc[cat] || 0) + (item.price * item.quantity);
+      let bucketName = 'Purchased Equipment'; // Default
+
+      if (item.listing_type === 'RENT' || item.category === 'Leasing') {
+          bucketName = 'Leased Equipment';
+      } else if (item.category === 'Spare Parts') {
+          bucketName = 'Purchased Spare Parts';
+      }
+
+      acc[bucketName] = (acc[bucketName] || 0) + (item.price * item.quantity);
     });
     return acc;
   }, {} as Record<string, number>);
@@ -568,8 +575,8 @@ export const BuyerDashboard = () => {
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-3 mb-6">
                           <span className="text-white font-black text-xl">{order.id}</span>
-                          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1">
-                            <CheckCircle size={12} /> Released
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-1 ${getStatusBadgeStyle(order.status)}`}>
+                            <CheckCircle size={12} /> {order.status.replace(/_/g, ' ')}
                           </span>
                           <span className="text-slate-500 text-sm font-medium flex items-center gap-1.5"><Calendar size={14}/> {new Date(order.date).toLocaleDateString()}</span>
                         </div>

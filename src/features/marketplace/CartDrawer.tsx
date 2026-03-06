@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle, Lock } from 'lucide-react';
+import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle, Lock, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -26,6 +26,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
     const [summary, setSummary] = useState({ item_count: 0, total_value: 0, currency: 'KES' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false); // NEW: Track download state
 
     const fetchCart = async () => {
         const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
@@ -85,6 +86,41 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
             window.dispatchEvent(new Event('cartUpdated'));
         } catch (error) {
             console.error("Failed to remove item", error);
+        }
+    };
+
+    // NEW: Handle Quotation Download
+    const handleDownloadQuotation = async () => {
+        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        if (!token) return;
+
+        try {
+            setIsDownloading(true);
+            const res = await fetch(`${API_URL}/api/cart/quotation`, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to generate quotation");
+            }
+
+            // Convert response to a Blob and trigger a browser download
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `DAGIV_Quotation_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+        } catch (error) {
+            console.error("Error downloading quotation:", error);
+            alert("Failed to download quotation. Please try again.");
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -202,6 +238,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                                 {(summary.total_value || 0).toLocaleString()}
                             </span>
                         </div>
+                        
+                        {/* NEW: Download Quotation Button */}
+                        <button 
+                            onClick={handleDownloadQuotation}
+                            disabled={isDownloading}
+                            className="w-full mb-3 bg-slate-800 border border-slate-700 text-slate-300 font-bold py-3.5 rounded-xl hover:bg-slate-700 hover:text-white transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isDownloading ? (
+                                <><Loader2 className="animate-spin mr-2" size={18} /> Generating PDF...</>
+                            ) : (
+                                <><Download className="mr-2" size={18} /> Download Quotation</>
+                            )}
+                        </button>
+
+                        {/* Existing Checkout Button */}
                         <button 
                             className="w-full bg-yellow-500 text-slate-900 font-black py-4 rounded-xl hover:bg-yellow-400 transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center shadow-lg shadow-yellow-500/20"
                             onClick={() => {
@@ -211,6 +262,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                         >
                             PROCEED TO SECURE CHECKOUT <ArrowRight className="ml-2" size={20} />
                         </button>
+                        
                         <p className="text-center text-[10px] text-slate-500 mt-4 flex items-center justify-center">
                             <Lock size={12} className="mr-1"/> Payments processed securely in Escrow
                         </p>

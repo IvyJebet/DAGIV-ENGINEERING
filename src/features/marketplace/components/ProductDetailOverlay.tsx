@@ -4,7 +4,8 @@ import {
   Tag, ShieldCheck, FileText, Truck, Lock, Download, ShoppingCart, RefreshCw, CheckCircle 
 } from 'lucide-react';
 import { MarketItem } from '@/types';
-import { useNavigate } from 'react-router-dom'; // <-- ADDED
+import { useNavigate } from 'react-router-dom'; 
+import { useAuth } from '@/context/AuthContext'; // <-- ADDED AuthContext
 
 interface ProductDetailOverlayProps {
   item: MarketItem;
@@ -13,21 +14,25 @@ interface ProductDetailOverlayProps {
 }
 
 export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item, onClose }) => {
-    const navigate = useNavigate(); // <-- ADDED
+    const navigate = useNavigate(); 
+    const { token } = useAuth(); // <-- ADDED: Pulling reliable token from global state
+    
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SPECS' | 'SELLER'>('SPECS'); 
     const [currentImageIdx, setCurrentImageIdx] = useState(0);
     
     // Cart State
     const [addingToCart, setAddingToCart] = useState(false);
     const [added, setAdded] = useState(false);
-    const [buyingNow, setBuyingNow] = useState(false); // <-- ADDED for Buy Now spinner
+    const [buyingNow, setBuyingNow] = useState(false); 
 
     const nextImage = () => setCurrentImageIdx((prev) => (prev + 1) % item.images.length);
     const prevImage = () => setCurrentImageIdx((prev) => (prev - 1 + item.images.length) % item.images.length);
 
     const handleAddToCart = async () => {
-        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
-        if (!token) {
+        // Use global token, fallback to local storage just in case
+        const activeToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        
+        if (!activeToken) {
             alert("Please log in to add items to your cart.");
             return;
         }
@@ -38,7 +43,7 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${activeToken}`
                 },
                 body: JSON.stringify({ listing_id: item.id, quantity: 1 })
             });
@@ -68,8 +73,10 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
 
     // --- NEW: BUY NOW LOGIC ---
     const handleBuyNow = async () => {
-        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
-        if (!token) {
+        // Use global token, fallback to local storage just in case
+        const activeToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        
+        if (!activeToken) {
             alert("Please log in to proceed to checkout.");
             return;
         }
@@ -81,7 +88,7 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${activeToken}`
                 },
                 body: JSON.stringify({ listing_id: item.id, quantity: 1 })
             });
