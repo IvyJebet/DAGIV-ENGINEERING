@@ -13,6 +13,8 @@ export const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const location = useLocation();
+  
+  // Notice: 'user' and 'token' now implicitly strictly equal BUYER thanks to AuthContext alias!
   const { user, token, logout, setShowAuthModal } = useAuth();
   
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -35,7 +37,8 @@ export const Navbar: React.FC = () => {
   const isMarketActive = marketDropdownItems.some(item => location.pathname === item.path);
 
   const fetchCartCount = async () => {
-      const currentToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+      // 1. FIX: Uses explicit buyer token from the new AuthContext
+      const currentToken = token; 
       if (!currentToken) {
           setCartCount(0);
           return;
@@ -138,7 +141,7 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Desktop Right Actions */}
-            <div className="hidden md:flex items-center space-x-3">
+            <div className="hidden lg:flex items-center space-x-3">
                
                {/* Cart */}
                <button onClick={() => setIsCartOpen(true)} className="relative flex flex-col items-center justify-center h-16 px-4 gap-1 text-slate-300 hover:text-yellow-500 transition-colors group rounded-xl hover:bg-slate-900/50">
@@ -161,8 +164,8 @@ export const Navbar: React.FC = () => {
                   <span className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-200">ERP Portal</span>
                </Link>
                
-               {/* User Account */}
-               {user ? (
+               {/* 2. FIX: USER ACCOUNT (STRICTLY BUYERS ONLY) */}
+               {user && user.role !== 'SELLER' ? (
                    <div className="relative group">
                        <button className="flex flex-col items-center justify-center h-16 px-5 gap-1 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 hover:text-white hover:bg-slate-700 transition-all font-bold">
                            <User size={24} className="text-yellow-500" />
@@ -176,7 +179,8 @@ export const Navbar: React.FC = () => {
                            <Link to="/buyer/dashboard" className="px-5 py-4 text-sm text-slate-300 hover:bg-slate-800 hover:text-yellow-500 transition-colors flex items-center gap-3 font-bold">
                              <Package size={18} className="text-slate-400"/> Dashboard
                            </Link>
-                           <button onClick={logout} className="px-5 py-4 text-sm text-left text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors border-t border-slate-800 font-bold">Log Out</button>
+                           {/* 3. FIX: Only log out the BUYER */}
+                           <button onClick={() => logout('BUYER')} className="px-5 py-4 text-sm text-left text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors border-t border-slate-800 font-bold">Log Out</button>
                        </div>
                    </div>
                ) : (
@@ -196,9 +200,19 @@ export const Navbar: React.FC = () => {
             {/* Mobile Menu Toggle */}
             <div className="-mr-2 flex items-center lg:hidden gap-3">
               <LanguageSwitcher />
+              
+              <button onClick={() => setIsCartOpen(true)} className="relative text-slate-400 hover:text-white transition-colors p-2">
+                 <ShoppingCart size={24} />
+                 {cartCount > 0 && (
+                     <span className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black h-4 w-4 flex items-center justify-center rounded-full shadow-lg border border-slate-950">
+                         {cartCount}
+                     </span>
+                 )}
+              </button>
+
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="bg-slate-900 inline-flex items-center justify-center p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors"
+                className="bg-slate-900 inline-flex items-center justify-center p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors ml-1"
               >
                 {isOpen ? <X size={28} /> : <Menu size={28} />}
               </button>
@@ -208,7 +222,7 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile Menu Content */}
         {isOpen && (
-          <div className="lg:hidden bg-slate-950 border-b border-slate-800 animate-in slide-in-from-top-5">
+          <div className="lg:hidden bg-slate-950 border-b border-slate-800 animate-in slide-in-from-top-5 max-h-[calc(100vh-6rem)] overflow-y-auto">
             <div className="px-4 pt-4 pb-8 space-y-2">
               {navItems.map((item) => (
                 <Link
@@ -238,13 +252,15 @@ export const Navbar: React.FC = () => {
                  <LayoutDashboard size={20} className="inline-block mr-2 mb-1"/> ERP PORTAL
                </Link>
 
+               {/* 2. FIX: USER ACCOUNT (STRICTLY BUYERS ONLY) */}
                <div className="pt-6 border-t border-slate-800 mt-6 px-2">
-                {user ? (
+                {user && user.role !== 'SELLER' ? (
                     <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
                       <div className="text-slate-500 text-[11px] font-black uppercase tracking-widest mb-3">Buyer Account</div>
                       <div className="flex flex-col gap-3">
                         <Link to="/buyer/dashboard" onClick={() => setIsOpen(false)} className="block py-3 px-4 bg-slate-950 rounded-lg text-slate-200 font-black uppercase tracking-widest text-xs border border-slate-800">Dashboard</Link>
-                        <button onClick={() => { logout(); setIsOpen(false); }} className="w-full text-center py-3 px-4 bg-red-950/30 text-red-400 font-black uppercase tracking-widest text-xs border border-red-900/20 rounded-lg">Sign Out</button>
+                        {/* 3. FIX: Only log out the BUYER */}
+                        <button onClick={() => { logout('BUYER'); setIsOpen(false); }} className="w-full text-center py-3 px-4 bg-red-950/30 text-red-400 font-black uppercase tracking-widest text-xs border border-red-900/20 rounded-lg">Sign Out</button>
                       </div>
                     </div>
                 ) : (

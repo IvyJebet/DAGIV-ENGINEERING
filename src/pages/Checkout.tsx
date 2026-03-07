@@ -8,6 +8,7 @@ import {
   ChevronRight, Lock, Loader2, MapPin, CheckCircle, Copy, AlertCircle, X, CalendarDays, Droplets, Wrench
 } from 'lucide-react';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
+import { useAuth } from '../context/AuthContext'; // Adjust this import path to match your project structure
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -28,6 +29,8 @@ type CheckoutStep = 'LEASE_CONFIG' | 'SHIPPING' | 'PAYMENT' | 'CONFIRMATION';
 
 export default function Checkout() {
     const navigate = useNavigate();
+    const { token } = useAuth(); // Wired into the useAuth hook to automatically provide the correct session token
+    
     const [step, setStep] = useState<CheckoutStep>('SHIPPING');
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
@@ -61,7 +64,6 @@ export default function Checkout() {
 
     useEffect(() => {
         const fetchCart = async () => {
-            const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
             if (!token) {
                 navigate('/marketplace');
                 return;
@@ -106,7 +108,7 @@ export default function Checkout() {
             }
         };
         fetchCart();
-    }, [navigate]);
+    }, [navigate, token]); // Added token to the dependency array
 
     // Google Maps Handlers
     const handleMapClick = (e: google.maps.MapMouseEvent) => {
@@ -165,7 +167,6 @@ export default function Checkout() {
         }
         
         setProcessing(true);
-        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
         const shippingData = getValues(); 
         
         const formattedMpesaPhone = paymentMethod === 'MPESA' ? `254${mpesaPhone}` : null;
@@ -175,7 +176,7 @@ export default function Checkout() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}` // Uses the token provided by useAuth
                 },
                 body: JSON.stringify({
                     payment_method: paymentMethod,
@@ -849,7 +850,7 @@ export default function Checkout() {
                                    onClick={() => navigate('/buyer/dashboard')}
                                    className="bg-yellow-500 text-slate-900 font-bold py-3 px-8 rounded-lg hover:bg-yellow-400 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/20"
                                    >
-                                    Track Order
+                                   Track Order
                                     </button>
                                 </div>
                             </div>

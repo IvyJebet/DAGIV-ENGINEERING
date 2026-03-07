@@ -53,10 +53,7 @@ export const LanguageSwitcher = () => {
                     display: none !important;
                 }
 
-                /* * Prevent Google from pushing the body down!
-                 * It targets both body and html, and uses inline positioning. 
-                 * We must override position, top, and margins.
-                 */
+                /* * Prevent Google from pushing the body down! */
                 body, html {
                     position: static !important;
                     top: 0px !important;
@@ -81,30 +78,32 @@ export const LanguageSwitcher = () => {
                 }
 
                 .goog-te-gadget .goog-te-combo {
-                    background-color: #0f172a !important; /* slate-950 */
-                    color: #f8fafc !important; /* slate-50 */
-                    border: 1px solid #1e293b !important; /* slate-800 */
-                    border-radius: 0.5rem !important;
-                    
-                    /* Adjust padding to make room for the custom arrow */
-                    padding: 0.5rem 2.5rem 0.5rem 1rem !important; 
-                    
-                    font-size: 0.875rem !important;
-                    font-weight: 700 !important;
-                    outline: none !important;
-                    cursor: pointer !important;
-                    
-                    /* HIDE DEFAULT ARROW */
-                    appearance: none !important;
-                    -webkit-appearance: none !important;
-                    -moz-appearance: none !important;
-                    
-                    /* INJECT CUSTOM YELLOW ARROW SVG */
-                    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eab308' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
-                    background-repeat: no-repeat !important;
-                    background-position: right 0.75rem center !important;
-                    background-size: 1em !important;
-                }
+    background-color: #0f172a !important; /* slate-950 */
+    color: #f8fafc !important; /* slate-50 */
+    border: 1px solid #1e293b !important; /* slate-800 */
+    border-radius: 0.375rem !important; 
+    
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem !important; 
+    font-size: 0.75rem !important; /* text-xs */
+    font-weight: 700 !important;
+    outline: none !important;
+    cursor: pointer !important;
+    
+    /* --- FIXED WIDTH: Increased to 150px so text isn't cut off --- */
+    width: auto !important;
+    max-width: 150px !important; 
+    
+    /* HIDE DEFAULT ARROW */
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    
+    /* INJECT CUSTOM YELLOW ARROW SVG */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eab308' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.35rem center !important;
+    background-size: 0.8em !important;
+}
 
                 .goog-te-gadget .goog-te-combo:focus {
                     border-color: #eab308 !important; /* yellow-500 */
@@ -131,10 +130,10 @@ export const LanguageSwitcher = () => {
                 `}
             </style>
 
-            {/* UI COMPONENT */}
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 shadow-sm transition-colors hover:border-slate-700 w-fit">
-                <Globe className="text-yellow-500 shrink-0" size={18} />
-                <div id="dagiv_translate_element" className="overflow-hidden"></div>
+            {/* UI COMPONENT: Reduced padding, gap, and icon size */}
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg px-2 py-0.5 shadow-sm transition-colors hover:border-slate-700 w-fit">
+                <Globe className="text-yellow-500 shrink-0" size={14} />
+                <div id="dagiv_translate_element" className="overflow-hidden flex items-center"></div>
             </div>
         </>
     );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle, Lock, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext'; // <-- ADDED: Import Auth Context
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -22,14 +23,16 @@ interface CartItem {
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
+    const { token } = useAuth(); // <-- ADDED: Pull the reliable token from global state
+    
     const [items, setItems] = useState<CartItem[]>([]);
     const [summary, setSummary] = useState({ item_count: 0, total_value: 0, currency: 'KES' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isDownloading, setIsDownloading] = useState(false); // NEW: Track download state
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const fetchCart = async () => {
-        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        // FIX: Use the global token instead of manual localStorage lookups
         if (!token) {
             setLoading(false);
             return;
@@ -37,14 +40,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
 
         try {
             setLoading(true);
-            setError(null); // Reset error state on new fetch
+            setError(null); 
             const res = await fetch(`${API_URL}/api/cart`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` } // FIX: Use the global token
             });
             if (res.ok) {
                 const data = await res.json();
-                
-                // Safe fallbacks in case the backend returns null for these
                 setItems(data.items || []);
                 setSummary({
                     item_count: data.summary?.item_count || 0,
@@ -62,50 +63,42 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         }
     };
 
-    // Fetch cart whenever the drawer is opened
     useEffect(() => {
         if (isOpen) {
             fetchCart();
         }
-    }, [isOpen]);
+    }, [isOpen, token]); // Added token to dependency array
 
     const handleRemove = async (listingId: string) => {
-        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        if (!token) return; // Fail safe
+        
         try {
-            // Optimistic UI update
             setItems(prev => prev.filter(i => i.listing_id !== listingId));
-            
             await fetch(`${API_URL}/api/cart/remove/${listingId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` } // FIX: Use global token
             });
-            
-            // Re-fetch to get accurate totals
             fetchCart();
-            // Dispatch event to update Navbar badge
             window.dispatchEvent(new Event('cartUpdated'));
         } catch (error) {
             console.error("Failed to remove item", error);
         }
     };
 
-    // NEW: Handle Quotation Download
     const handleDownloadQuotation = async () => {
-        const token = localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
-        if (!token) return;
+        if (!token) return; // Fail safe
 
         try {
             setIsDownloading(true);
             const res = await fetch(`${API_URL}/api/cart/quotation`, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` } // FIX: Use global token
             });
 
             if (!res.ok) {
                 throw new Error("Failed to generate quotation");
             }
 
-            // Convert response to a Blob and trigger a browser download
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -128,16 +121,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 z-[100] flex justify-end">
-            {/* Backdrop */}
-            <div 
-                className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
-                onClick={onClose}
-            ></div>
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
 
-            {/* Drawer */}
             <div className="relative w-full max-w-md bg-slate-900 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-800">
-                
-                {/* Header */}
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
                     <div className="flex items-center text-white font-black text-xl">
                         <ShoppingCart className="mr-3 text-yellow-500" />
@@ -146,18 +132,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                             {summary.item_count} Items
                         </span>
                     </div>
-                    {/* ACCESSIBILITY FIX: Added aria-label and title */}
-                    <button 
-                        onClick={onClose} 
-                        aria-label="Close cart drawer"
-                        title="Close Cart"
-                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
-                    >
+                    <button onClick={onClose} aria-label="Close cart drawer" title="Close Cart" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors">
                         <X size={20} />
                     </button>
                 </div>
 
-                {/* Body / Items */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
                     {loading ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-500">
@@ -183,7 +162,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                         </div>
                     ) : (
                         items.map((item) => {
-                            // SAFE FALLBACKS: Ensure we don't crash if data is missing
                             const price = item.price || 0;
                             const brand = item.brand || 'Unknown Brand';
                             const model = item.model || 'Unknown Model';
@@ -191,19 +169,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                             
                             return (
                                 <div key={item.listing_id} className="flex gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800 group hover:border-slate-700 transition-colors">
-                                    {/* Image */}
                                     <div className="h-20 w-24 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0 border border-slate-800">
                                         <img src={item.image} alt={model} className="w-full h-full object-cover" />
                                     </div>
-                                    
-                                    {/* Details */}
                                     <div className="flex-1 flex flex-col">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <div className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">{brand}</div>
                                                 <div className="text-white font-bold text-sm line-clamp-1">{model}</div>
                                             </div>
-                                            {/* ACCESSIBILITY FIX: Added aria-label alongside title */}
                                             <button 
                                                 onClick={() => handleRemove(item.listing_id)}
                                                 className="text-slate-500 hover:text-red-500 p-1"
@@ -213,7 +187,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
-                                        
                                         <div className="mt-auto flex justify-between items-end">
                                             <div className="text-xs text-slate-400">Qty: {item.quantity}</div>
                                             <div className="text-yellow-500 font-black text-sm">
@@ -227,19 +200,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                     )}
                 </div>
 
-                {/* Footer / Checkout Action */}
                 {items.length > 0 && !loading && !error && (
                     <div className="p-6 bg-slate-950 border-t border-slate-800 shadow-[0_-10px_20px_rgba(0,0,0,0.3)]">
                         <div className="flex justify-between items-center mb-6">
                             <span className="text-slate-400 font-bold">Subtotal</span>
                             <span className="text-2xl font-black text-white">
                                 <span className="text-sm text-slate-500 mr-2">{summary.currency || 'KES'}</span>
-                                {/* SAFE FALLBACK: Ensure total_value is a number */}
                                 {(summary.total_value || 0).toLocaleString()}
                             </span>
                         </div>
                         
-                        {/* NEW: Download Quotation Button */}
                         <button 
                             onClick={handleDownloadQuotation}
                             disabled={isDownloading}
@@ -252,7 +222,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
                             )}
                         </button>
 
-                        {/* Existing Checkout Button */}
                         <button 
                             className="w-full bg-yellow-500 text-slate-900 font-black py-4 rounded-xl hover:bg-yellow-400 transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center shadow-lg shadow-yellow-500/20"
                             onClick={() => {

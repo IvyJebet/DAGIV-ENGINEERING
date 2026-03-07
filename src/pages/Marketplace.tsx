@@ -130,7 +130,7 @@ const transformApiListing = (apiItem: any): MarketItem => {
     condition: condition,
     
     description: specs.description || `Premium ${apiItem.brand} ${apiItem.model} available for immediate delivery.`,
-    specifications: specifications, // <--- NOW CONTAINS ALL DATA
+    specifications: specifications, 
 
     images: (specs.images && specs.images.length > 0) 
       ? specs.images 
@@ -222,9 +222,13 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
                />
                <button className="bg-yellow-500 text-slate-900 font-bold px-8 py-3 rounded-r hover:bg-yellow-400 transition-colors">SEARCH</button>
             </div>
+            
+            {/* --- UPDATED BUTTON LOGIC HERE --- */}
             <button onClick={onSellClick} className="hidden md:flex bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded font-bold items-center shadow-lg transition-transform hover:scale-105">
-                <PlusCircle className="mr-2" size={18}/> {isSpareParts ? 'SELL PART' : 'LIST MACHINE'}
+                <PlusCircle className="mr-2" size={18}/> 
+                {isSpareParts ? 'SELL PARTS' : mode === 'RENT' ? 'LEASE EQUIPMENT' : 'SELL EQUIPMENT'}
             </button>
+            
         </div>
       </div>
 

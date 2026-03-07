@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AuthModal } from '@/features/auth/AuthModal';
@@ -44,7 +44,8 @@ const INITIAL_LOGS: OperatorLog[] = [
 ];
 
 const AppContent = () => {
-  const { user, token, showAuthModal, setShowAuthModal, logout } = useAuth();
+  // 1. FIX: Use the new explicit Seller keys alongside the default Buyer token
+  const { token, seller, sellerToken, showAuthModal, setShowAuthModal, logout } = useAuth();
   const [erpAccess, setErpAccess] = useState(false);
   const [operatorLogs, setOperatorLogs] = useState<OperatorLog[]>(INITIAL_LOGS);
   const [showOperatorPortal, setShowOperatorPortal] = useState(false);
@@ -52,12 +53,12 @@ const AppContent = () => {
   const [isSelling, setIsSelling] = useState(false);
   
   const navigate = useNavigate();
+  const location = useLocation(); // <-- Added to track current page
 
   useEffect(() => {
     const handleOpenOperator = () => setShowOperatorPortal(true);
     window.addEventListener('openOperatorPortal', handleOpenOperator);
     
-    // 🛠️ FIX: Add listener for the Seller Portal
     const handleOpenSeller = () => setIsSelling(true);
     window.addEventListener('openSellerPortal', handleOpenSeller);
     
@@ -77,17 +78,20 @@ const AppContent = () => {
   };
 
   const handleSellerLogout = () => {
-    logout();
+    // 2. FIX: Explicitly log out ONLY the seller
+    logout('SELLER'); 
     navigate('/');
   };
 
-const handleSellClick = () => {
-    if (token && user?.role === 'SELLER') {
+  const handleSellClick = () => {
+    // 3. FIX: Check explicit seller credentials
+    if (sellerToken && seller) {
         navigate('/seller/dashboard');
     } else {
         setIsSelling(true);
     }
   };
+
   const setPageMock = (p: PageView) => {
       console.log("Legacy navigation requested:", p);
   }; 
@@ -130,9 +134,10 @@ const handleSellClick = () => {
           token ? <BuyerDashboard /> : <Navigate to="/" />
         } />
         
+        {/* 4. FIX: Protect Seller Dashboard using isolated seller variables */}
         <Route path="/seller/dashboard" element={
-          token && user?.role === 'SELLER' ? (
-            <SellerDashboard token={token} onLogout={handleSellerLogout} setPage={setPageMock} />
+          sellerToken && seller ? (
+            <SellerDashboard token={sellerToken} onLogout={handleSellerLogout} setPage={setPageMock} />
           ) : (
             <Navigate to="/" />
           )

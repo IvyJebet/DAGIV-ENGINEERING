@@ -7,6 +7,7 @@ import {
   CheckCircle, Eye, EyeOff 
 } from 'lucide-react';
 import { CATEGORY_STRUCTURE } from '@/config/constants';
+import { useAuth } from '@/context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -175,6 +176,8 @@ interface SellItemModalProps {
 }
 
 export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, onListingComplete, initialStage = 'WELCOME' }) => {
+    const { login } = useAuth(); 
+
     const [stage, setStage] = useState<'WELCOME' | 'LOGIN' | 'GATE' | 'KYC_REGISTER' | 'WIZARD'>(initialStage);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -263,6 +266,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             }); 
             const data = await res.json(); 
             if (res.ok) { 
+                login(data.access_token, { 
+                    id: data.user_id, 
+                    username: data.username, 
+                    role: data.role 
+                });
+                
                 if (onLoginSuccess) onLoginSuccess(data.access_token); 
             } else { 
                 alert(data.detail || "Login failed"); 
