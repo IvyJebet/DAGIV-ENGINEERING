@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, BadgeCheck, Truck, Clock, Settings, MapPin, 
   DollarSign, Camera, Video, FileText, UploadCloud, 
@@ -173,9 +173,10 @@ interface SellItemModalProps {
   onLoginSuccess?: (token: string) => void;
   onListingComplete?: () => void; 
   initialStage?: 'WELCOME' | 'GATE' | 'KYC_REGISTER' | 'WIZARD';
+  editData?: any; // New Prop to pass edit content
 }
 
-export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, onListingComplete, initialStage = 'WELCOME' }) => {
+export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, onListingComplete, initialStage = 'WELCOME', editData }) => {
     const { login } = useAuth(); 
 
     const [stage, setStage] = useState<'WELCOME' | 'LOGIN' | 'GATE' | 'KYC_REGISTER' | 'WIZARD'>(initialStage);
@@ -223,6 +224,33 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         images: [] as string[], videos: [] as string[], complianceDocs: [] as string[],
         warranty: 'No', warrantyDetails: '', originalPaint: 'Yes', sellerTerms: '', shippingInfo: '', description: ''
     });
+
+    // Populate data when Edit Mode opens
+    useEffect(() => {
+        if (editData) {
+            setStage('WIZARD');
+            setStep(2); // Skip category selection block
+            setListingType(editData.listing_type || 'SALE');
+            
+            let parsedSpecs = {};
+            try {
+                parsedSpecs = typeof editData.specs === 'string' ? JSON.parse(editData.specs) : (editData.specs || {});
+            } catch(e) {}
+
+            setFormData(prev => ({
+                ...prev,
+                ...parsedSpecs,
+                category: editData.category || prev.category,
+                subCategory: editData.sub_category || prev.subCategory,
+                brand: editData.brand || prev.brand,
+                model: editData.model || prev.model,
+                price: editData.price ? editData.price.toString() : prev.price,
+                currency: editData.currency || prev.currency,
+                // @ts-ignore
+                listingTitle: parsedSpecs.listingTitle || `${editData.brand} ${editData.model}`
+            }));
+        }
+    }, [editData]);
     
     // @ts-ignore
     const categories = Object.keys(CATEGORY_STRUCTURE);
@@ -354,9 +382,9 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         const payload = { 
             listingType, 
             title: formData.listingTitle, 
-            sellerName: sellerIdentity.name, 
-            phone: sellerIdentity.phone, 
-            location: formData.city || sellerIdentity.location, 
+            sellerName: sellerIdentity.name || "Seller", 
+            phone: sellerIdentity.phone || "0000000000", 
+            location: formData.city || sellerIdentity.location || "Kenya", 
             category: formData.category, 
             subCategory: formData.subCategory, 
             brand: formData.brand, 
@@ -367,8 +395,15 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         }; 
         
         try { 
-            const res = await fetch(`${API_URL}/api/marketplace/submit`, { 
-                method: 'POST', 
+            // Determine endpoint and method based on edit Mode
+            const endpoint = editData 
+                ? `${API_URL}/api/marketplace/edit/${editData.id}` 
+                : `${API_URL}/api/marketplace/submit`;
+            
+            const method = editData ? 'PUT' : 'POST';
+
+            const res = await fetch(endpoint, { 
+                method: method, 
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` 
@@ -397,7 +432,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 <style>{`.glow-card:hover { box-shadow: 0 0 40px rgba(234, 179, 8, 0.15); border-color: rgba(234, 179, 8, 0.5); }`}</style>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[600px] relative">
                     
-                    {/* Fixed: Accessible name added */}
                     <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
@@ -447,7 +481,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 shadow-2xl relative">
                     
-                    {/* Fixed: Accessible name added */}
                     <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
@@ -490,7 +523,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 text-center shadow-2xl relative">
                     
-                    {/* Fixed: Accessible name added */}
                     <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors">
                         <X size={20} />
                     </button>
@@ -510,7 +542,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[90vh]">
                     
-                    {/* Fixed: Accessible name added */}
                     <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
                         <div><h2 className="text-xl font-bold text-white">Seller Verification</h2><p className="text-xs text-slate-400">Step 1 of 1: Identity Proof</p></div>
                         <button onClick={onClose} aria-label="Close Modal" className="p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors"><X size={20}/></button>
@@ -614,14 +645,14 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                     
                     {/* Header */}
                     <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
-                        <div className="flex items-center gap-2"><BadgeCheck size={18} className="text-green-500"/><span className="text-white font-bold">New Listing</span></div>
+                        <div className="flex items-center gap-2"><BadgeCheck size={18} className="text-green-500"/><span className="text-white font-bold">{editData ? 'Edit Listing' : 'New Listing'}</span></div>
                         <button onClick={onClose} aria-label="Close Modal"><X className="text-slate-500 hover:text-white"/></button>
                     </div>
 
                     <div className="p-8 overflow-y-auto flex-1 custom-scrollbar">
                         
                         {/* STEP 1: SERVICE TYPE */}
-                        {step === 1 && (
+                        {step === 1 && !editData && (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-right-4">
                                 <button onClick={() => { setListingType('SALE'); setStep(2); }} className="p-8 border border-slate-700 rounded-2xl hover:border-yellow-500 hover:bg-slate-800 transition-all text-center group flex flex-col items-center">
                                     <div className="w-16 h-16 bg-slate-800 rounded-full mb-6 flex items-center justify-center text-yellow-500 group-hover:scale-110 transition-transform shadow-lg"><Truck size={32}/></div>
@@ -872,7 +903,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                                 <span className="text-white font-bold text-sm block">Upload Photos *</span>
                                                 <span className="text-xs text-slate-500">Min 1 required. Max 10.</span>
                                             </label>
-                                            {/* Fixed: Replaced inline style div with img tag */}
                                             {formData.images.length > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{formData.images.slice(0,4).map((src, i) => <img key={i} src={src} alt={`Uploaded ${i}`} className="h-12 w-full object-cover rounded border border-slate-700" />)}</div>}
                                         </div>
                                         {/* Videos */}
@@ -930,8 +960,14 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                         {step === 5 && (
                             <div className="text-center py-12 animate-in zoom-in-95">
                                 <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]"><Check className="text-white" size={48}/></div>
-                                <h2 className="text-3xl font-bold text-white mb-2">Listing Published!</h2>
-                                <p className="text-slate-400 mb-8 max-w-md mx-auto">{sellerIdentity.status === 'VERIFIED' ? "Your verified listing is now LIVE on the marketplace." : "Your listing has been submitted for engineering review."}</p>
+                                <h2 className="text-3xl font-bold text-white mb-2">
+                                    {editData ? "Listing Updated!" : "Listing Published!"}
+                                </h2>
+                                <p className="text-slate-400 mb-8 max-w-md mx-auto">
+                                    {editData 
+                                        ? "Your changes have been saved and applied to the marketplace." 
+                                        : (sellerIdentity.status === 'VERIFIED' ? "Your verified listing is now LIVE on the marketplace." : "Your listing has been submitted for engineering review.")}
+                                </p>
                                 <button onClick={onClose} className="bg-slate-800 text-white font-bold py-4 px-12 rounded-xl hover:bg-slate-700 border border-slate-700">Return to Dashboard</button>
                             </div>
                         )}
@@ -940,11 +976,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                     {/* FOOTER NAV */}
                     {step < 5 && (
                         <div className="p-6 border-t border-slate-800 flex justify-between bg-slate-950 rounded-b-2xl">
-                            {step > 1 ? <button onClick={() => setStep(step-1)} className="text-slate-400 font-bold px-6 hover:text-white transition-colors">Back</button> : <div></div>}
+                            {/* If editing, they can only go back to step 2 since step 1 is listing type selection */}
+                            {(editData ? step > 2 : step > 1) ? <button onClick={() => setStep(step-1)} className="text-slate-400 font-bold px-6 hover:text-white transition-colors">Back</button> : <div></div>}
                             {step < 4 ? (
                                 <button onClick={() => setStep(step+1)} disabled={!isStepValid()} className="bg-white text-slate-900 font-bold py-3 px-8 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next Step</button>
                             ) : (
-                                <button onClick={handleSubmitListing} disabled={loading || !isStepValid()} className="bg-yellow-500 text-slate-900 font-bold py-3 px-8 rounded hover:bg-yellow-400 shadow-lg disabled:opacity-50 transition-colors flex items-center">{loading ? <RefreshCw className="animate-spin mr-2"/> : <CheckCircle className="mr-2"/>} Publish Listing</button>
+                                <button onClick={handleSubmitListing} disabled={loading || !isStepValid()} className="bg-yellow-500 text-slate-900 font-bold py-3 px-8 rounded hover:bg-yellow-400 shadow-lg disabled:opacity-50 transition-colors flex items-center">{loading ? <RefreshCw className="animate-spin mr-2"/> : <CheckCircle className="mr-2"/>} {editData ? 'Save Changes' : 'Publish Listing'}</button>
                             )}
                         </div>
                     )}

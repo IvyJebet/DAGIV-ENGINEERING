@@ -42,8 +42,9 @@ export const SellerDashboard = ({
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ORDERS'>('OVERVIEW');
   
-  // STATE TO CONTROL THE MODAL VISIBILITY
+  // STATE TO CONTROL THE MODAL VISIBILITY AND EDIT DATA
   const [showListingModal, setShowListingModal] = useState(false);
+  const [editData, setEditData] = useState<any>(null); // New State for Editing
 
   // FETCH DASHBOARD DATA
   const fetchDashboard = async () => {
@@ -116,7 +117,7 @@ export const SellerDashboard = ({
           </div>
           <div className="flex gap-4">
             <button 
-              onClick={() => setShowListingModal(true)} 
+              onClick={() => { setEditData(null); setShowListingModal(true); }} 
               className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-6 py-2 rounded-lg font-bold flex items-center shadow-lg transition-all"
             >
               <PlusCircle size={18} className="mr-2"/> New Listing
@@ -187,7 +188,13 @@ export const SellerDashboard = ({
             {/* LISTINGS TABLE */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-                <h3 className="text-white font-bold flex items-center"><RefreshCw size={18} className="mr-2 text-slate-500"/> Recent Listings</h3>
+                <h3 className="text-white font-bold flex items-center">
+                    {/* Make Reload Button Functional */}
+                    <button onClick={fetchDashboard} className="hover:text-yellow-500 transition-colors" title="Reload Listings">
+                        <RefreshCw size={18} className="mr-2"/>
+                    </button>
+                    Recent Listings
+                </h3>
                 <button className="text-sm text-yellow-500 font-bold hover:underline">View All</button>
             </div>
             <div className="overflow-x-auto">
@@ -218,7 +225,16 @@ export const SellerDashboard = ({
                             </span>
                         </td>
                         <td className="px-6 py-4">
-                            <button className="text-blue-400 hover:text-white font-bold">Edit</button>
+                            {/* Make Edit Button Functional */}
+                            <button 
+                                onClick={() => {
+                                    setEditData(item);
+                                    setShowListingModal(true);
+                                }} 
+                                className="text-blue-400 hover:text-white font-bold"
+                            >
+                                Edit
+                            </button>
                         </td>
                         </tr>
                     ))
@@ -301,11 +317,11 @@ export const SellerDashboard = ({
         {/* MODAL TRIGGERED FROM DASHBOARD */}
         {showListingModal && (
             <SellItemModal 
-                onClose={() => setShowListingModal(false)} 
+                onClose={() => { setShowListingModal(false); setEditData(null); }} 
                 initialStage="WIZARD" 
+                editData={editData} // Pass the edit data to the modal
                 onLoginSuccess={() => {}} 
                 onListingComplete={() => {
-                    // 1. Refresh Data immediately
                     fetchDashboard(); 
                 }}
             />
