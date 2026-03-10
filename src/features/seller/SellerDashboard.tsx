@@ -41,7 +41,11 @@ export const SellerDashboard = ({
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ORDERS'>('OVERVIEW');
-  
+  const [withdrawMethod, setWithdrawMethod] = useState('MPESA');
+  const [withdrawAccount, setWithdrawAccount] = useState('');
+  const [withdrawBank, setWithdrawBank] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   // STATE TO CONTROL THE MODAL VISIBILITY AND EDIT DATA
   const [showListingModal, setShowListingModal] = useState(false);
   const [editData, setEditData] = useState<any>(null); // New State for Editing
@@ -61,6 +65,49 @@ export const SellerDashboard = ({
     }
   };
 
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0 || !withdrawAccount) {
+        return alert("Please enter a valid amount and account/phone number.");
+    }
+    if (withdrawMethod === 'BANK' && !withdrawBank) {
+        return alert("Please enter your Bank Name for the transfer.");
+    }
+    if (amount > (data?.wallet?.balance_available || 0)) {
+        return alert("Insufficient funds.");
+    }
+
+    setIsWithdrawing(true);
+    try {
+        const res = await fetch(`${API_URL}/api/wallet/withdraw`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ 
+                amount, 
+                method: withdrawMethod,
+                account_alias: withdrawAccount,
+                bank_name: withdrawMethod === 'BANK' ? withdrawBank : null
+            })
+        });
+        const result = await res.json();
+        if(res.ok) {
+            alert(result.message || "Withdrawal successful!");
+            setWithdrawAmount('');
+            setWithdrawAccount('');
+            setWithdrawBank('');
+            fetchDashboard(); // Refresh the wallet amounts
+        } else {
+            alert(result.detail || "Withdrawal failed");
+        }
+    } catch(err) {
+        alert("Connection failed.");
+    } finally {
+        setIsWithdrawing(false);
+    }
+};
   // FETCH ORDERS DATA
   const fetchOrders = async () => {
     try {
@@ -148,42 +195,95 @@ export const SellerDashboard = ({
         {activeTab === 'OVERVIEW' ? (
         <>
             {/* STATS CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 bg-green-500/10 rounded-bl-2xl">
-                    <Wallet className="text-green-500" size={24} />
-                    </div>
-                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Available for Payout</div>
-                    <div className="text-3xl font-black text-white mb-1">
-                    {data?.wallet?.currency} {data?.wallet?.balance_available?.toLocaleString()}
-                    </div>
-                    <button className="text-xs font-bold text-green-500 flex items-center mt-2 hover:underline">
-                    Request Withdrawal <ArrowRight size={12} className="ml-1"/>
-                    </button>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 bg-yellow-500/10 rounded-bl-2xl">
-                    <DollarSign className="text-yellow-500" size={24} />
-                    </div>
-                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pending (Escrow)</div>
-                    <div className="text-3xl font-black text-white mb-1">
-                    {data?.wallet?.currency} {data?.wallet?.balance_pending?.toLocaleString()}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-2">Locked until delivery confirmed.</p>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 bg-blue-500/10 rounded-bl-2xl">
-                    <Package className="text-blue-500" size={24} />
-                    </div>
-                    <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Active Inventory</div>
-                    <div className="text-3xl font-black text-white mb-1">
-                    {data?.inventory?.active_listings} <span className="text-lg text-slate-500 font-normal">/ {data?.inventory?.total_listings} Total</span>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2 flex items-center">
-                    <TrendingUp size={12} className="mr-1 text-green-500"/> Performance Rating: {data?.performance?.rating}/5.0
-                    </div>
-                </div>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-4 bg-green-500/10 rounded-bl-2xl">
+        <Wallet className="text-green-500" size={24} />
+        </div>
+        <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Available for Payout</div>
+        <div className="text-3xl font-black text-white mb-1">
+        {data?.wallet?.currency} {data?.wallet?.balance_available?.toLocaleString()}
+        </div>
+        
+        {/* Withdrawal Controls */}
+        <div className="mt-4 flex flex-col gap-2">
+            <select 
+                value={withdrawMethod} 
+                onChange={(e) => setWithdrawMethod(e.target.value)} 
+                className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white text-xs outline-none"
+                aria-label="Select Withdrawal Method" // <-- Added this to fix the error
+                title="Withdrawal Method" // <-- Added this to fix the error
+            >
+                <option value="MPESA">M-Pesa</option>
+                <option value="BANK">Bank Transfer</option>
+            </select>
+            
+            <div className="flex gap-2">
+                <input 
+                    type="number" 
+                    placeholder="Amount" 
+                    value={withdrawAmount} 
+                    onChange={(e) => setWithdrawAmount(e.target.value)} 
+                    /* Added classes below to hide the scroll arrows */
+                    className="w-1/2 bg-slate-950 border border-slate-700 rounded p-2 text-white text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    aria-label="Withdrawal Amount"
+                />
+                <input 
+                    type="text" 
+                    placeholder={withdrawMethod === 'MPESA' ? "M-Pesa No." : "Account No."} 
+                    value={withdrawAccount} 
+                    onChange={(e) => setWithdrawAccount(e.target.value)} 
+                    className="w-1/2 bg-slate-950 border border-slate-700 rounded p-2 text-white text-xs"
+                    aria-label="Account Number"
+                />
             </div>
+
+            {withdrawMethod === 'BANK' && (
+                <input 
+                    type="text" 
+                    placeholder="Bank Name (e.g., KCB, Equity)" 
+                    value={withdrawBank} 
+                    onChange={(e) => setWithdrawBank(e.target.value)} 
+                    className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white text-xs"
+                    aria-label="Bank Name"
+                />
+            )}
+            
+            <button 
+                onClick={handleWithdraw}
+                disabled={isWithdrawing || !data?.wallet?.balance_available}
+                className="text-xs font-bold text-slate-900 bg-green-500 hover:bg-green-400 py-2 rounded flex items-center justify-center transition-all disabled:opacity-50 mt-1"
+            >
+            {isWithdrawing ? <RefreshCw size={12} className="animate-spin mr-1"/> : 'Withdraw Funds'}
+            </button>
+        </div>
+    </div>
+
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 bg-yellow-500/10 rounded-bl-2xl">
+        <DollarSign className="text-yellow-500" size={24} />
+        </div>
+        <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Pending (Escrow)</div>
+        <div className="text-3xl font-black text-white mb-1">
+        {data?.wallet?.currency} {data?.wallet?.balance_pending?.toLocaleString()}
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Locked until delivery confirmed. DAGIV automatically deducts a 5% commission upon release.</p>
+    </div>
+
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 bg-blue-500/10 rounded-bl-2xl">
+        <Package className="text-blue-500" size={24} />
+        </div>
+        <div className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">Active Inventory</div>
+        <div className="text-3xl font-black text-white mb-1">
+        {data?.inventory?.active_listings} <span className="text-lg text-slate-500 font-normal">/ {data?.inventory?.total_listings} Total</span>
+        </div>
+        <div className="text-xs text-slate-400 mt-2 flex items-center">
+        {/* Real Performance Data injected here */}
+        <TrendingUp size={12} className="mr-1 text-green-500"/> Performance Rating: {data?.performance?.rating.toFixed(1)}/5.0 ({data?.performance?.orders_completed} Sales)
+        </div>
+    </div>
+</div>
 
             {/* LISTINGS TABLE */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">

@@ -14,7 +14,8 @@ interface ProductDetailOverlayProps {
 
 export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item, onClose }) => {
     const navigate = useNavigate(); 
-    const { token } = useAuth(); 
+    // Pull explicit tokens and the logout function from AuthContext
+    const { buyerToken, sellerToken, logout } = useAuth(); 
     
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SPECS' | 'SELLER'>('SPECS'); 
     const [currentImageIdx, setCurrentImageIdx] = useState(0);
@@ -27,8 +28,22 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
     const nextImage = () => setCurrentImageIdx((prev) => (prev + 1) % item.images.length);
     const prevImage = () => setCurrentImageIdx((prev) => (prev - 1 + item.images.length) % item.images.length);
 
+    // BULLETPROOF TOKEN RESOLVER
+    const getCleanToken = () => {
+        let rawToken = buyerToken || sellerToken || 
+                       localStorage.getItem('dagiv_buyer_token') || 
+                       localStorage.getItem('dagiv_seller_token') || 
+                       localStorage.getItem('dagiv_token');
+        
+        // Return null if empty or if it's literally the string "null" or "undefined"
+        if (!rawToken || rawToken === 'null' || rawToken === 'undefined') return null;
+        
+        // Strip any accidental JSON.stringify quotes that might corrupt the JWT
+        return rawToken.replace(/['"]+/g, '');
+    };
+
     const handleAddToCart = async () => {
-        const activeToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        const activeToken = getCleanToken();
         
         if (!activeToken) {
             alert("Please log in to add items to your cart.");
@@ -47,9 +62,10 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
             });
 
             if (res.status === 401) {
-                localStorage.removeItem('dagiv_seller_token');
-                localStorage.removeItem('dagiv_token');
-                alert("Your session has expired. Please log in again.");
+                // Completely wipe bad states if backend rejects the token
+                logout('ALL');
+                alert("Your session has expired or is invalid. Please log in again.");
+                setAddingToCart(false);
                 return;
             }
 
@@ -69,7 +85,7 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
     };
 
     const handleBuyNow = async () => {
-        const activeToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
+        const activeToken = getCleanToken();
         
         if (!activeToken) {
             alert("Please log in to proceed to checkout.");
@@ -88,9 +104,9 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
             });
 
             if (res.status === 401) {
-                localStorage.removeItem('dagiv_seller_token');
-                localStorage.removeItem('dagiv_token');
-                alert("Your session has expired. Please log in again.");
+                // Completely wipe bad states if backend rejects the token
+                logout('ALL');
+                alert("Your session has expired or is invalid. Please log in again.");
                 setBuyingNow(false);
                 return;
             }
@@ -266,7 +282,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                                     </div>
                                     <div className="z-10">
                                         <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                            {/* Directly prints real registration name and green tick */}
                                             {item.seller?.name} 
                                             {item.seller?.verified && <CheckCircle size={18} className="text-green-500 fill-green-500/20" title="Verified Seller" />}
                                         </h3>
@@ -277,23 +292,21 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                                     </div>
                                 </div>
 
-        {/* Stats Grid */}
-<div className="grid grid-cols-2 gap-px bg-slate-800">
-    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
-        <div className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-1">
-            {/* Evaluates to 0.0 unless there is a real rating */}
-            {item.seller?.rating ? item.seller.rating.toFixed(1) : '0.0'} <Star size={16} className="text-yellow-500 fill-yellow-500"/>
-        </div>
-        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">User Rating</div>
-    </div>
-    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
-        <div className="text-[15px] sm:text-lg font-bold text-white mb-1 truncate px-1">
-            {/* Prints the real date passed by the adapter */}
-            {item.seller?.joinedDate}
-        </div>
-        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Member Since</div>
-    </div>
-</div>
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-2 gap-px bg-slate-800">
+                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+                                        <div className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-1">
+                                            {item.seller?.rating ? item.seller.rating.toFixed(1) : '0.0'} <Star size={16} className="text-yellow-500 fill-yellow-500"/>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">User Rating</div>
+                                    </div>
+                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+                                        <div className="text-[15px] sm:text-lg font-bold text-white mb-1 truncate px-1">
+                                            {item.seller?.joinedDate}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Member Since</div>
+                                    </div>
+                                </div>
 
                                 {/* Badges */}
                                 {item.seller?.badges && item.seller.badges.length > 0 && (
