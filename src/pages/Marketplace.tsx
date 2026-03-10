@@ -17,10 +17,8 @@ interface MarketplaceProps {
 const transformApiListing = (apiItem: any): MarketItem => {
   const specs = apiItem.specs || {};
   
-  // 1. Build Structured Specifications from ALL possible SellItemModal fields
   const specifications: SpecificationGroup[] = [];
 
-  // Group 1: Engine & Performance
   const engineItems = [
     { label: 'Engine Make', value: specs.engineBrand },
     { label: 'Power Output', value: specs.enginePower },
@@ -29,10 +27,8 @@ const transformApiListing = (apiItem: any): MarketItem => {
     { label: 'Transmission', value: specs.transmissionType },
     { label: 'Max Speed', value: specs.maxSpeed },
   ].filter(i => i.value && i.value !== '');
-  
   if (engineItems.length > 0) specifications.push({ groupName: 'Engine & Performance', items: engineItems });
 
-  // Group 2: Dimensions & Chassis
   const dimItems = [
     { label: 'Dimensions (LxWxH)', value: `${specs.dimLength || ''} ${specs.dimWidth ? 'x '+specs.dimWidth : ''} ${specs.dimHeight ? 'x '+specs.dimHeight : ''}`.trim() },
     { label: 'Operating Weight', value: specs.netWeight ? `${specs.netWeight} kg` : '' },
@@ -41,19 +37,15 @@ const transformApiListing = (apiItem: any): MarketItem => {
     { label: 'Track Width', value: specs.trackWidth },
     { label: 'Residual Tread', value: specs.residualTread },
   ].filter(i => i.value && i.value.trim() !== '');
-
   if (dimItems.length > 0) specifications.push({ groupName: 'Dimensions & Chassis', items: dimItems });
 
-  // Group 3: Hydraulics & Attachments
   const hydItems = [
     { label: 'Aux Hydraulics', value: specs.auxHydraulics },
-    { label: 'Hammer Lines', value: specs.hammerProtection }, // "Hammer Protection" usually refers to lines
+    { label: 'Hammer Lines', value: specs.hammerProtection }, 
     { label: 'Performance Specs', value: specs.performanceSpecs },
   ].filter(i => i.value && i.value !== 'No' && i.value !== '');
-
   if (hydItems.length > 0) specifications.push({ groupName: 'Hydraulics & Attachments', items: hydItems });
 
-  // Group 4: Part Specifics (Only if it's a part)
   if (apiItem.listingType === 'PART') {
     const partItems = [
       { label: 'Part Type', value: specs.partType || 'Replacement' },
@@ -66,7 +58,6 @@ const transformApiListing = (apiItem: any): MarketItem => {
     if (partItems.length > 0) specifications.push({ groupName: 'Part Details', items: partItems });
   }
 
-  // Group 5: History & Usage
   const historyItems = [
     { label: 'YOM', value: specs.yom },
     { label: 'Usage', value: `${specs.usage || 0} ${specs.usageUnit || ''}` },
@@ -74,33 +65,37 @@ const transformApiListing = (apiItem: any): MarketItem => {
     { label: 'Original Paint', value: specs.originalPaint },
     { label: 'Warranty', value: specs.warrantyDetails || specs.warranty },
   ].filter(i => i.value && i.value !== '');
-
   if (historyItems.length > 0) specifications.push({ groupName: 'History & Condition', items: historyItems });
 
-  // Group 6: Terms & Location (Seller entered details)
   const termsItems = [
       { label: 'Availability', value: specs.availabilityDate ? `Available from ${specs.availabilityDate}` : 'Immediate' },
       { label: 'Location', value: `${specs.city || ''}, ${specs.region || ''}, ${specs.country || ''}` },
       { label: 'Seller Terms', value: specs.sellerTerms },
   ].filter(i => i.value && i.value !== '' && i.value !== ', , ');
-
   if (termsItems.length > 0) specifications.push({ groupName: 'Terms & Location', items: termsItems });
 
+  // --- DYNAMIC SELLER PROFILE EXTRACTION ---
+  const sellerName = apiItem.seller?.name || apiItem.sellerName || "Unknown Seller";
+  
+  // Format real join date if available, else default to 'New Seller'
+  const rawJoinDate = apiItem.seller?.joinedDate || apiItem.seller?.created_at || apiItem.created_at;
+  const formattedJoinDate = rawJoinDate 
+      ? new Date(rawJoinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) 
+      : 'New Seller';
 
-  // 2. Synthesize Seller Profile
-  const sellerName = apiItem.sellerName || "Verified Seller";
-  const sellerProfile: SellerProfile = {
-    id: apiItem.phone,
+  // @ts-ignore - appending responseRate inline
+  const sellerProfile: SellerProfile & { responseRate?: string } = {
+    id: apiItem.seller?.id || apiItem.phone || 'unknown',
     name: sellerName,
-    type: 'Dealer',
-    verified: true,
-    rating: 4.8,
-    joinedDate: '2024',
-    location: apiItem.location,
-    badges: ['Identity Verified', 'Fast Responder']
+    type: apiItem.seller?.type || 'Seller',
+    verified: apiItem.seller?.verified !== false, // Defaults to true (green tick) unless explicitly false
+    rating: apiItem.seller?.rating || 0, // Defaults to exactly 0
+    responseRate: apiItem.seller?.responseRate ? `${apiItem.seller.responseRate}%` : 'N/A', // Real response rate
+    joinedDate: formattedJoinDate, // Real time date
+    location: apiItem.seller?.location || apiItem.location || 'Not Specified',
+    badges: apiItem.seller?.badges || []
   };
 
-  // 3. Condition Normalization
   let condition: MarketItem['condition'] = 'Used - Good';
   const rawCondition = (specs.condition || '').toLowerCase();
   if (rawCondition.includes('new') && !rawCondition.includes('like')) condition = 'New';
@@ -223,7 +218,6 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
                <button className="bg-yellow-500 text-slate-900 font-bold px-8 py-3 rounded-r hover:bg-yellow-400 transition-colors">SEARCH</button>
             </div>
             
-            {/* --- UPDATED BUTTON LOGIC HERE --- */}
             <button onClick={onSellClick} className="hidden md:flex bg-green-600 hover:bg-green-500 text-white px-6 py-3 rounded font-bold items-center shadow-lg transition-transform hover:scale-105">
                 <PlusCircle className="mr-2" size={18}/> 
                 {isSpareParts ? 'SELL PARTS' : mode === 'RENT' ? 'LEASE EQUIPMENT' : 'SELL EQUIPMENT'}

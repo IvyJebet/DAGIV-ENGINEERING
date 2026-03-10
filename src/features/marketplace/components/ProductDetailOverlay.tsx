@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  ChevronLeft, ChevronRight, MapPin, 
-  Tag, ShieldCheck, FileText, Truck, Lock, Download, ShoppingCart, RefreshCw, CheckCircle 
+    ChevronLeft, ChevronRight, MapPin, 
+    Tag, ShieldCheck, FileText, Truck, Lock, Download, ShoppingCart, RefreshCw, CheckCircle, Star
 } from 'lucide-react';
 import { MarketItem } from '@/types';
 import { useNavigate } from 'react-router-dom'; 
-import { useAuth } from '@/context/AuthContext'; // <-- ADDED AuthContext
+import { useAuth } from '@/context/AuthContext'; 
 
 interface ProductDetailOverlayProps {
-  item: MarketItem;
-  onClose: () => void;
-  // onCheckout prop removed!
+    item: MarketItem;
+    onClose: () => void;
 }
 
 export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item, onClose }) => {
     const navigate = useNavigate(); 
-    const { token } = useAuth(); // <-- ADDED: Pulling reliable token from global state
+    const { token } = useAuth(); 
     
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SPECS' | 'SELLER'>('SPECS'); 
     const [currentImageIdx, setCurrentImageIdx] = useState(0);
@@ -29,7 +28,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
     const prevImage = () => setCurrentImageIdx((prev) => (prev - 1 + item.images.length) % item.images.length);
 
     const handleAddToCart = async () => {
-        // Use global token, fallback to local storage just in case
         const activeToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
         
         if (!activeToken) {
@@ -48,7 +46,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                 body: JSON.stringify({ listing_id: item.id, quantity: 1 })
             });
 
-            // Handle Unauthorized explicitly
             if (res.status === 401) {
                 localStorage.removeItem('dagiv_seller_token');
                 localStorage.removeItem('dagiv_token');
@@ -71,9 +68,7 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
         }
     };
 
-    // --- NEW: BUY NOW LOGIC ---
     const handleBuyNow = async () => {
-        // Use global token, fallback to local storage just in case
         const activeToken = token || localStorage.getItem('dagiv_seller_token') || localStorage.getItem('dagiv_token');
         
         if (!activeToken) {
@@ -83,7 +78,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
 
         setBuyingNow(true);
         try {
-            // 1. Add to Cart first
             const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/cart/add`, {
                 method: 'POST',
                 headers: {
@@ -93,7 +87,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                 body: JSON.stringify({ listing_id: item.id, quantity: 1 })
             });
 
-            // Handle Unauthorized explicitly
             if (res.status === 401) {
                 localStorage.removeItem('dagiv_seller_token');
                 localStorage.removeItem('dagiv_token');
@@ -104,7 +97,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
 
             if (res.ok) {
                 window.dispatchEvent(new Event('cartUpdated')); 
-                // 2. Close overlay and go to checkout page
                 onClose();
                 navigate('/checkout');
             } else {
@@ -120,45 +112,61 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
 
     return (
         <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col lg:flex-row overflow-hidden animate-in slide-in-from-right-10">
+            
             {/* LEFT: VISUAL COMMAND CENTER */}
-            <div className="w-full lg:w-3/5 bg-black relative flex flex-col h-[40vh] lg:h-full group">
-                <button onClick={onClose} aria-label="Close Modal" title="Close" className="absolute top-4 left-4 z-20 bg-black/50 p-2 rounded-full text-white hover:bg-slate-800"><ChevronLeft/></button>
+            <div className="w-full lg:w-3/5 bg-slate-950 relative flex flex-col h-[40vh] lg:h-full p-4 lg:p-8">
+                
+                <button 
+                    onClick={onClose} 
+                    aria-label="Close Modal" 
+                    title="Close" 
+                    className="absolute top-8 left-8 z-30 bg-slate-900/80 p-2.5 rounded-full text-slate-300 hover:text-black hover:bg-yellow-500 transition-all backdrop-blur-md shadow-lg border border-slate-700"
+                >
+                    <ChevronLeft size={20}/>
+                </button>
                 
                 {/* Main Stage */}
-                <div className="flex-1 relative flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+                <div className="flex-1 relative flex items-center justify-center bg-slate-900 rounded-3xl overflow-hidden border border-slate-700 shadow-[0_0_30px_rgba(0,0,0,0.5)] mb-6 group/stage">
+                    
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        <img 
+                            src={item.images[currentImageIdx]}
+                            alt="Background blur effect"
+                            className="w-full h-full object-cover opacity-30 blur-3xl scale-125" 
+                        />
+                    </div>
+
                     <img 
                         src={item.images[currentImageIdx]} 
-                        className="max-w-full max-h-full object-contain transition-opacity duration-300" 
+                        className="w-full h-full object-contain relative z-10 transition-transform duration-500" 
                         alt={item.title}
                     />
                     
-                    {/* Navigation Arrows */}
                     {item.images.length > 1 && (
                         <>
-                            <button onClick={prevImage} aria-label="Previous Image" className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-yellow-500 hover:text-black text-white p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100">
+                            <button onClick={prevImage} aria-label="Previous Image" className="absolute left-6 top-1/2 -translate-y-1/2 z-20 bg-slate-950/60 hover:bg-yellow-500 hover:text-black text-white p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover/stage:opacity-100 border border-slate-700 hover:border-yellow-500 shadow-lg">
                                 <ChevronLeft size={24} />
                             </button>
-                            <button onClick={nextImage} aria-label="Next Image" className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-yellow-500 hover:text-black text-white p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover:opacity-100">
+                            <button onClick={nextImage} aria-label="Next Image" className="absolute right-6 top-1/2 -translate-y-1/2 z-20 bg-slate-950/60 hover:bg-yellow-500 hover:text-black text-white p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover/stage:opacity-100 border border-slate-700 hover:border-yellow-500 shadow-lg">
                                 <ChevronRight size={24} />
                             </button>
                         </>
                     )}
 
-                    {item.promoted && <div className="absolute top-4 right-4 bg-yellow-500 text-slate-900 text-xs font-bold px-3 py-1 rounded">FEATURED</div>}
+                    {item.promoted && <div className="absolute top-6 right-6 z-20 bg-yellow-500 text-slate-900 text-[10px] font-black tracking-wider px-4 py-1.5 rounded-full shadow-lg">FEATURED</div>}
                     
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-3 py-1 rounded-full text-white text-xs font-mono">
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-slate-950/80 px-4 py-1.5 rounded-full text-white text-xs font-mono backdrop-blur-md border border-slate-700 shadow-lg">
                         {currentImageIdx + 1} / {item.images.length}
                     </div>
                 </div>
 
-                {/* Thumbnails Strip */}
-                <div className="h-20 bg-slate-950 border-t border-slate-800 p-2 flex gap-2 overflow-x-auto custom-scrollbar">
+                <div className="h-24 bg-slate-900 rounded-2xl border border-slate-800 p-2 flex gap-2 overflow-x-auto custom-scrollbar shadow-lg shrink-0">
                     {item.images.map((img, i) => (
                         <button 
                             key={i} 
                             aria-label={`View thumbnail ${i+1}`}
                             onClick={() => setCurrentImageIdx(i)}
-                            className={`h-full aspect-video bg-slate-900 rounded border overflow-hidden transition-all ${currentImageIdx === i ? 'border-yellow-500 ring-1 ring-yellow-500' : 'border-slate-800 opacity-60 hover:opacity-100'}`}
+                            className={`h-full aspect-video rounded-xl overflow-hidden transition-all duration-300 relative ${currentImageIdx === i ? 'border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)] scale-100' : 'border border-slate-800 opacity-50 hover:opacity-100 hover:scale-105'}`}
                         >
                             <img src={img} className="w-full h-full object-cover" alt={`thumb-${i}`}/>
                         </button>
@@ -169,7 +177,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
             {/* RIGHT: DETAILS & DEAL CENTER */}
             <div className="w-full lg:w-2/5 bg-slate-900 border-l border-slate-800 flex flex-col h-[60vh] lg:h-full">
                 
-                {/* Header */}
                 <div className="p-6 border-b border-slate-800 bg-slate-950/50">
                     <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                         <span className="text-yellow-500">{item.category}</span> <ChevronRight size={12}/> <span>{item.subCategory}</span>
@@ -182,7 +189,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                     </div>
                 </div>
 
-                {/* Tabs */}
                 <div className="flex border-b border-slate-800 bg-slate-950 sticky top-0 z-10">
                     {['SPECS', 'OVERVIEW', 'SELLER'].map(tab => (
                         <button key={tab} onClick={() => setActiveTab(tab as any)} className={`flex-1 py-4 text-xs font-bold tracking-wider transition-colors ${activeTab === tab ? 'text-yellow-500 border-b-2 border-yellow-500 bg-slate-900' : 'text-slate-500 hover:text-white hover:bg-slate-900'}`}>
@@ -191,10 +197,8 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                     ))}
                 </div>
 
-                {/* Content Area */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
                     
-                    {/* TAB: SPECS */}
                     {activeTab === 'SPECS' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                             <div className="flex justify-between items-end border-b border-slate-800 pb-6 mb-6">
@@ -230,7 +234,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                         </div>
                     )}
 
-                    {/* TAB: OVERVIEW */}
                     {activeTab === 'OVERVIEW' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                             <div>
@@ -250,37 +253,82 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                         </div>
                     )}
 
-                    {/* TAB: SELLER */}
+                    {/* TAB: SELLER (Dynamic Upgrade) */}
                     {activeTab === 'SELLER' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="bg-slate-950 p-8 rounded-xl border border-slate-800 text-center">
-                                <div className="w-24 h-24 bg-gradient-to-br from-slate-800 to-slate-900 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-slate-500 border-4 border-slate-800 shadow-xl">
-                                    {item.sellerName ? item.sellerName.charAt(0) : "S"}
-                                </div>
-                                <h3 className="text-xl font-bold text-white">{item.sellerName}</h3>
-                                <div className="text-yellow-500 text-xs font-bold uppercase mt-1 mb-6 flex justify-center items-center gap-2">
-                                    <ShieldCheck size={14}/> Verified Dealer
-                                </div>
+                            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
                                 
-                                <div className="grid grid-cols-2 gap-4 border-t border-slate-800 pt-6">
-                                    <div className="text-center">
-                                        <div className="text-2xl font-bold text-white">4.8</div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider">Rating</div>
+                                {/* Header / Banner */}
+                                <div className="bg-slate-950 p-6 flex items-center gap-5 border-b border-slate-800 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 to-yellow-600"></div>
+                                    <div className="w-20 h-20 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center text-3xl font-black text-slate-900 shadow-[0_0_20px_rgba(234,179,8,0.3)] shrink-0 z-10">
+                                        {(item.seller?.name || 'S').charAt(0).toUpperCase()}
                                     </div>
-                                    <div className="text-center border-l border-slate-800">
-                                        <div className="text-2xl font-bold text-white">98%</div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider">Response Rate</div>
+                                    <div className="z-10">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            {/* Directly prints real registration name and green tick */}
+                                            {item.seller?.name} 
+                                            {item.seller?.verified && <CheckCircle size={18} className="text-green-500 fill-green-500/20" title="Verified Seller" />}
+                                        </h3>
+                                        <div className="text-slate-400 text-sm mt-1 flex items-center gap-3">
+                                            <span className="flex items-center gap-1"><MapPin size={14} className="text-slate-500"/> {item.seller?.location}</span>
+                                            <span className="flex items-center gap-1"><Tag size={14} className="text-slate-500"/> {item.seller?.type}</span>
+                                        </div>
                                     </div>
+                                </div>
+
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-3 gap-px bg-slate-800">
+                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+                                        <div className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-1">
+                                            {/* Evaluates to 0.0 unless there is a real rating */}
+                                            {item.seller?.rating ? item.seller.rating.toFixed(1) : '0.0'} <Star size={16} className="text-yellow-500 fill-yellow-500"/>
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">User Rating</div>
+                                    </div>
+                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+                                        <div className="text-xl font-bold text-white mb-1">
+                                            {/* @ts-ignore - Prints real response rate or defaults to N/A */}
+                                            {item.seller?.responseRate || 'N/A'}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Response Rate</div>
+                                    </div>
+                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+                                        <div className="text-[15px] sm:text-lg font-bold text-white mb-1 truncate px-1">
+                                            {/* Prints the real date passed by the adapter */}
+                                            {item.seller?.joinedDate}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Member Since</div>
+                                    </div>
+                                </div>
+
+                                {/* Badges */}
+                                {item.seller?.badges && item.seller.badges.length > 0 && (
+                                    <div className="p-6 border-b border-slate-800 bg-slate-950/50">
+                                        <div className="text-xs text-slate-500 uppercase font-bold mb-3 tracking-wider">Seller Achievements</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {item.seller.badges.map((badge, idx) => (
+                                                <span key={idx} className="bg-slate-900 border border-slate-700/50 text-slate-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                                                    <ShieldCheck size={14} className="text-yellow-500"/> {badge}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Profile Action */}
+                                <div className="p-6 bg-slate-950/80">
+                                    <button className="w-full py-3 bg-slate-800 hover:bg-slate-700 hover:border-slate-600 text-white text-sm font-bold rounded-lg transition-all border border-slate-700 flex items-center justify-center gap-2 shadow-sm">
+                                        <FileText size={16}/> View Full Seller Profile
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* FOOTER ACTION BAR */}
                 <div className="p-6 bg-slate-950 border-t border-slate-800 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-20">
                     <div className="flex flex-col sm:flex-row gap-3">
-                        {/* ADD TO CART BUTTON */}
                         <button 
                             onClick={handleAddToCart} 
                             disabled={addingToCart || buyingNow}
@@ -290,7 +338,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                             {added ? 'ADDED TO CART' : 'ADD TO CART'}
                         </button>
                         
-                        {/* BUY NOW BUTTON */}
                         <button 
                             onClick={handleBuyNow} 
                             disabled={buyingNow || addingToCart}

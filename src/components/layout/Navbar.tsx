@@ -65,13 +65,17 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <nav className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-24">
             
             {/* Logo Section */}
             <Link to="/" className="flex items-center cursor-pointer group shrink-0">
-              <div className="h-12 w-12 bg-yellow-500 rounded-xl flex items-center justify-center mr-3 group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(234,179,8,0.4)]">
-                <Activity className="text-slate-900 h-7 w-7 font-black" />
+              <div className="h-17 w-32 rounded-xl flex items-center justify-center mr-3 group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(234,179,8,0.4)] overflow-hidden">
+                <img 
+                   src="src/Assets/IMG-20260309-WA0000.jpg" 
+                   alt="Dagiv Engineering Logo" 
+                   className="h-full w-full object-cover" 
+                />
               </div>
               <div className="hidden sm:block">
                 <span className="text-white font-black text-2xl tracking-tighter block group-hover:text-slate-200 transition-colors">DAGIV</span>

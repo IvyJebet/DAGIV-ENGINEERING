@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, MapPin, Phone, Mail, Facebook, Twitter, Instagram, Linkedin, Clock } from 'lucide-react';
+// Removed Twitter from the lucide-react import
+import { Shield, MapPin, Phone, Mail, Facebook, Instagram, Linkedin, Clock } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -9,31 +10,42 @@ export const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           
           {/* Brand & Socials */}
-<div>
-  <div className="flex items-center gap-2 mb-6">
-    <div className="bg-yellow-500 p-2 rounded-lg shadow-[0_0_10px_rgba(234,179,8,0.3)]">
-      <Shield className="text-slate-900" size={24} />
-    </div>
-    <span className="text-xl font-black text-white tracking-tight">DAGIV<span className="text-yellow-500">.</span></span>
-  </div>
-  <p className="text-slate-400 text-sm leading-relaxed mb-6">
-    The premier industrial marketplace for heavy machinery, parts, and certified professionals around the world.
-  </p>
-  <div className="flex gap-4">
-    <a href="#" aria-label="Visit our Facebook page" title="Facebook" className="text-slate-500 hover:text-yellow-500 transition-colors">
-      <Facebook size={20} />
-    </a>
-    <a href="#" aria-label="Visit our Twitter page" title="Twitter" className="text-slate-500 hover:text-yellow-500 transition-colors">
-      <Twitter size={20} />
-    </a>
-    <a href="#" aria-label="Visit our Instagram page" title="Instagram" className="text-slate-500 hover:text-yellow-500 transition-colors">
-      <Instagram size={20} />
-    </a>
-    <a href="#" aria-label="Visit our LinkedIn page" title="LinkedIn" className="text-slate-500 hover:text-yellow-500 transition-colors">
-      <Linkedin size={20} />
-    </a>
-  </div>
-</div>
+          <div>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="bg-yellow-500 p-2 rounded-lg shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                <Shield className="text-slate-900" size={24} />
+              </div>
+              <span className="text-xl font-black text-white tracking-tight">DAGIV<span className="text-yellow-500">.</span></span>
+            </div>
+            <p className="text-slate-400 text-sm leading-relaxed mb-6">
+              The premier industrial marketplace for heavy machinery, parts, and certified professionals around the world.
+            </p>
+            <div className="flex gap-4">
+              <a href="#" aria-label="Visit our Facebook page" title="Facebook" className="text-slate-500 hover:text-yellow-500 transition-colors">
+                <Facebook size={20} />
+              </a>
+              
+              {/* Replaced <Twitter /> with the official X logo SVG */}
+              <a href="#" aria-label="Visit our X page" title="X" className="text-slate-500 hover:text-yellow-500 transition-colors">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 24 24" 
+                  fill="currentColor"
+                >
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </a>
+
+              <a href="#" aria-label="Visit our Instagram page" title="Instagram" className="text-slate-500 hover:text-yellow-500 transition-colors">
+                <Instagram size={20} />
+              </a>
+              <a href="#" aria-label="Visit our LinkedIn page" title="LinkedIn" className="text-slate-500 hover:text-yellow-500 transition-colors">
+                <Linkedin size={20} />
+              </a>
+            </div>
+          </div>
 
           {/* Platform Links (Restored React Router Links) */}
           <div>

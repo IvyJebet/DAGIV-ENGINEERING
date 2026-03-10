@@ -149,19 +149,9 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, onBookInspection, onSellCl
                 </div>
                 <div className="flex-1 grid grid-cols-2 gap-4">
                     <div className="bg-slate-900 p-4 rounded text-center border border-slate-800">
-                        <FileBadge className="mx-auto text-slate-500 mb-2" size={32}/>
-                        <span className="text-slate-300 font-bold text-sm block">NCA Registered</span>
-                        <span className="text-xs text-slate-500">Contractor Class 4</span>
-                    </div>
-                    <div className="bg-slate-900 p-4 rounded text-center border border-slate-800">
                         <HardHat className="mx-auto text-slate-500 mb-2" size={32}/>
                         <span className="text-slate-300 font-bold text-sm block">EBK Certified</span>
                         <span className="text-xs text-slate-500">Professional Engineers</span>
-                    </div>
-                    <div className="bg-slate-900 p-4 rounded text-center border border-slate-800">
-                        <ShieldCheck className="mx-auto text-slate-500 mb-2" size={32}/>
-                        <span className="text-slate-300 font-bold text-sm block">Insured</span>
-                        <span className="text-xs text-slate-500">Comprehensive WIBA</span>
                     </div>
                     <div className="bg-slate-900 p-4 rounded text-center border border-slate-800">
                         <Check className="mx-auto text-slate-500 mb-2" size={32}/>
