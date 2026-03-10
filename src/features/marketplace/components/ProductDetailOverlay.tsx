@@ -277,30 +277,23 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                                     </div>
                                 </div>
 
-                                {/* Stats Grid */}
-                                <div className="grid grid-cols-3 gap-px bg-slate-800">
-                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
-                                        <div className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-1">
-                                            {/* Evaluates to 0.0 unless there is a real rating */}
-                                            {item.seller?.rating ? item.seller.rating.toFixed(1) : '0.0'} <Star size={16} className="text-yellow-500 fill-yellow-500"/>
-                                        </div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">User Rating</div>
-                                    </div>
-                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
-                                        <div className="text-xl font-bold text-white mb-1">
-                                            {/* @ts-ignore - Prints real response rate or defaults to N/A */}
-                                            {item.seller?.responseRate || 'N/A'}
-                                        </div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Response Rate</div>
-                                    </div>
-                                    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
-                                        <div className="text-[15px] sm:text-lg font-bold text-white mb-1 truncate px-1">
-                                            {/* Prints the real date passed by the adapter */}
-                                            {item.seller?.joinedDate}
-                                        </div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Member Since</div>
-                                    </div>
-                                </div>
+        {/* Stats Grid */}
+<div className="grid grid-cols-2 gap-px bg-slate-800">
+    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+        <div className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-1">
+            {/* Evaluates to 0.0 unless there is a real rating */}
+            {item.seller?.rating ? item.seller.rating.toFixed(1) : '0.0'} <Star size={16} className="text-yellow-500 fill-yellow-500"/>
+        </div>
+        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">User Rating</div>
+    </div>
+    <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
+        <div className="text-[15px] sm:text-lg font-bold text-white mb-1 truncate px-1">
+            {/* Prints the real date passed by the adapter */}
+            {item.seller?.joinedDate}
+        </div>
+        <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Member Since</div>
+    </div>
+</div>
 
                                 {/* Badges */}
                                 {item.seller?.badges && item.seller.badges.length > 0 && (

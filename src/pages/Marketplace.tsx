@@ -77,20 +77,17 @@ const transformApiListing = (apiItem: any): MarketItem => {
   // --- DYNAMIC SELLER PROFILE EXTRACTION ---
   const sellerName = apiItem.seller?.name || apiItem.sellerName || "Unknown Seller";
   
-  // Format real join date if available, else default to 'New Seller'
   const rawJoinDate = apiItem.seller?.joinedDate || apiItem.seller?.created_at || apiItem.created_at;
   const formattedJoinDate = rawJoinDate 
       ? new Date(rawJoinDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) 
       : 'New Seller';
 
-  // @ts-ignore - appending responseRate inline
   const sellerProfile: SellerProfile & { responseRate?: string } = {
     id: apiItem.seller?.id || apiItem.phone || 'unknown',
     name: sellerName,
     type: apiItem.seller?.type || 'Seller',
     verified: apiItem.seller?.verified !== false, // Defaults to true (green tick) unless explicitly false
     rating: apiItem.seller?.rating || 0, // Defaults to exactly 0
-    responseRate: apiItem.seller?.responseRate ? `${apiItem.seller.responseRate}%` : 'N/A', // Real response rate
     joinedDate: formattedJoinDate, // Real time date
     location: apiItem.seller?.location || apiItem.location || 'Not Specified',
     badges: apiItem.seller?.badges || []
