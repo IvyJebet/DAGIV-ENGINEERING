@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { X, Lock, User, ShieldCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
+import { useNavigate } from 'react-router-dom'; // <-- FIX: Added this import
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const AuthModal = () => {
     const { setShowAuthModal, login } = useAuth();
+    const navigate = useNavigate(); // <-- FIX: Initialize navigation
     const [view, setView] = useState<'LOGIN' | 'REGISTER' | 'OTP'>('LOGIN');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -14,6 +16,17 @@ export const AuthModal = () => {
     const [loginData, setLoginData] = useState({ identifier: '', password: '' });
     const [regData, setRegData] = useState({ username: '', email: '', phone: '', password: '', confirmPassword: '' });
     const [otpData, setOtpData] = useState({ code: '' });
+
+    // FIX: Helper function to route based on role
+    const handleSmartRouting = (role: string) => {
+        setShowAuthModal(false);
+        const userRole = role?.toUpperCase() || 'BUYER';
+        if (userRole === 'ADMIN' || userRole === 'SUPPORT') {
+            navigate('/admin');
+        } else {
+            navigate('/buyer/dashboard');
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,12 +40,14 @@ export const AuthModal = () => {
             const data = await res.json();
             if (res.ok) {
                 login(data.access_token, { id: data.user_id, username: data.username, role: data.role });
+                handleSmartRouting(data.role); // <-- FIX: Auto redirect
             } else {
                 setError(data.detail || 'Login failed');
             }
         } catch (err) { 
             console.warn("Backend not reachable, using preview fallback");
             login('mock_token_123', { id: 'user_123', username: loginData.identifier.split('@')[0] || 'Demo User', role: 'BUYER' });
+            handleSmartRouting('BUYER');
         }
         finally { setLoading(false); }
     };
@@ -81,12 +96,14 @@ export const AuthModal = () => {
             const data = await res.json();
             if (res.ok) {
                 login(data.access_token, { id: data.user_id, username: data.username, role: data.role });
+                handleSmartRouting(data.role); // <-- FIX: Auto redirect
             } else {
                 setError(data.detail || 'Invalid OTP');
             }
         } catch (err) { 
             console.warn("Backend not reachable, using preview fallback");
             login('mock_token_123', { id: 'user_123', username: regData.username || 'Demo User', role: 'BUYER' });
+            handleSmartRouting('BUYER');
         }
         finally { setLoading(false); }
     };
@@ -102,12 +119,14 @@ export const AuthModal = () => {
             const data = await res.json();
             if (res.ok) {
                 login(data.access_token, { id: data.user_id, username: data.username, role: data.role });
+                handleSmartRouting(data.role); // <-- FIX: Auto redirect
             } else {
                 setError(data.detail || 'Google Auth failed');
             }
         } catch (err) { 
             console.warn("Backend not reachable, using preview fallback");
             login('mock_token_123', { id: 'user_123', username: 'Google User', role: 'BUYER' });
+            handleSmartRouting('BUYER');
         }
         finally { setLoading(false); }
     };
@@ -116,7 +135,6 @@ export const AuthModal = () => {
         <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden relative">
                 
-                {/* FIX: Added aria-label and title to the close button */}
                 <button 
                     onClick={() => setShowAuthModal(false)} 
                     className="absolute top-4 right-4 text-slate-500 hover:text-white z-10"
@@ -235,7 +253,6 @@ export const AuthModal = () => {
                     {view === 'OTP' && (
                         <form onSubmit={handleVerifyOTP} className="space-y-6">
                             <div>
-                                {/* FIX: Re-linked label to input via id and htmlFor to prevent future axe errors */}
                                 <label htmlFor="otp-input" className="text-xs font-bold text-slate-500 uppercase mb-2 block text-center">Enter 6-Digit Code</label>
                                 <input id="otp-input" required type="text" maxLength={6} className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white text-center text-2xl tracking-[0.5em] font-mono focus:border-yellow-500 outline-none" placeholder="------" value={otpData.code} onChange={e => setOtpData({code: e.target.value})} />
                             </div>

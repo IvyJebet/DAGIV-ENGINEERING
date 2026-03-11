@@ -4,6 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { AuthModal } from '@/features/auth/AuthModal';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { AdminDashboard } from '@/pages/AdminDashboard';
 
 // Features & Pages
 import HomePage from '@/pages/Home';
@@ -130,7 +131,9 @@ const AppContent = () => {
 
         <Route path="/buyer/dashboard" element={
           token ? <BuyerDashboard /> : <Navigate to="/" />
+        
         } />
+        <Route path="/admin" element={<AdminDashboard />} />
         
         {/* 4. FIX: Protect Seller Dashboard using isolated seller variables */}
         <Route path="/seller/dashboard" element={

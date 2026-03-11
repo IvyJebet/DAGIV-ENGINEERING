@@ -8,9 +8,12 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
+// Import the new Ticketing System Component 
+// (Adjust path if you saved it in a different folder)
+import { SupportTicketingSystem } from '@/components/SupportTicketingSystem';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// Updated to perfectly match the backend Python database statuses
 type OrderStatus = 'PENDING_PAYMENT' | 'FUNDS_SECURED' | 'PAYMENT_VERIFIED' | 'INSPECTION_SCHEDULED' | 'DISPATCHED' | 'IN_TRANSIT' | 'DELIVERED' | 'RELEASED' | 'COMPLETED';
 
 interface OrderItem {
@@ -38,12 +41,11 @@ interface Order {
   };
 }
 
-// DYNAMIC CATEGORY COLOR MAPPING FOR ANALYTICS
 const CATEGORY_COLORS: Record<string, string> = {
-  'Purchased Equipment': '#eab308',   // DAGIV Yellow
-  'Purchased Spare Parts': '#3b82f6',     // Blue
-  'Leased Equipment': '#10b981', // Emerald Green
-  'Other': '#f43f5e'            // Rose (Fallback)
+  'Purchased Equipment': '#eab308', 
+  'Purchased Spare Parts': '#3b82f6',     
+  'Leased Equipment': '#10b981', 
+  'Other': '#f43f5e'            
 };
 
 const COLORS = ['#eab308', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#ec4899'];
@@ -51,13 +53,15 @@ const COLORS = ['#eab308', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#ec4899'
 export const BuyerDashboard = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'ONGOING' | 'HISTORY' | 'LEASES' | 'ANALYTICS'>('ONGOING');
+  
+  // ---> Added 'SUPPORT' to the active tab state
+  const [activeTab, setActiveTab] = useState<'ONGOING' | 'HISTORY' | 'LEASES' | 'ANALYTICS' | 'SUPPORT'>('ONGOING');
+  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [extendingLease, setExtendingLease] = useState<string | null>(null);
   
-  // Custom Toast Notification State
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -87,7 +91,6 @@ export const BuyerDashboard = () => {
       }
     } catch (err) {
       console.warn("Backend not reachable or error, using enterprise mock data");
-      // Enterprise Mock Data
       setTimeout(() => {
         setOrders([
           {
@@ -135,7 +138,7 @@ export const BuyerDashboard = () => {
             date: '2023-10-05T09:00:00Z',
             total: 862750,
             currency: 'KES',
-            status: 'DELIVERED', // Updated to show it moving to history
+            status: 'DELIVERED', 
             items: [
               {
                 id: 'ITEM-3',
@@ -284,8 +287,6 @@ export const BuyerDashboard = () => {
     }
   };
 
-  // --- DYNAMIC UI HELPERS ---
-  
   const getStatusIndex = (status: OrderStatus) => {
     const statuses = ['PENDING_PAYMENT', 'FUNDS_SECURED', 'INSPECTION_SCHEDULED', 'DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'RELEASED'];
     const idx = statuses.indexOf(status);
@@ -320,7 +321,6 @@ export const BuyerDashboard = () => {
   };
 
   const renderPipeline = (currentStatus: OrderStatus) => {
-    // Pipeline hides if it's already in history
     if (['DELIVERED', 'RELEASED', 'COMPLETED'].includes(currentStatus)) return null;
 
     const steps = [
@@ -372,19 +372,15 @@ export const BuyerDashboard = () => {
     return <Navigate to="/" />;
   }
 
-  // --- DERIVED DATA & BUCKETING ---
-  
-  // History statuses mapped exactly as requested
   const historyStatuses = ['DELIVERED', 'RELEASED', 'COMPLETED'];
   
   const ongoingOrders = orders.filter(o => !historyStatuses.includes(o.status));
   const historyOrders = orders.filter(o => historyStatuses.includes(o.status));
   const leasedItems = orders.flatMap(o => o.items.filter(i => i.listing_type === 'RENT').map(i => ({ ...i, orderId: o.id, orderDate: o.date })));
   
-  // Analytics Data: Strictly grouping into 3 categories
   const spendByCategory = orders.reduce((acc, order) => {
     order.items.forEach(item => {
-      let bucketName = 'Purchased Equipment'; // Default
+      let bucketName = 'Purchased Equipment'; 
 
       if (item.listing_type === 'RENT' || item.category === 'Leasing') {
           bucketName = 'Leased Equipment';
@@ -407,7 +403,6 @@ export const BuyerDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 relative">
       
-      {/* Toast Notification System */}
       {notification && (
         <div className={`fixed top-24 right-4 z-50 animate-in slide-in-from-right fade-in px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border ${
             notification.type === 'error' ? 'bg-red-950/90 border-red-500/50 text-red-200' :
@@ -429,7 +424,6 @@ export const BuyerDashboard = () => {
         </div>
       )}
 
-      {/* Dashboard Header */}
       <div className="bg-slate-900 border-b border-slate-800 pt-12 pb-6 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -450,9 +444,9 @@ export const BuyerDashboard = () => {
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* ---> Added SUPPORT to the tabs array */}
           <div className="flex gap-8 mt-10 border-b border-slate-800 overflow-x-auto no-scrollbar">
-            {(['ONGOING', 'HISTORY', 'LEASES', 'ANALYTICS'] as const).map((tab) => (
+            {(['ONGOING', 'HISTORY', 'LEASES', 'ANALYTICS', 'SUPPORT'] as const).map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -462,6 +456,7 @@ export const BuyerDashboard = () => {
                 {tab === 'HISTORY' && 'Order History'}
                 {tab === 'LEASES' && 'Active Leases'}
                 {tab === 'ANALYTICS' && 'Spend Analytics'}
+                {tab === 'SUPPORT' && 'Support & Disputes'}
                 {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-yellow-500 rounded-t-full"></div>}
               </button>
             ))}
@@ -469,7 +464,6 @@ export const BuyerDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
         {loading ? (
           <div className="flex flex-col justify-center items-center py-32 space-y-4">
@@ -478,7 +472,6 @@ export const BuyerDashboard = () => {
           </div>
         ) : (
           <>
-            {/* ONGOING TAB */}
             {activeTab === 'ONGOING' && (
               <div className="space-y-8">
                 {ongoingOrders.length === 0 ? (
@@ -510,7 +503,6 @@ export const BuyerDashboard = () => {
                           </div>
                         </div>
                         
-                        {/* Financial Breakdown Section */}
                         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 min-w-[250px]">
                             <div className="flex justify-between text-xs text-slate-400 mb-1.5">
                                 <span>Subtotal</span>
@@ -558,7 +550,6 @@ export const BuyerDashboard = () => {
               </div>
             )}
 
-            {/* HISTORY TAB */}
             {activeTab === 'HISTORY' && (
               <div className="space-y-6">
                 {historyOrders.length === 0 ? (
@@ -638,7 +629,6 @@ export const BuyerDashboard = () => {
               </div>
             )}
 
-            {/* LEASES TAB */}
             {activeTab === 'LEASES' && (
               <div className="space-y-6">
                 {leasedItems.length === 0 ? (
@@ -712,7 +702,6 @@ export const BuyerDashboard = () => {
               </div>
             )}
 
-            {/* ANALYTICS TAB */}
             {activeTab === 'ANALYTICS' && (
               <div className="space-y-6 animate-in fade-in">
                 <div className="flex justify-between items-center mb-6">
@@ -729,7 +718,6 @@ export const BuyerDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* KPI Cards */}
                   <div className="lg:col-span-1 space-y-6">
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg relative overflow-hidden">
                       <div className="absolute -right-4 -top-4 text-slate-800 opacity-50"><BarChart3 size={100}/></div>
@@ -754,7 +742,6 @@ export const BuyerDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Chart */}
                   <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-lg flex flex-col">
                     <div className="text-sm font-black text-slate-500 uppercase tracking-widest mb-6 border-b border-slate-800 pb-4">Spend by Asset Category</div>
                     <div className="flex-1 min-h-[300px]">
@@ -796,6 +783,13 @@ export const BuyerDashboard = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* ---> NEW SUPPORT TAB INTEGRATION */}
+            {activeTab === 'SUPPORT' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <SupportTicketingSystem />
               </div>
             )}
           </>
