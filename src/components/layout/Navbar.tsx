@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Menu, X, User, ShoppingCart, Activity, Truck, Wrench, 
   Search, ChevronDown, Package, LayoutDashboard,
-  Home, MessageSquare, Briefcase, Star
+  Home, Star, Camera
 } from 'lucide-react';
 import { CartDrawer } from '@/features/marketplace/CartDrawer';
 import { useAuth } from '@/context/AuthContext';
@@ -23,8 +23,7 @@ export const Navbar: React.FC = () => {
   const navItems = [
     { label: 'Home', path: '/', icon: Home },
     { label: 'Services', path: '/services', icon: Wrench },
-    { label: 'Professionals', path: '/professionals', icon: Briefcase },
-    { label: 'Consult', path: '/consult', icon: MessageSquare },
+    { label: 'Gallery', path: '/gallery', icon: Camera },
   ];
 
   const marketDropdownItems = [

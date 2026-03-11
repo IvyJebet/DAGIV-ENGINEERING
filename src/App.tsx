@@ -10,8 +10,6 @@ import HomePage from '@/pages/Home';
 import CheckoutPage from '@/pages/Checkout';
 import MarketplaceLayout from '@/pages/Marketplace';
 import ServicesPage from '@/pages/Services';
-import ProfessionalsPage from '@/pages/Professionals';
-import ConsultPage from '@/pages/Consult';
 import ContactPage from '@/pages/Contact';
 import { InspectionBookingPage } from '@/pages/InspectionBooking';
 import { BuyerDashboard } from '@/pages/BuyerDashboard';
@@ -24,6 +22,7 @@ import { OperatorPortal } from '@/features/fleet/components/OperatorPortal';
 
 // Types
 import { OperatorLog, PageView } from '@/types';
+import { GalleryPage } from '@/pages/Gallery';
 
 // Mock Data
 const INITIAL_LOGS: OperatorLog[] = [
@@ -125,8 +124,7 @@ const AppContent = () => {
           <Route path="/erp" element={
             <ERPDashboard hasAccess={erpAccess} onSubscribe={() => setErpAccess(true)} logs={operatorLogs} />
           } />
-          <Route path="/professionals" element={<ProfessionalsPage />} />
-          <Route path="/consult" element={<ConsultPage />} />
+          <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/contact" element={<ContactPage />} />
         </Route>
 

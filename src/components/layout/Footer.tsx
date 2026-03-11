@@ -54,8 +54,7 @@ export const Footer = () => {
               <li><Link to="/marketplace" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Buy Equipment</Link></li>
               <li><Link to="/rentals" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Plant Hire</Link></li>
               <li><Link to="/parts" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Spare Parts</Link></li>
-              <li><Link to="/professionals" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Professional Hub</Link></li>
-              <li><Link to="/consult" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Book Consultation</Link></li>
+              <li><Link to="/gallery" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Project Gallery</Link></li>
             </ul>
           </div>
 
