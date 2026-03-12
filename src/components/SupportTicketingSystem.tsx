@@ -19,6 +19,22 @@ const ticketSchema = z.object({
 });
 type TicketFormValues = z.infer<typeof ticketSchema>;
 
+// Helper to convert DB UTC timestamps to accurate local browser time
+const formatLocalTime = (dateString: string, options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }) => {
+    if (!dateString) return '';
+    // Standardize to ISO format and explicitly append 'Z' to force UTC conversion
+    const safeString = dateString.includes('T') ? dateString : dateString.replace(' ', 'T');
+    const utcString = safeString.endsWith('Z') ? safeString : `${safeString}Z`;
+    return new Date(utcString).toLocaleTimeString([], options);
+};
+
+const formatLocalDate = (dateString: string) => {
+    if (!dateString) return '';
+    const safeString = dateString.includes('T') ? dateString : dateString.replace(' ', 'T');
+    const utcString = safeString.endsWith('Z') ? safeString : `${safeString}Z`;
+    return new Date(utcString).toLocaleDateString();
+};
+
 export const SupportTicketingSystem = () => {
     const { token, user } = useAuth();
     const isStaff = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPPORT';
@@ -237,7 +253,7 @@ export const SupportTicketingSystem = () => {
                                             <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-2">
                                                 {isStaff ? <span className="text-white font-medium">Buyer: {ticket.buyer_name}</span> : null}
                                                 <span className="opacity-50">•</span>
-                                                <span>Updated {new Date(ticket.updated_at).toLocaleDateString()}</span>
+                                                <span>Updated {formatLocalDate(ticket.updated_at)}</span>
                                             </div>
                                         </div>
 
@@ -330,7 +346,7 @@ export const SupportTicketingSystem = () => {
                                 <div key={msg.id} className={`flex flex-col w-full ${isMe ? 'items-end' : 'items-start'}`}>
                                     <div className="flex items-center gap-2 mb-1 px-1">
                                         <span className={`text-[10px] uppercase tracking-wider font-bold ${msg.is_internal_note ? 'text-purple-400' : 'text-slate-500'}`}>
-                                            {isMe ? 'You' : (isSupportRole ? 'Support Agent' : msg.sender_name)} 
+                                            {isMe ? 'You' : (isSupportRole ? 'Support Team' : msg.sender_name)} 
                                             {!isMe && isSupportRole && <ShieldCheck size={10} className="inline text-yellow-500 ml-1"/>}
                                             {msg.is_internal_note && <span className="ml-2 bg-purple-500/20 px-1.5 py-0.5 rounded text-purple-400 flex items-center inline-flex"><EyeOff size={10} className="mr-1"/> Internal Note</span>}
                                         </span>
@@ -340,7 +356,7 @@ export const SupportTicketingSystem = () => {
                                         
                                         {/* Timestamp and Read Receipts */}
                                         <div className="absolute bottom-2 right-3 flex items-center gap-1 text-[10px] opacity-70">
-                                            <span>{new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                            <span>{formatLocalTime(msg.created_at)}</span>
                                             {isMe && !msg.is_internal_note && (
                                                 <span className="ml-0.5">
                                                     {msg.is_read ? <CheckCheck size={14} className="text-blue-500" /> : <Check size={14} className="text-slate-400" />}
@@ -356,7 +372,7 @@ export const SupportTicketingSystem = () => {
                         {selectedTicket.other_party_typing && (
                             <div className="flex flex-col items-start w-full animate-in fade-in zoom-in-95 duration-200">
                                 <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-1 px-1">
-                                    {isStaff ? 'Buyer is typing...' : 'Support Agent is typing...'}
+                                    {isStaff ? `${selectedTicket.buyer_name} is typing...` : 'Support Team is typing...'}
                                 </div>
                                 <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl rounded-tl-sm w-fit flex items-center gap-1.5 shadow-sm">
                                     <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0ms]" />
