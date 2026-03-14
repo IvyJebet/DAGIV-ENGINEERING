@@ -65,13 +65,13 @@ export const Navbar: React.FC = () => {
     <>
       <nav className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 shadow-2xl">
         <div className="w-full max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between h-24">
+          <div className="flex items-center justify-between h-42.5">
             
             {/* Logo Section */}
             <Link to="/" className="flex items-center cursor-pointer group shrink-0">
-              <div className="h-17 w-32 rounded-xl flex items-center justify-center mr-3 group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(234,179,8,0.4)] overflow-hidden">
+              <div className="h-13 w-28 rounded-xl flex items-center justify-center mr-3 group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(234,179,8,0.4)] overflow-hidden">
                 <img 
-                   src="src/Assets/IMG-20260309-WA0000.jpg" 
+                   src="src/Assets/Dagiv submark logo.png" 
                    alt="Dagiv Engineering Logo" 
                    className="h-full w-full object-cover" 
                 />

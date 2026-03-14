@@ -44,7 +44,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, onBookInspection, onSellCl
           </span>
         </h1>
         <p className="text-xl text-slate-200 mb-10 max-w-3xl mx-auto font-light leading-relaxed drop-shadow-md">
-          From pre-purchase inspections and commissioning to computer diagnosis and maintenance to logistics and leasing of machinery, DAGIV ENGINEERING delivers comprehensive mechanical solutions for your business needs.
+          From providing a marketplace to pre-purchase inspections and commissioning to computer diagnosis and maintenance to logistics and leasing of machinery, DAGIV ENGINEERING delivers comprehensive mechanical solutions for your business needs.
         </p>
         
         {/* QUICK ACTION GRID */}
@@ -141,23 +141,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, onBookInspection, onSellCl
                             <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={18} />
                             <span><strong>Certified Excellence:</strong> ISO 9001:2015 compliant processes for maintenance and fabrication.</span>
                         </li>
-                        <li className="flex items-start text-slate-300">
-                            <CheckCircle className="text-green-500 mr-3 mt-1 flex-shrink-0" size={18} />
-                            <span><strong>Regulatory Compliance:</strong> All fleet equipment fully licensed with NTSA and inspected by KEBS.</span>
-                        </li>
                     </ul>
-                </div>
-                <div className="flex-1 grid grid-cols-2 gap-4">
-                    <div className="bg-slate-900 p-4 rounded text-center border border-slate-800">
-                        <HardHat className="mx-auto text-slate-500 mb-2" size={32}/>
-                        <span className="text-slate-300 font-bold text-sm block">EBK Certified</span>
-                        <span className="text-xs text-slate-500">Professional Engineers</span>
-                    </div>
-                    <div className="bg-slate-900 p-4 rounded text-center border border-slate-800">
-                        <Check className="mx-auto text-slate-500 mb-2" size={32}/>
-                        <span className="text-slate-300 font-bold text-sm block">KEBS Standard</span>
-                        <span className="text-xs text-slate-500">Quality Mark</span>
-                    </div>
                 </div>
             </div>
         </div>
