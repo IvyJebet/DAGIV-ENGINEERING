@@ -1,0 +1,110 @@
+/* =====================================================
+   GOOGLE TRANSLATE OVERRIDES & THEME
+   ===================================================== */
+
+/* 1. Kill the floating Google Translate badge */
+#goog-gt-vt,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,
+.VIpgJd-ZVi9od-aZ2wEe-wOHMyf-ti6hGc {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 2. Kill the top banner completely */
+body > .skiptranslate,
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+.skiptranslate > iframe,
+.VIpgJd-ZVi9od-ORHb-OEVmcd {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0px !important;
+    width: 0px !important;
+    overflow: hidden !important;
+}
+
+/* 3. Force the body and html to stay at the top (prevents the layout shift) */
+body, html {
+    top: 0px !important;
+    position: static !important;
+}
+
+/* 4. Hide tooltips and balloon frames when hovering over translated text */
+#goog-gt-tt, 
+.goog-te-balloon-frame { 
+    display: none !important; 
+}
+
+/* 5. Remove the yellow highlight Google adds to translated text */
+.goog-text-highlight {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* 6. Hide the Google logo and "Powered by" text inside the widget */
+.goog-te-gadget img { 
+    display: none !important; 
+}
+.goog-te-gadget > span > a { 
+    display: none !important; 
+}
+
+/* =====================================================
+   DAGIV DARK THEME DROPDOWN STYLING
+   ===================================================== */
+
+/* Make the remaining Google text transparent so only our styled dropdown shows */
+.goog-te-gadget {
+    color: transparent !important;
+    font-family: inherit !important;
+}
+
+.goog-te-gadget .goog-te-combo {
+    /* Force clickability and layering */
+    position: relative !important;
+    z-index: 100000 !important;
+    pointer-events: auto !important;
+
+    /* Theme colors */
+    background-color: #0f172a !important; /* slate-950 */
+    color: #f8fafc !important; /* slate-50 */
+    border: 1px solid #1e293b !important; /* slate-800 */
+    border-radius: 0.375rem !important; 
+    padding: 0.25rem 1.5rem 0.25rem 0.5rem !important; 
+    font-size: 0.75rem !important; /* text-xs */
+    font-weight: 700 !important;
+    outline: none !important;
+    cursor: pointer !important;
+    
+    /* Fixed width overrides to stay visible on mobile */
+    width: auto !important;
+    min-width: 100px !important; 
+    max-width: 150px !important; 
+    
+    /* Hide default arrow */
+    -moz-appearance: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    
+    /* Inject custom yellow arrow SVG */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eab308' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.35rem center !important;
+    background-size: 0.8em !important;
+}
+
+.goog-te-gadget .goog-te-combo:focus {
+    border-color: #eab308 !important; /* yellow-500 */
+    box-shadow: 0 0 0 1px #eab308 !important;
+}
+
+/* Firefox specific fix for the dropdown text */
+@supports (-moz-appearance: none) {
+    .goog-te-gadget .goog-te-combo {
+        text-indent: 0.01px;
+        text-overflow: '';
+    }
+}

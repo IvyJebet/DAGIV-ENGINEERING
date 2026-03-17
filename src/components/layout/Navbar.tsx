@@ -86,8 +86,6 @@ export const Navbar: React.FC = () => {
             
             {/* Desktop Navigation Links */}
             <div className="hidden lg:flex items-center space-x-1">
-              
-              {/* Only render general links if the user is NOT an admin */}
               {!isStaff && (
                 <>
                   {navItems.slice(0, 2).map((item) => (
@@ -148,94 +146,98 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
-            {/* Desktop Right Actions */}
-            <div className="hidden lg:flex items-center space-x-3">
-               
-               {/* Cart (Hidden for Staff) */}
-               {!isStaff && (
-                 <button onClick={() => setIsCartOpen(true)} className="relative flex flex-col items-center justify-center h-16 px-4 gap-1 text-slate-300 hover:text-[#DD9C00] transition-colors group rounded-xl hover:bg-slate-900/50">
-                    <div className="relative">
-                        <ShoppingCart size={24} className="text-slate-400 group-hover:text-[#DD9C00] group-hover:scale-110 transition-all"/>
-                        {cartCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black h-5 w-5 flex items-center justify-center rounded-full shadow-lg border-2 border-slate-950 animate-in zoom-in">
-                                {cartCount}
-                            </span>
-                        )}
-                    </div>
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-200">Cart</span>
-                 </button>
-               )}
-
-               {!isStaff && <div className="h-10 w-px bg-slate-800 mx-1"></div>}
-
-               {/* ERP Access */}
-               <Link to="/erp" className="flex flex-col items-center justify-center h-16 px-4 gap-1 border border-slate-700 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-all group shadow-xl bg-slate-900/40">
-                  <LayoutDashboard size={24} className="text-slate-400 group-hover:text-[#DD9C00] transition-colors" />
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-200">ERP Portal</span>
-               </Link>
-               
-               {/* USER ACCOUNT CONTROLS */}
-               {user ? (
-                   <div className="relative group">
-                       <button className={`flex flex-col items-center justify-center h-16 px-5 gap-1 bg-slate-800 border border-slate-700 rounded-xl transition-all font-bold ${isStaff ? 'text-[#DD9C00]' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}>
-                           {isStaff ? <ShieldCheck size={24} className="text-[#DD9C00]" /> : <User size={24} className="text-[#DD9C00]" />}
-                           <span className="text-xs font-black uppercase tracking-widest">{isStaff ? 'Admin Portal' : 'Buyer Account'}</span>
-                       </button>
-                       <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden z-[70]">
-                           <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/50 text-center">
-                               <p className="text-[10px] text-[#DD9C00] uppercase font-black tracking-[0.2em] mb-1">{isStaff ? 'System Admin' : 'Authenticated'}</p>
-                               <p className="text-sm text-white font-bold truncate">{user.username}</p>
-                           </div>
-                           
-                           {/* Dashboard Link based on Role */}
-                           {isStaff ? (
-                             <Link to="/admin" className="px-5 py-4 text-sm text-slate-300 hover:bg-slate-800 hover:text-[#DD9C00] transition-colors flex items-center gap-3 font-bold">
-                               <ShieldCheck size={18} className="text-slate-400"/> Control Panel
-                             </Link>
-                           ) : (
-                             <Link to="/buyer/dashboard" className="px-5 py-4 text-sm text-slate-300 hover:bg-slate-800 hover:text-[#DD9C00] transition-colors flex items-center gap-3 font-bold">
-                               <Package size={18} className="text-slate-400"/> Dashboard
-                             </Link>
-                           )}
-
-                           <button onClick={() => logout()} className="px-5 py-4 text-sm text-left text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors border-t border-slate-800 font-bold">Log Out</button>
-                       </div>
-                   </div>
-               ) : (
-                   <button onClick={() => setShowAuthModal(true)} className="flex flex-col items-center justify-center h-16 px-6 gap-1 bg-[#DD9C00] rounded-xl text-slate-900 hover:brightness-110 transition-all font-black text-[11px] uppercase tracking-widest shadow-lg shadow-[#DD9C00]/20">
-                       <User size={24} />
-                       <span>Account</span>
-                   </button>
-               )}
-
-               <div className="h-10 w-px bg-slate-800 mx-1"></div>
-
-               {/* Language Switcher */}
-               <LanguageSwitcher />
-
-            </div>
-
-            {/* Mobile Menu Toggle */}
-            <div className="-mr-2 flex items-center lg:hidden gap-3">
-              <LanguageSwitcher />
+            {/* ========================================== */}
+            {/* RIGHT SIDE CONTROL CENTER (Desktop + Mobile) */}
+            {/* ========================================== */}
+            <div className="flex items-center gap-2 sm:gap-3">
               
-              {!isStaff && (
-                <button onClick={() => setIsCartOpen(true)} className="relative text-slate-400 hover:text-white transition-colors p-2">
-                  <ShoppingCart size={24} />
-                  {cartCount > 0 && (
-                      <span className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black h-4 w-4 flex items-center justify-center rounded-full shadow-lg border border-slate-950">
-                          {cartCount}
-                      </span>
-                  )}
-                </button>
-              )}
+              {/* Desktop Only Actions */}
+              <div className="hidden lg:flex items-center space-x-3">
+                 {/* Cart (Hidden for Staff) */}
+                 {!isStaff && (
+                   <button onClick={() => setIsCartOpen(true)} className="relative flex flex-col items-center justify-center h-16 px-4 gap-1 text-slate-300 hover:text-[#DD9C00] transition-colors group rounded-xl hover:bg-slate-900/50">
+                      <div className="relative">
+                          <ShoppingCart size={24} className="text-slate-400 group-hover:text-[#DD9C00] group-hover:scale-110 transition-all"/>
+                          {cartCount > 0 && (
+                              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black h-5 w-5 flex items-center justify-center rounded-full shadow-lg border-2 border-slate-950 animate-in zoom-in">
+                                  {cartCount}
+                              </span>
+                          )}
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-200">Cart</span>
+                   </button>
+                 )}
 
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="bg-slate-900 inline-flex items-center justify-center p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors ml-1"
-              >
-                {isOpen ? <X size={28} /> : <Menu size={28} />}
-              </button>
+                 {!isStaff && <div className="h-10 w-px bg-slate-800 mx-1"></div>}
+
+                 {/* ERP Access */}
+                 <Link to="/erp" className="flex flex-col items-center justify-center h-16 px-4 gap-1 border border-slate-700 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-all group shadow-xl bg-slate-900/40">
+                    <LayoutDashboard size={24} className="text-slate-400 group-hover:text-[#DD9C00] transition-colors" />
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-400 group-hover:text-slate-200">ERP Portal</span>
+                 </Link>
+                 
+                 {/* USER ACCOUNT CONTROLS */}
+                 {user ? (
+                     <div className="relative group">
+                         <button className={`flex flex-col items-center justify-center h-16 px-5 gap-1 bg-slate-800 border border-slate-700 rounded-xl transition-all font-bold ${isStaff ? 'text-[#DD9C00]' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}>
+                             {isStaff ? <ShieldCheck size={24} className="text-[#DD9C00]" /> : <User size={24} className="text-[#DD9C00]" />}
+                             <span className="text-xs font-black uppercase tracking-widest">{isStaff ? 'Admin Portal' : 'Buyer Account'}</span>
+                         </button>
+                         <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden z-[70]">
+                             <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/50 text-center">
+                                 <p className="text-[10px] text-[#DD9C00] uppercase font-black tracking-[0.2em] mb-1">{isStaff ? 'System Admin' : 'Authenticated'}</p>
+                                 <p className="text-sm text-white font-bold truncate">{user.username}</p>
+                             </div>
+                             
+                             {/* Dashboard Link based on Role */}
+                             {isStaff ? (
+                               <Link to="/admin" className="px-5 py-4 text-sm text-slate-300 hover:bg-slate-800 hover:text-[#DD9C00] transition-colors flex items-center gap-3 font-bold">
+                                 <ShieldCheck size={18} className="text-slate-400"/> Control Panel
+                               </Link>
+                             ) : (
+                               <Link to="/buyer/dashboard" className="px-5 py-4 text-sm text-slate-300 hover:bg-slate-800 hover:text-[#DD9C00] transition-colors flex items-center gap-3 font-bold">
+                                 <Package size={18} className="text-slate-400"/> Dashboard
+                               </Link>
+                             )}
+
+                             <button onClick={() => logout()} className="px-5 py-4 text-sm text-left text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors border-t border-slate-800 font-bold">Log Out</button>
+                         </div>
+                     </div>
+                 ) : (
+                     <button onClick={() => setShowAuthModal(true)} className="flex flex-col items-center justify-center h-16 px-6 gap-1 bg-[#DD9C00] rounded-xl text-slate-900 hover:brightness-110 transition-all font-black text-[11px] uppercase tracking-widest shadow-lg shadow-[#DD9C00]/20">
+                         <User size={24} />
+                         <span>Account</span>
+                     </button>
+                 )}
+              </div>
+
+              {/* Desktop Divider before Language Switcher */}
+              <div className="hidden lg:block h-10 w-px bg-slate-800 mx-1"></div>
+
+              {/* ONE SINGLE LANGUAGE SWITCHER FOR THE ENTIRE PAGE */}
+              <LanguageSwitcher />
+
+              {/* Mobile Only Actions */}
+              <div className="-mr-2 flex items-center lg:hidden gap-3 ml-1">
+                {!isStaff && (
+                  <button onClick={() => setIsCartOpen(true)} className="relative text-slate-400 hover:text-white transition-colors p-2">
+                    <ShoppingCart size={24} />
+                    {cartCount > 0 && (
+                        <span className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black h-4 w-4 flex items-center justify-center rounded-full shadow-lg border border-slate-950">
+                            {cartCount}
+                        </span>
+                    )}
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="bg-slate-900 inline-flex items-center justify-center p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition-colors ml-1"
+                >
+                  {isOpen ? <X size={28} /> : <Menu size={28} />}
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
