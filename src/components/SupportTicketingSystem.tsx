@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { 
     MessageSquare, PlusCircle, CheckCircle, X, Send, 
     ShieldCheck, ChevronLeft, Loader2, Lock, EyeOff, UserPlus, 
-    Check, CheckCheck, Paperclip 
+    Check, CheckCheck, Paperclip, FileText, Maximize2
 } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -33,7 +33,6 @@ const formatLocalDate = (dateString: string) => {
     const utcString = safeString.endsWith('Z') ? safeString : `${safeString}Z`;
     const d = new Date(utcString);
     
-    // WhatsApp style today/yesterday logic
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -42,6 +41,10 @@ const formatLocalDate = (dateString: string) => {
     if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
     
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+};
+
+const isImageUrl = (url: string) => {
+    return /\.(jpeg|jpg|gif|png|webp|bmp|svg)(\?.*)?$/i.test(url.toLowerCase());
 };
 
 export const SupportTicketingSystem = () => {
@@ -57,6 +60,9 @@ export const SupportTicketingSystem = () => {
     const [submitting, setSubmitting] = useState(false);
     const [uploadingFiles, setUploadingFiles] = useState(false);
     
+    // Full Screen Image Viewer State
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
     // Chat State
     const [replyMessage, setReplyMessage] = useState('');
     const [isInternalNote, setIsInternalNote] = useState(false);
@@ -65,6 +71,7 @@ export const SupportTicketingSystem = () => {
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const createFileInputRef = useRef<HTMLInputElement>(null);
     const ws = useRef<WebSocket | null>(null);
 
     const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<TicketFormValues>({
@@ -96,7 +103,7 @@ export const SupportTicketingSystem = () => {
 
     useEffect(() => { if (token && view === 'LIST') fetchTickets(); }, [token, view]);
 
-    // WebSocket Setup
+    // WebSocket Setup & Read Receipts
     useEffect(() => {
         if (view === 'DETAIL' && selectedTicket) {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -104,8 +111,14 @@ export const SupportTicketingSystem = () => {
             
             ws.current = new WebSocket(`${wsUrl}/api/support/tickets/${selectedTicket.id}/ws?token=${token}`);
             
+            ws.current.onopen = () => {
+                // Instantly notify the other party we have opened the chat
+                ws.current?.send(JSON.stringify({ type: 'MARK_READ' }));
+            };
+
             ws.current.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                
                 if (data.type === 'NEW_MESSAGE') {
                     setSelectedTicket((prev: any) => {
                         if (!prev || prev.messages.some((m: any) => m.id === data.message.id)) return prev;
@@ -113,17 +126,34 @@ export const SupportTicketingSystem = () => {
                     });
                     setTypingUser(null);
                     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                    
+                    // If we receive a message while actively looking, instantly mark it read!
+                    if (data.message.sender_id !== user?.id) {
+                        ws.current?.send(JSON.stringify({ type: 'MARK_READ' }));
+                    }
                 } 
                 else if (data.type === 'TYPING' && data.user_id !== user?.id) {
                     setTypingUser(data.is_typing ? data.sender_name : null);
+                }
+                else if (data.type === 'READ_RECEIPT' && data.user_id !== user?.id) {
+                    // Turn local ticks blue without fetching from the DB
+                    setSelectedTicket((prev: any) => {
+                        if (!prev) return prev;
+                        return {
+                            ...prev,
+                            messages: prev.messages.map((m: any) => 
+                                m.sender_id === user?.id ? { ...m, is_read: true } : m
+                            )
+                        };
+                    });
                 }
             };
             return () => {
                 ws.current?.close();
                 ws.current = null;
-            }
+            };
         }
-    }, [view, selectedTicket?.id, token]);
+    }, [view, selectedTicket?.id, token, user?.id]);
 
     useEffect(() => {
         if (ws.current?.readyState === WebSocket.OPEN) {
@@ -131,7 +161,6 @@ export const SupportTicketingSystem = () => {
         }
     }, [replyMessage]);
 
-    // Generate grouped messages with Date headers
     const groupedMessages: any[] = [];
     let lastDateStr = '';
     selectedTicket?.messages?.forEach((msg: any) => {
@@ -143,20 +172,56 @@ export const SupportTicketingSystem = () => {
         groupedMessages.push({ type: 'chat_bubble', ...msg });
     });
 
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        const newFiles = Array.from(files);
+        setAttachments(prev => [...prev, ...newFiles]);
+        e.target.value = '';
+    };
+
+    const uploadFilesToS3 = async (files: File[]) => {
+        const uploadedUrls = [];
+        for (const file of files) {
+            const presignRes = await fetch(`${API_URL}/api/support/upload-url?file_name=${encodeURIComponent(file.name)}&file_type=${encodeURIComponent(file.type)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!presignRes.ok) throw new Error("Failed to get upload URL");
+            const { upload_url, file_url } = await presignRes.json();
+            const uploadResponse = await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type }});
+            if (!uploadResponse.ok) throw new Error("Failed to upload file to storage.");
+            uploadedUrls.push(file_url);
+        }
+        return uploadedUrls;
+    };
+
     const onCreateTicket = async (data: TicketFormValues) => {
         setSubmitting(true);
+        setUploadingFiles(attachments.length > 0);
         try {
+            let uploadedUrls: string[] = [];
+            if (attachments.length > 0) {
+                uploadedUrls = await uploadFilesToS3(attachments);
+            }
+
             const res = await fetch(`${API_URL}/api/support/tickets`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ ...data, attachments: uploadedUrls })
             });
             if (res.ok) {
                 setIsCreateOpen(false);
                 reset();
+                setAttachments([]);
                 fetchTickets();
             }
-        } finally { setSubmitting(false); }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to create ticket. Check attachments.");
+        } finally {
+            setSubmitting(false);
+            setUploadingFiles(false);
+        }
     };
 
     const onReply = async (e: React.FormEvent) => {
@@ -168,21 +233,9 @@ export const SupportTicketingSystem = () => {
         setUploadingFiles(attachments.length > 0);
         
         try {
-            // S3 Upload Workflow via Backend Presigned URLs
-            const uploadedUrls = [];
-            for (const file of attachments) {
-                const presignRes = await fetch(`${API_URL}/api/support/upload-url?file_name=${encodeURIComponent(file.name)}&file_type=${encodeURIComponent(file.type)}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!presignRes.ok) throw new Error("Failed to get upload URL");
-                
-                const { upload_url, file_url } = await presignRes.json();
-                
-                // Upload directly to Supabase S3
-                const uploadResponse = await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type }});
-                if (!uploadResponse.ok) throw new Error("Failed to upload file to storage.");
-                
-                uploadedUrls.push(file_url);
+            let uploadedUrls: string[] = [];
+            if (attachments.length > 0) {
+                uploadedUrls = await uploadFilesToS3(attachments);
             }
 
             const res = await fetch(`${API_URL}/api/support/tickets/${selectedTicket.id}/messages`, {
@@ -236,6 +289,14 @@ export const SupportTicketingSystem = () => {
     return (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl relative min-h-[600px] max-h-[800px] flex flex-col">
             
+            {/* FULL SCREEN IMAGE VIEWER */}
+            {enlargedImage && (
+                <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center animate-in fade-in" onClick={() => setEnlargedImage(null)}>
+                    <button aria-label="Close full screen image" onClick={() => setEnlargedImage(null)} className="absolute top-6 right-6 p-2 bg-slate-800/50 hover:bg-slate-800 text-white rounded-full transition-colors"><X size={24} /></button>
+                    <img src={enlargedImage} alt="Enlarged Attachment" className="max-w-[95%] max-h-[90%] object-contain rounded-xl shadow-2xl border border-slate-800" onClick={(e) => e.stopPropagation()} />
+                </div>
+            )}
+
             {/* VIEW: LIST */}
             {view === 'LIST' && (
                 <div className="flex flex-col h-full animate-in fade-in">
@@ -248,7 +309,7 @@ export const SupportTicketingSystem = () => {
                             <p className="text-sm text-slate-400 mt-1">Manage inquiries, technical issues, and disputes.</p>
                         </div>
                         {!isStaff && (
-                            <button onClick={() => setIsCreateOpen(true)} className="bg-[#DD9C00] hover:brightness-110 text-slate-950 px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg">
+                            <button onClick={() => { setIsCreateOpen(true); setAttachments([]); }} className="bg-[#DD9C00] hover:brightness-110 text-slate-950 px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg">
                                 <PlusCircle size={16} className="inline mr-2"/> New Ticket
                             </button>
                         )}
@@ -267,13 +328,23 @@ export const SupportTicketingSystem = () => {
                             tickets.map(ticket => (
                                 <div key={ticket.id} onClick={() => fetchTicketDetail(ticket.id)} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl hover:bg-slate-900 cursor-pointer transition-colors flex items-center justify-between gap-4 relative">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-1">
+                                        {/* Category & Priority UI in List */}
+                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${getStatusColor(ticket.status)}`}>{ticket.status.replace(/_/g, ' ')}</span>
-                                            <span className="text-xs font-mono text-slate-500">{ticket.id}</span>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-300 uppercase tracking-wider">{ticket.category}</span>
+                                            {ticket.priority && (
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                                                    ticket.priority === 'CRITICAL' ? 'border-red-500/20 bg-red-500/10 text-red-500' :
+                                                    ticket.priority === 'HIGH' ? 'border-orange-500/20 bg-orange-500/10 text-orange-500' :
+                                                    'border-blue-500/20 bg-blue-500/10 text-blue-500'
+                                                }`}>
+                                                    {ticket.priority}
+                                                </span>
+                                            )}
                                         </div>
-                                        <h4 className="text-white font-bold text-[15px] group-hover:text-[#DD9C00] transition-colors mt-1">{ticket.subject}</h4>
+                                        <h4 className="text-white font-bold text-[15px] group-hover:text-[#DD9C00] transition-colors">{ticket.subject}</h4>
                                         <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-2">
-                                            {isStaff ? <span className="text-white font-medium">Buyer: {ticket.buyer_name}</span> : null}
+                                            {isStaff ? <span className="text-white font-medium">Buyer: {ticket.buyer_name}</span> : <span className="font-mono text-[10px]">{ticket.id}</span>}
                                             <span className="opacity-50">•</span>
                                             <span>Updated {formatLocalDate(ticket.updated_at)}</span>
                                         </div>
@@ -299,15 +370,31 @@ export const SupportTicketingSystem = () => {
             {view === 'DETAIL' && selectedTicket && (
                 <div className="flex flex-col h-full animate-in slide-in-from-right-8 absolute inset-0 bg-slate-950 z-10">
                     
-                    <div className="p-4 border-b border-slate-800 bg-slate-900 flex items-center justify-between shadow-md z-20">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setView('LIST')} className="text-slate-400 hover:text-white bg-slate-800 p-2 rounded-full transition-colors" aria-label="Back"><ChevronLeft size={18}/></button>
-                            <div>
-                                <h3 className="text-white font-bold text-lg leading-tight">{selectedTicket.subject}</h3>
-                                {isStaff && <div className="text-xs text-slate-400 mt-1">User: <span className="text-white">{selectedTicket.buyer_name}</span></div>}
+                    <div className="p-4 border-b border-slate-800 bg-slate-900 flex items-start justify-between shadow-md z-20">
+                        <div className="flex items-start gap-4">
+                            <button onClick={() => { setView('LIST'); setAttachments([]); }} className="text-slate-400 hover:text-white bg-slate-800 p-2 mt-1 rounded-full transition-colors" aria-label="Back"><ChevronLeft size={18}/></button>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-mono text-slate-500">{selectedTicket.id}</span>
+                                    {isStaff && <span className="text-xs text-slate-400 border-l border-slate-700 pl-2">User: <span className="text-white font-bold">{selectedTicket.buyer_name}</span></span>}
+                                </div>
+                                <h3 className="text-white font-bold text-lg leading-tight pr-4">{selectedTicket.subject}</h3>
+                                
+                                {/* Category & Priority UI in Detail Header */}
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${getStatusColor(selectedTicket.status)}`}>{selectedTicket.status.replace(/_/g, ' ')}</span>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700 bg-slate-800 text-slate-300 uppercase tracking-wider">{selectedTicket.category}</span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                                        selectedTicket.priority === 'CRITICAL' ? 'border-red-500/20 bg-red-500/10 text-red-500' :
+                                        selectedTicket.priority === 'HIGH' ? 'border-orange-500/20 bg-orange-500/10 text-orange-500' :
+                                        'border-blue-500/20 bg-blue-500/10 text-blue-500'
+                                    }`}>
+                                        {selectedTicket.priority} Priority
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0">
                             {isStaff && selectedTicket.status !== 'CLOSED' && selectedTicket.status !== 'RESOLVED' && (
                                 <>
                                     {!selectedTicket.assigned_agent_id && (
@@ -332,7 +419,6 @@ export const SupportTicketingSystem = () => {
                     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-950 custom-scrollbar">
                         {groupedMessages.map((item: any) => {
                             
-                            // 1. WhatsApp Style Date Pill
                             if (item.type === 'date_separator') {
                                 return (
                                     <div key={item.id} className="flex justify-center my-6">
@@ -343,18 +429,18 @@ export const SupportTicketingSystem = () => {
                                 );
                             }
 
-                            // 2. Message Bubbles
                             const msg = item;
                             const isMe = msg.sender_id === user?.id;
                             
-                            let bubbleClass = 'bg-[#283B0A] text-slate-200 border border-[#3a5212]'; // Left: Dark Moss Green
+                            let bubbleClass = 'bg-[#283B0A] text-slate-200 border border-[#3a5212]'; 
                             if (msg.is_internal_note) {
                                 bubbleClass = 'bg-purple-900/50 border border-purple-500/40 text-purple-100';
                             } else if (isMe) {
-                                bubbleClass = 'bg-[#DD9C00] text-slate-950 font-medium'; // Right: Harvest Gold
+                                bubbleClass = 'bg-[#DD9C00] text-slate-950 font-medium'; 
                             }
 
                             const radiusClass = isMe ? 'rounded-2xl rounded-tr-sm' : 'rounded-2xl rounded-tl-sm';
+                            const hasCaption = msg.message && msg.message !== "Attached files";
 
                             return (
                                 <div key={msg.id} className={`flex flex-col w-full ${isMe ? 'items-end' : 'items-start'}`}>
@@ -364,29 +450,49 @@ export const SupportTicketingSystem = () => {
                                             {!isMe && !msg.is_internal_note && <ShieldCheck size={10} className="inline text-emerald-500 ml-1"/>}
                                         </span>
                                     </div>
-                                    <div className={`relative p-3.5 shadow-md ${bubbleClass} ${radiusClass} max-w-[85%] sm:max-w-[70%]`}>
+                                    
+                                    <div className={`relative p-2 shadow-md ${bubbleClass} ${radiusClass} max-w-[85%] sm:max-w-[70%]`}>
                                         
-                                        {/* Inline Block Timestamp Hack: Prevents short messages from overlapping the time */}
-                                        <p className="text-sm whitespace-pre-wrap leading-relaxed inline break-words">
-                                            {msg.message}
-                                        </p>
-                                        <span className="inline-block w-14 h-3 ml-2" aria-hidden="true" />
-                                        
-                                        {/* Attachments Renderer */}
                                         {msg.attachments?.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 mt-3 pb-1">
+                                            <div className={`flex flex-col gap-1 ${hasCaption ? 'mb-2' : 'mb-3'}`}>
                                                 {msg.attachments.map((url: string, i: number) => {
-                                                    const fileName = url.split('/').pop() || `File ${i + 1}`;
+                                                    const fileName = url.split('/').pop()?.split('?')[0] || `File ${i + 1}`;
+                                                    const isImg = isImageUrl(url);
+                                                    
+                                                    if (isImg) {
+                                                        return (
+                                                            <div key={i} onClick={() => setEnlargedImage(url)} className="block relative rounded-xl overflow-hidden border border-black/10 shadow-sm cursor-pointer group">
+                                                                <img src={url} alt="Attachment" className="max-w-full sm:max-w-[280px] max-h-[300px] object-cover transition-all group-hover:brightness-75" loading="lazy" />
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <Maximize2 className="text-white drop-shadow-md" size={32} />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    
                                                     return (
-                                                        <a key={i} href={url} target="_blank" rel="noreferrer" className={`flex items-center text-[11px] px-3 py-1.5 rounded shadow-sm hover:opacity-80 transition-all ${isMe ? 'bg-slate-950/20 text-slate-950' : 'bg-black/30 text-slate-200'}`}>
-                                                            <Paperclip size={12} className="mr-1.5" /> {decodeURIComponent(fileName)}
+                                                        <a key={i} href={url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 text-[11px] px-3 py-2.5 rounded-xl shadow-sm hover:opacity-80 transition-all ${isMe ? 'bg-slate-950/20 text-slate-950' : 'bg-black/30 text-slate-200'}`}>
+                                                            <div className={`p-1.5 rounded-lg ${isMe ? 'bg-slate-950/20' : 'bg-white/20'}`}>
+                                                                <FileText size={16} />
+                                                            </div>
+                                                            <span className="truncate max-w-[160px] font-bold">Open {decodeURIComponent(fileName)}</span>
                                                         </a>
                                                     );
                                                 })}
                                             </div>
                                         )}
 
-                                        <div className={`absolute bottom-1.5 right-2 flex items-center gap-1 text-[10px] ${isMe ? 'text-slate-950/70' : 'text-slate-200/60'}`}>
+                                        {hasCaption && (
+                                            <p className="text-sm whitespace-pre-wrap leading-relaxed inline break-words px-1.5 pb-2">
+                                                {msg.message}
+                                            </p>
+                                        )}
+                                        
+                                        {(hasCaption || msg.attachments?.length === 0) && (
+                                            <span className="inline-block w-14 h-3 ml-2" aria-hidden="true" />
+                                        )}
+
+                                        <div className={`absolute bottom-1.5 right-2.5 flex items-center gap-1 text-[10px] ${isMe ? 'text-slate-950/70' : 'text-slate-200/60'} ${!hasCaption && msg.attachments?.length > 0 && isImageUrl(msg.attachments[0]) ? 'bg-black/40 text-white px-1.5 py-0.5 rounded-full backdrop-blur-sm' : ''}`}>
                                             <span>{formatLocalTime(msg.created_at)}</span>
                                             {isMe && !msg.is_internal_note && (
                                                 <span className="ml-0.5">
@@ -426,28 +532,34 @@ export const SupportTicketingSystem = () => {
                                     </div>
                                 )}
                                 
-                                {/* Visible Attachment Previews */}
+                                {/* Visible Attachment Previews Before Sending */}
                                 {attachments.length > 0 && (
                                     <div className="flex flex-wrap gap-2 px-1 pb-1">
-                                        {attachments.map((file, i) => (
-                                            <div key={i} className="text-xs bg-slate-800 text-slate-300 pl-3 pr-1 py-1.5 rounded-lg flex items-center border border-slate-700 shadow-sm animate-in slide-in-from-bottom-2">
-                                                <span className="truncate max-w-[200px]">{file.name}</span>
-                                                <button type="button" onClick={() => setAttachments(p => p.filter((_, idx) => idx !== i))} className="ml-2 p-1 text-slate-500 hover:text-red-400 bg-slate-900 rounded transition-colors" aria-label="Remove attachment" title="Remove attachment">
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                        ))}
+                                        {attachments.map((file, i) => {
+                                            const isImg = file.type.startsWith('image/') || /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(file.name);
+                                            const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                                            
+                                            return (
+                                                <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-700 shadow-sm animate-in slide-in-from-bottom-2 bg-slate-800 flex items-center">
+                                                    {isImg ? (
+                                                        <img src={previewUrl!} alt="preview" className="h-12 w-12 object-cover" />
+                                                    ) : (
+                                                        <div className="h-12 w-12 flex items-center justify-center bg-slate-700">
+                                                            <FileText size={20} className="text-slate-400" />
+                                                        </div>
+                                                    )}
+                                                    <div className="px-2 max-w-[120px]">
+                                                        <span className="text-[10px] text-slate-300 truncate block font-medium">{file.name}</span>
+                                                    </div>
+                                                    <button type="button" onClick={(e) => { e.preventDefault(); setAttachments(p => p.filter((_, idx) => idx !== i)); }} className="absolute top-0.5 right-0.5 p-0.5 bg-black/60 text-white rounded-full hover:bg-red-500 transition-colors" aria-label="Remove attachment"><X size={12} /></button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
                                 <div className="relative flex items-end gap-2">
-                                    <button 
-                                        type="button" 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="p-3 text-slate-400 hover:text-white transition-colors bg-slate-950 border border-slate-700 rounded-xl h-[56px] flex items-center justify-center shadow-inner hover:border-slate-500 flex-shrink-0"
-                                        aria-label="Attach files"
-                                        title="Attach files"
-                                    >
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-3 text-slate-400 hover:text-white transition-colors bg-slate-950 border border-slate-700 rounded-xl h-[56px] flex items-center justify-center shadow-inner hover:border-slate-500 flex-shrink-0" aria-label="Attach files">
                                         <Paperclip size={20} />
                                     </button>
                                     <input 
@@ -455,32 +567,19 @@ export const SupportTicketingSystem = () => {
                                         multiple 
                                         className="hidden" 
                                         ref={fileInputRef} 
-                                        onChange={(e) => {
-                                            if (e.target.files) setAttachments(prev => [...prev, ...Array.from(e.target.files as FileList)]);
-                                            e.target.value = ''; // Clear value to allow selecting the same file again if removed
-                                        }} 
-                                        aria-label="File upload input"
+                                        onChange={handleFileSelect} 
+                                        aria-label="File upload" 
                                     />
                                     
                                     <textarea 
                                         value={replyMessage}
                                         onChange={(e) => setReplyMessage(e.target.value)}
                                         placeholder={isInternalNote ? "Type an internal note..." : "Type your message..."}
-                                        className={`w-full border rounded-2xl text-white p-3.5 pr-16 text-sm outline-none resize-none h-[56px] shadow-inner transition-colors ${
-                                            isInternalNote ? 'bg-purple-900/20 border-purple-500/50 focus:border-purple-400' : 'bg-slate-950 border-slate-700 focus:border-[#DD9C00]'
-                                        }`}
+                                        className={`w-full border rounded-2xl text-white p-3.5 pr-16 text-sm outline-none resize-none h-[56px] shadow-inner transition-colors ${isInternalNote ? 'bg-purple-900/20 border-purple-500/50 focus:border-purple-400' : 'bg-slate-950 border-slate-700 focus:border-[#DD9C00]'}`}
                                         onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onReply(e); } }}
                                     />
-                                    <button 
-                                        type="submit" 
-                                        aria-label="Send message"
-                                        title="Send message"
-                                        disabled={(!replyMessage.trim() && attachments.length === 0) || submitting} 
-                                        className={`absolute right-2 bottom-1.5 p-2.5 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center h-11 w-11 ${
-                                            isInternalNote ? 'bg-purple-500 hover:bg-purple-400 text-white' : 'bg-[#DD9C00] hover:brightness-110 text-slate-950'
-                                        }`}
-                                    >
-                                        {uploadingFiles ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyMessage.trim() || attachments.length ? 'translate-x-[1px] -translate-y-[1px]' : ''} />}
+                                    <button type="submit" aria-label="Send message" disabled={(!replyMessage.trim() && attachments.length === 0) || submitting || uploadingFiles} className={`absolute right-2 bottom-1.5 p-2.5 rounded-xl shadow-md disabled:opacity-50 transition-colors flex items-center justify-center h-11 w-11 ${isInternalNote ? 'bg-purple-500 hover:bg-purple-400 text-white' : 'bg-[#DD9C00] hover:brightness-110 text-slate-950'}`}>
+                                        {uploadingFiles || submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={replyMessage.trim() || attachments.length ? 'translate-x-[1px] -translate-y-[1px]' : ''} />}
                                     </button>
                                 </div>
                             </form>
@@ -489,7 +588,7 @@ export const SupportTicketingSystem = () => {
                 </div>
             )}
 
-            {/* CREATE MODAL OVERLAY (Buyers Only) */}
+            {/* CREATE MODAL OVERLAY */}
             {isCreateOpen && !isStaff && (
                 <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90%]">
@@ -531,10 +630,43 @@ export const SupportTicketingSystem = () => {
                                 <textarea {...register('initial_message')} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white h-32 focus:border-[#DD9C00] outline-none resize-none" placeholder="Please provide order numbers, specifics of the issue, and steps to reproduce..." />
                                 {errors.initial_message && <p className="text-red-500 text-xs mt-1">{errors.initial_message.message}</p>}
                             </div>
-                            <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
+                            
+                            {/* ATTACHMENTS FOR NEW TICKET */}
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Attachments (Optional)</label>
+                                <button type="button" onClick={() => createFileInputRef.current?.click()} className="flex items-center gap-2 text-sm text-[#DD9C00] hover:text-yellow-400 bg-[#DD9C00]/10 hover:bg-[#DD9C00]/20 px-4 py-2 rounded-lg transition-colors border border-[#DD9C00]/20">
+                                    <Paperclip size={16} /> Add Photos or Documents
+                                </button>
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    className="hidden" 
+                                    ref={createFileInputRef} 
+                                    aria-label="Upload attachments" 
+                                    onChange={handleFileSelect} 
+                                />
+                                
+                                {attachments.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        {attachments.map((file, i) => {
+                                            const isImg = file.type.startsWith('image/') || /\.(jpeg|jpg|gif|png|webp|bmp|svg)$/i.test(file.name);
+                                            const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                                            return (
+                                                <div key={i} className="relative group rounded-lg overflow-hidden border border-slate-700 shadow-sm bg-slate-800 flex items-center">
+                                                    {isImg ? <img src={previewUrl!} alt="preview" className="h-10 w-10 object-cover" /> : <div className="h-10 w-10 flex items-center justify-center bg-slate-700"><FileText size={16} className="text-slate-400" /></div>}
+                                                    <div className="px-2 max-w-[120px]"><span className="text-[10px] text-slate-300 truncate block font-medium">{file.name}</span></div>
+                                                    <button type="button" onClick={() => setAttachments(p => p.filter((_, idx) => idx !== i))} aria-label="Remove attachment" className="absolute top-0.5 right-0.5 p-0.5 bg-black/60 text-white rounded-full hover:bg-red-500"><X size={10} /></button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-800 flex justify-end gap-3 mt-2">
                                 <button type="button" onClick={() => setIsCreateOpen(false)} className="px-5 py-2.5 rounded-xl text-slate-400 font-bold hover:text-white transition-colors">Cancel</button>
-                                <button type="submit" disabled={!isValid || submitting} className="bg-[#DD9C00] hover:brightness-110 text-slate-950 px-6 py-2.5 rounded-xl font-bold flex items-center transition-all disabled:opacity-50 shadow-lg">
-                                    {submitting ? <Loader2 className="animate-spin mr-2" size={18}/> : <Send className="mr-2" size={18}/>} Submit Ticket
+                                <button type="submit" disabled={!isValid || submitting || uploadingFiles} className="bg-[#DD9C00] hover:brightness-110 text-slate-950 px-6 py-2.5 rounded-xl font-bold flex items-center transition-all disabled:opacity-50 shadow-lg">
+                                    {submitting || uploadingFiles ? <Loader2 className="animate-spin mr-2" size={18}/> : <Send className="mr-2" size={18}/>} Submit Ticket
                                 </button>
                             </div>
                         </form>

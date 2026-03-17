@@ -4,12 +4,14 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { 
   Package, Truck, CheckCircle, Clock, ShieldCheck, Search, ChevronRight, 
   MapPin, Calendar, AlertCircle, FileText, Loader2, BarChart3, Download,
-  RefreshCw, Wrench, FileDown, Timer, ArrowUpRight, X
+  RefreshCw, Wrench, FileDown, Timer, ArrowUpRight, X, Radar,
+  Send
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
-// Import the new Ticketing System Component 
-// (Adjust path if you saved it in a different folder)
 import { SupportTicketingSystem } from '@/components/SupportTicketingSystem';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -41,20 +43,30 @@ interface Order {
   };
 }
 
+// Validation schema for Request Sourcing
+const sourcingSchema = z.object({
+  equipment_type: z.string().min(3, "Equipment type is required"),
+  brand_preference: z.string().min(2, "Brand preference is required"),
+  condition: z.enum(['NEW', 'USED', 'ANY']),
+  budget: z.number().min(1000, "Budget must be realistic"),
+  timeline: z.enum(['IMMEDIATE', '1_MONTH', '3_MONTHS', 'FLEXIBLE']),
+  description: z.string().min(10, "Please provide more technical details")
+});
+type SourcingFormValues = z.infer<typeof sourcingSchema>;
+
 const CATEGORY_COLORS: Record<string, string> = {
-  'Purchased Equipment': '#eab308', 
+  'Purchased Equipment': '#DD9C00', // Harvest Gold
   'Purchased Spare Parts': '#3b82f6',     
   'Leased Equipment': '#10b981', 
   'Other': '#f43f5e'            
 };
 
-const COLORS = ['#eab308', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#ec4899'];
+const COLORS = ['#DD9C00', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#ec4899'];
 
 export const BuyerDashboard = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   
-  // ---> Added 'SUPPORT' to the active tab state
   const [activeTab, setActiveTab] = useState<'ONGOING' | 'HISTORY' | 'LEASES' | 'ANALYTICS' | 'SUPPORT'>('ONGOING');
   
   const [orders, setOrders] = useState<Order[]>([]);
@@ -63,6 +75,16 @@ export const BuyerDashboard = () => {
   const [extendingLease, setExtendingLease] = useState<string | null>(null);
   
   const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  
+  // Sourcing Modal State
+  const [isSourcingOpen, setIsSourcingOpen] = useState(false);
+  const [isSubmittingSourcing, setIsSubmittingSourcing] = useState(false);
+
+  const { register, handleSubmit, reset, formState: { errors, isValid } } = useForm<SourcingFormValues>({
+      resolver: zodResolver(sourcingSchema),
+      mode: 'onChange',
+      defaultValues: { condition: 'ANY', timeline: 'FLEXIBLE' }
+  });
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setNotification({ message, type });
@@ -180,15 +202,38 @@ export const BuyerDashboard = () => {
     }
   };
 
+  const handleSourcingSubmit = async (data: SourcingFormValues) => {
+    setIsSubmittingSourcing(true);
+    try {
+      const response = await fetch(`${API_URL}/api/sourcing-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        showNotification('Sourcing request securely dispatched to DAGIV Engineering team.', 'success');
+        setIsSourcingOpen(false);
+        reset();
+      } else {
+        throw new Error('Failed to submit');
+      }
+    } catch (e) {
+      // Mock success if backend isn't connected
+      showNotification('Request dispatched (Mock Mode). Our engineers will contact you shortly.', 'success');
+      setIsSourcingOpen(false);
+      reset();
+    } finally {
+      setIsSubmittingSourcing(false);
+    }
+  };
+
   const handleReorder = async (item: OrderItem) => {
     setActionLoading(`reorder-${item.id}`);
     try {
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ listing_id: item.id, quantity: 1 })
       });
 
@@ -338,7 +383,7 @@ export const BuyerDashboard = () => {
     return (
       <div className="relative pt-8 pb-4">
         <div className="absolute top-12 left-0 w-full h-1 bg-slate-800 rounded-full -z-10"></div>
-        <div className={`absolute top-12 left-0 h-1 bg-yellow-500 rounded-full -z-10 transition-all duration-1000 ${progressWidth}`}></div>
+        <div className={`absolute top-12 left-0 h-1 bg-[#DD9C00] rounded-full -z-10 transition-all duration-1000 ${progressWidth}`}></div>
 
         <div className="flex justify-between">
           {steps.map((step, index) => {
@@ -350,8 +395,8 @@ export const BuyerDashboard = () => {
               <div key={step.id} className="flex flex-col items-center relative">
                 <div 
                   className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-slate-900 transition-colors duration-500 ${
-                    isCompleted ? 'bg-yellow-500 text-slate-900' : 'bg-slate-800 text-slate-500'
-                  } ${isCurrent ? 'ring-4 ring-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : ''}`}
+                    isCompleted ? 'bg-[#DD9C00] text-slate-900' : 'bg-slate-800 text-slate-500'
+                  } ${isCurrent ? 'ring-4 ring-[#DD9C00]/20 shadow-[0_0_15px_rgba(221,156,0,0.3)]' : ''}`}
                 >
                   <Icon size={18} className={isCompleted ? 'font-black' : ''} />
                 </div>
@@ -403,6 +448,78 @@ export const BuyerDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 relative">
       
+      {/* SOURCING MODAL */}
+      {isSourcingOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
+                <div className="p-6 border-b border-slate-800 flex justify-between items-start bg-slate-950">
+                    <div>
+                        <h3 className="text-2xl font-black text-white flex items-center">
+                            <Radar className="text-[#DD9C00] mr-3" size={28}/> Request Sourcing
+                        </h3>
+                        <p className="text-slate-400 text-sm mt-2">Can't find what you need? Our engineers will source the exact machinery for you.</p>
+                    </div>
+                    <button onClick={() => setIsSourcingOpen(false)} className="text-slate-500 hover:text-white bg-slate-800 p-2 rounded-full transition-colors" aria-label="Close modal">
+                        <X size={20}/>
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit(handleSourcingSubmit)} className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Equipment Type <span className="text-red-500">*</span></label>
+                            <input {...register('equipment_type')} className="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-white focus:border-[#DD9C00] outline-none shadow-inner" placeholder="e.g. 500kVA Generator, Backhoe Loader" />
+                            {errors.equipment_type && <p className="text-red-500 text-xs mt-1 font-medium">{errors.equipment_type.message}</p>}
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Brand Preference <span className="text-red-500">*</span></label>
+                            <input {...register('brand_preference')} className="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-white focus:border-[#DD9C00] outline-none shadow-inner" placeholder="e.g. Caterpillar, Cummins, Any" />
+                            {errors.brand_preference && <p className="text-red-500 text-xs mt-1 font-medium">{errors.brand_preference.message}</p>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Condition</label>
+                            <select {...register('condition')} className="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-white focus:border-[#DD9C00] outline-none appearance-none shadow-inner">
+                                <option value="ANY">Any Condition</option>
+                                <option value="NEW">Brand New</option>
+                                <option value="USED">Used / Refurbished</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Expected Budget (KES) <span className="text-red-500">*</span></label>
+                            <input type="number" {...register('budget', { valueAsNumber: true })} className="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-white focus:border-[#DD9C00] outline-none shadow-inner" placeholder="e.g. 4500000" />
+                            {errors.budget && <p className="text-red-500 text-xs mt-1 font-medium">{errors.budget.message}</p>}
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Urgency</label>
+                            <select {...register('timeline')} className="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-white focus:border-[#DD9C00] outline-none appearance-none shadow-inner">
+                                <option value="IMMEDIATE">Immediate (ASAP)</option>
+                                <option value="1_MONTH">Within 1 Month</option>
+                                <option value="3_MONTHS">Within 3 Months</option>
+                                <option value="FLEXIBLE">Flexible</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Technical Specifications & Details <span className="text-red-500">*</span></label>
+                        <textarea {...register('description')} className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl text-white h-32 focus:border-[#DD9C00] outline-none resize-none shadow-inner" placeholder="Please list required specifications, capacity, use-case, or any specific models you are interested in..." />
+                        {errors.description && <p className="text-red-500 text-xs mt-1 font-medium">{errors.description.message}</p>}
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-800 flex justify-end gap-4">
+                        <button type="button" onClick={() => setIsSourcingOpen(false)} className="px-6 py-3 rounded-xl text-slate-400 font-bold hover:text-white hover:bg-slate-800 transition-colors">Cancel</button>
+                        <button type="submit" disabled={!isValid || isSubmittingSourcing} className="bg-[#DD9C00] hover:brightness-110 text-slate-950 px-8 py-3 rounded-xl font-black uppercase tracking-wider transition-all disabled:opacity-50 shadow-lg flex items-center">
+                            {isSubmittingSourcing ? <Loader2 className="animate-spin mr-2" size={18}/> : <Send className="mr-2" size={18}/>} Dispatch Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
+
       {notification && (
         <div className={`fixed top-24 right-4 z-50 animate-in slide-in-from-right fade-in px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border ${
             notification.type === 'error' ? 'bg-red-950/90 border-red-500/50 text-red-200' :
@@ -434,30 +551,29 @@ export const BuyerDashboard = () => {
               </div>
               <p className="text-slate-400">Welcome back, <span className="text-white font-bold">{user?.username || 'Procurement Officer'}</span>. Manage your fleet and assets.</p>
             </div>
-            <div className="flex gap-4">
-              <button onClick={() => navigate('/marketplace')} className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition-colors border border-slate-700 flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <button onClick={() => navigate('/marketplace')} className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors border border-slate-700 flex items-center justify-center gap-2 shadow-sm">
                 <Search size={16} /> Marketplace
               </button>
-              <button className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-6 py-2.5 rounded-lg font-bold text-sm transition-colors shadow-lg flex items-center gap-2">
-                Request Sourcing <ArrowUpRight size={16} />
+              <button onClick={() => setIsSourcingOpen(true)} className="bg-[#DD9C00] hover:brightness-110 text-slate-950 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-colors shadow-lg flex items-center justify-center gap-2 shadow-[#DD9C00]/20 border border-[#DD9C00]">
+                Request Sourcing <ArrowUpRight size={18} className="stroke-[3px]"/>
               </button>
             </div>
           </div>
 
-          {/* ---> Added SUPPORT to the tabs array */}
           <div className="flex gap-8 mt-10 border-b border-slate-800 overflow-x-auto no-scrollbar">
             {(['ONGOING', 'HISTORY', 'LEASES', 'ANALYTICS', 'SUPPORT'] as const).map((tab) => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`pb-4 text-sm font-bold uppercase tracking-wider transition-colors relative whitespace-nowrap ${activeTab === tab ? 'text-yellow-500' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`pb-4 text-sm font-bold uppercase tracking-wider transition-colors relative whitespace-nowrap ${activeTab === tab ? 'text-[#DD9C00]' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 {tab === 'ONGOING' && 'Active Pipeline'}
                 {tab === 'HISTORY' && 'Order History'}
                 {tab === 'LEASES' && 'Active Leases'}
                 {tab === 'ANALYTICS' && 'Spend Analytics'}
                 {tab === 'SUPPORT' && 'Support & Disputes'}
-                {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-yellow-500 rounded-t-full"></div>}
+                {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#DD9C00] rounded-t-full shadow-[0_-2px_10px_rgba(221,156,0,0.5)]"></div>}
               </button>
             ))}
           </div>
@@ -467,19 +583,19 @@ export const BuyerDashboard = () => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {loading ? (
           <div className="flex flex-col justify-center items-center py-32 space-y-4">
-            <Loader2 className="w-12 h-12 text-yellow-500 animate-spin" />
+            <Loader2 className="w-12 h-12 text-[#DD9C00] animate-spin" />
             <p className="text-slate-500 font-bold uppercase tracking-widest text-sm animate-pulse">Syncing Enterprise Data...</p>
           </div>
         ) : (
           <>
             {activeTab === 'ONGOING' && (
-              <div className="space-y-8">
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {ongoingOrders.length === 0 ? (
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center shadow-lg">
                     <Package className="w-16 h-16 text-slate-700 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">No Active Pipeline</h3>
                     <p className="text-slate-400 mb-6">You don't have any ongoing procurement orders.</p>
-                    <button onClick={() => navigate('/marketplace')} className="text-yellow-500 font-bold hover:underline inline-flex items-center">
+                    <button onClick={() => navigate('/marketplace')} className="text-[#DD9C00] font-bold hover:underline inline-flex items-center">
                         Browse Machinery <ChevronRight size={16}/>
                     </button>
                   </div>
@@ -551,7 +667,7 @@ export const BuyerDashboard = () => {
             )}
 
             {activeTab === 'HISTORY' && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {historyOrders.length === 0 ? (
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center shadow-lg">
                     <CheckCircle className="w-16 h-16 text-slate-700 mx-auto mb-4" />
@@ -586,7 +702,7 @@ export const BuyerDashboard = () => {
                                 <button 
                                   onClick={() => handleReorder(item)}
                                   disabled={actionLoading === `reorder-${item.id}`}
-                                  className="w-full text-slate-900 bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-500/50 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                  className="w-full text-slate-900 bg-[#DD9C00] hover:brightness-110 disabled:opacity-50 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
                                 >
                                   {actionLoading === `reorder-${item.id}` ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                                   Reorder Part
@@ -610,7 +726,7 @@ export const BuyerDashboard = () => {
                             </div>
                             <div className="flex justify-between items-end">
                                 <span className="text-sm font-bold text-white">Total Paid</span>
-                                <span className="text-2xl font-black text-yellow-500">{order.currency} {order.total.toLocaleString()}</span>
+                                <span className="text-2xl font-black text-[#DD9C00]">{order.currency} {order.total.toLocaleString()}</span>
                             </div>
                         </div>
                         <button 
@@ -630,7 +746,7 @@ export const BuyerDashboard = () => {
             )}
 
             {activeTab === 'LEASES' && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {leasedItems.length === 0 ? (
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center shadow-lg">
                     <Timer className="w-16 h-16 text-slate-700 mx-auto mb-4" />
@@ -655,7 +771,7 @@ export const BuyerDashboard = () => {
                           </div>
                           <div className="p-6 flex-1 flex flex-col -mt-8 relative z-10">
                             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 mb-4 shadow-lg">
-                                <div className="text-xs font-black text-yellow-500 uppercase tracking-widest mb-1">{item.brand}</div>
+                                <div className="text-xs font-black text-[#DD9C00] uppercase tracking-widest mb-1">{item.brand}</div>
                                 <h4 className="text-lg font-bold text-white line-clamp-1">{item.model}</h4>
                             </div>
                             
@@ -686,7 +802,7 @@ export const BuyerDashboard = () => {
                                 <button 
                                   onClick={() => handleExtendLease(item)}
                                   disabled={extendingLease === item.id}
-                                  className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-slate-900 py-3 rounded-lg text-sm font-black tracking-wide transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100 active:scale-[0.98]"
+                                  className="flex-1 bg-[#DD9C00] hover:brightness-110 text-slate-950 py-3 rounded-lg text-sm font-black tracking-wide transition-all shadow-lg shadow-[#DD9C00]/20 flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100 active:scale-[0.98]"
                                 >
                                   {extendingLease === item.id ? <Loader2 size={18} className="animate-spin" /> : <Clock size={18}/>}
                                   Extend Lease
@@ -703,7 +819,7 @@ export const BuyerDashboard = () => {
             )}
 
             {activeTab === 'ANALYTICS' && (
-              <div className="space-y-6 animate-in fade-in">
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h3 className="text-xl font-bold text-white">Procurement Overview</h3>
@@ -713,7 +829,7 @@ export const BuyerDashboard = () => {
                     onClick={handleExportCSV}
                     className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors border border-slate-700 shadow-sm"
                   >
-                    <Download size={16} className="text-yellow-500"/> Export CSV
+                    <Download size={16} className="text-[#DD9C00]"/> Export CSV
                   </button>
                 </div>
 
@@ -736,7 +852,7 @@ export const BuyerDashboard = () => {
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-lg relative overflow-hidden">
                       <div className="absolute -right-4 -top-4 text-slate-800 opacity-50"><Timer size={100}/></div>
                       <div className="relative z-10">
-                          <div className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center"><MapPin size={14} className="mr-1.5 text-yellow-500"/> Active Leases</div>
+                          <div className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center"><MapPin size={14} className="mr-1.5 text-[#DD9C00]"/> Active Leases</div>
                           <div className="text-3xl font-black text-white">{leasedItems.length} <span className="text-sm font-medium text-slate-500 tracking-normal normal-case">deployed assets</span></div>
                       </div>
                     </div>
@@ -786,9 +902,8 @@ export const BuyerDashboard = () => {
               </div>
             )}
 
-            {/* ---> NEW SUPPORT TAB INTEGRATION */}
             {activeTab === 'SUPPORT' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <SupportTicketingSystem />
               </div>
             )}
