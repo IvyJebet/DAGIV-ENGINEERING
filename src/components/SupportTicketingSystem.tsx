@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { 
     MessageSquare, PlusCircle, CheckCircle, X, Send, 
@@ -48,9 +48,20 @@ const isImageUrl = (url: string) => {
 };
 
 export const SupportTicketingSystem = () => {
-    const { token, user } = useAuth();
+    const { buyerToken, sellerToken, token: defaultToken, user, logout } = useAuth();
     const isStaff = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPPORT';
     
+    // BULLETPROOF TOKEN RESOLVER - Memoized to prevent dependency loop triggers
+    const getCleanToken = useCallback(() => {
+        let rawToken = buyerToken || sellerToken || defaultToken || 
+                       localStorage.getItem('dagiv_buyer_token') || 
+                       localStorage.getItem('dagiv_seller_token') || 
+                       localStorage.getItem('dagiv_token');
+        
+        if (!rawToken || rawToken === 'null' || rawToken === 'undefined') return null;
+        return rawToken.replace(/['"]+/g, '');
+    }, [buyerToken, sellerToken, defaultToken]);
+
     const [view, setView] = useState<'LIST' | 'DETAIL'>('LIST');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     
@@ -79,18 +90,39 @@ export const SupportTicketingSystem = () => {
         defaultValues: { priority: 'MEDIUM', category: '' }
     });
 
-    const fetchTickets = async () => {
+    const fetchTickets = useCallback(async () => {
+        const activeToken = getCleanToken();
+        if (!activeToken) return;
+
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/support/tickets?limit=50`, { headers: { 'Authorization': `Bearer ${token}` }});
-            if (res.ok) setTickets((await res.json()).tickets);
-        } finally { setLoading(false); }
-    };
+            const res = await fetch(`${API_URL}/api/support/tickets?limit=50`, { 
+                headers: { 'Authorization': `Bearer ${activeToken}` }
+            });
+            if (res.status === 401) {
+                console.warn("Session expired fetching tickets");
+                return;
+            }
+            if (res.ok) {
+                const data = await res.json();
+                setTickets(data.tickets || []);
+            }
+        } catch(err) {
+            console.error("Failed to fetch tickets", err);
+        } finally { 
+            setLoading(false); 
+        }
+    }, [getCleanToken]);
 
     const fetchTicketDetail = async (id: string, silent: boolean = false) => {
+        const activeToken = getCleanToken();
+        if (!activeToken) return;
+
         if (!silent) setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/support/tickets/${id}`, { headers: { 'Authorization': `Bearer ${token}` }});
+            const res = await fetch(`${API_URL}/api/support/tickets/${id}`, { 
+                headers: { 'Authorization': `Bearer ${activeToken}` }
+            });
             if (res.ok) {
                 setSelectedTicket(await res.json());
                 if (!silent) {
@@ -98,21 +130,34 @@ export const SupportTicketingSystem = () => {
                     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "auto" }), 50);
                 }
             }
-        } finally { if (!silent) setLoading(false); }
+        } finally { 
+            if (!silent) setLoading(false); 
+        }
     };
 
-    useEffect(() => { if (token && view === 'LIST') fetchTickets(); }, [token, view]);
+    // STRICT GATE: Only run fetch if token is valid to prevent 401 loops
+    useEffect(() => { 
+        const activeToken = getCleanToken();
+        if (activeToken && view === 'LIST') {
+            fetchTickets(); 
+        }
+    }, [view, getCleanToken, fetchTickets]);
 
     // WebSocket Setup & Read Receipts
     useEffect(() => {
-        if (view === 'DETAIL' && selectedTicket) {
+        const activeToken = getCleanToken();
+        if (view === 'DETAIL' && selectedTicket && activeToken) {
             const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
             const wsUrl = `${wsProtocol}://${API_URL.replace(/^https?:\/\//, '')}`;
             
-            ws.current = new WebSocket(`${wsUrl}/api/support/tickets/${selectedTicket.id}/ws?token=${token}`);
+            // Close existing connection if any
+            if (ws.current) {
+                ws.current.close();
+            }
+
+            ws.current = new WebSocket(`${wsUrl}/api/support/tickets/${selectedTicket.id}/ws?token=${activeToken}`);
             
             ws.current.onopen = () => {
-                // Instantly notify the other party we have opened the chat
                 ws.current?.send(JSON.stringify({ type: 'MARK_READ' }));
             };
 
@@ -127,7 +172,6 @@ export const SupportTicketingSystem = () => {
                     setTypingUser(null);
                     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
                     
-                    // If we receive a message while actively looking, instantly mark it read!
                     if (data.message.sender_id !== user?.id) {
                         ws.current?.send(JSON.stringify({ type: 'MARK_READ' }));
                     }
@@ -136,7 +180,6 @@ export const SupportTicketingSystem = () => {
                     setTypingUser(data.is_typing ? data.sender_name : null);
                 }
                 else if (data.type === 'READ_RECEIPT' && data.user_id !== user?.id) {
-                    // Turn local ticks blue without fetching from the DB
                     setSelectedTicket((prev: any) => {
                         if (!prev) return prev;
                         return {
@@ -149,11 +192,13 @@ export const SupportTicketingSystem = () => {
                 }
             };
             return () => {
-                ws.current?.close();
-                ws.current = null;
+                if (ws.current) {
+                    ws.current.close();
+                    ws.current = null;
+                }
             };
         }
-    }, [view, selectedTicket?.id, token, user?.id]);
+    }, [view, selectedTicket?.id, user?.id, getCleanToken]);
 
     useEffect(() => {
         if (ws.current?.readyState === WebSocket.OPEN) {
@@ -181,10 +226,11 @@ export const SupportTicketingSystem = () => {
     };
 
     const uploadFilesToS3 = async (files: File[]) => {
+        const activeToken = getCleanToken();
         const uploadedUrls = [];
         for (const file of files) {
             const presignRes = await fetch(`${API_URL}/api/support/upload-url?file_name=${encodeURIComponent(file.name)}&file_type=${encodeURIComponent(file.type)}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${activeToken}` }
             });
             if (!presignRes.ok) throw new Error("Failed to get upload URL");
             const { upload_url, file_url } = await presignRes.json();
@@ -196,6 +242,9 @@ export const SupportTicketingSystem = () => {
     };
 
     const onCreateTicket = async (data: TicketFormValues) => {
+        const activeToken = getCleanToken();
+        if (!activeToken) return;
+
         setSubmitting(true);
         setUploadingFiles(attachments.length > 0);
         try {
@@ -206,7 +255,7 @@ export const SupportTicketingSystem = () => {
 
             const res = await fetch(`${API_URL}/api/support/tickets`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}` },
                 body: JSON.stringify({ ...data, attachments: uploadedUrls })
             });
             if (res.ok) {
@@ -226,6 +275,9 @@ export const SupportTicketingSystem = () => {
 
     const onReply = async (e: React.FormEvent) => {
         e.preventDefault();
+        const activeToken = getCleanToken();
+        if (!activeToken) return;
+
         const finalMessage = replyMessage.trim() || (attachments.length > 0 ? "Attached files" : "");
         if (finalMessage.length === 0) return;
         
@@ -240,7 +292,7 @@ export const SupportTicketingSystem = () => {
 
             const res = await fetch(`${API_URL}/api/support/tickets/${selectedTicket.id}/messages`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}` },
                 body: JSON.stringify({ message: finalMessage, is_internal_note: isInternalNote, attachments: uploadedUrls })
             });
             
@@ -259,6 +311,9 @@ export const SupportTicketingSystem = () => {
     };
 
     const updateTicketStatus = async (status: string, assignToMe: boolean = false) => {
+        const activeToken = getCleanToken();
+        if (!activeToken) return;
+
         setSubmitting(true);
         try {
             const payload: any = {};
@@ -267,7 +322,7 @@ export const SupportTicketingSystem = () => {
 
             const res = await fetch(`${API_URL}/api/support/tickets/${selectedTicket.id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}` },
                 body: JSON.stringify(payload)
             });
             if (res.ok) fetchTicketDetail(selectedTicket.id, true);

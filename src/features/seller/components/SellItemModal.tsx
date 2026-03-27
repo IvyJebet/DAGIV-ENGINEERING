@@ -1,13 +1,18 @@
+// src/features/seller/components/SellItemModal.tsx
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, BadgeCheck, Truck, Clock, Settings, MapPin, 
   DollarSign, Camera, Video, FileText, UploadCloud, 
   Check, List, ShieldCheck, RefreshCw, ChevronRight, 
-  User, Building2, FileCheck, 
-  CheckCircle, Eye, EyeOff 
+  User, Building2, FileCheck, CheckCircle, Eye, EyeOff, Info, Loader2 
 } from 'lucide-react';
 import { CATEGORY_STRUCTURE } from '@/config/constants';
 import { useAuth } from '@/context/AuthContext';
+import { useJsApiLoader, Autocomplete, GoogleMap, Marker } from '@react-google-maps/api';
+import { DynamicFieldEngine } from './DynamicFieldEngine';
+import { ListingType } from '@/config/listingSchemas';
+import { uploadImageToSupabase } from '@/utils/supabaseClient';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -172,37 +177,43 @@ interface SellItemModalProps {
   onClose: () => void;
   onLoginSuccess?: (token: string) => void;
   onListingComplete?: () => void; 
-  initialStage?: 'WELCOME' | 'GATE' | 'KYC_REGISTER' | 'WIZARD';
-  editData?: any; // New Prop to pass edit content
+  initialStage?: 'WELCOME' | 'GATE' | 'KYC_REGISTER' | 'OTP_VERIFY' | 'WIZARD';
+  editData?: any; 
 }
+
+const COMMISSION_RATES = { SALE: 0.03, RENT: 0.05, PART: 0.10 };
+const VAT_RATE = 0.16;
+const MAPS_LIBRARIES: ("places")[] = ["places"];
 
 export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSuccess, onListingComplete, initialStage = 'WELCOME', editData }) => {
     const { login } = useAuth(); 
 
-    const [stage, setStage] = useState<'WELCOME' | 'LOGIN' | 'GATE' | 'KYC_REGISTER' | 'WIZARD'>(initialStage);
+    const [stage, setStage] = useState<'WELCOME' | 'LOGIN' | 'GATE' | 'KYC_REGISTER' | 'OTP_VERIFY' | 'WIZARD'>(initialStage);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     
-    // Auth State for Login
     const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-
-    // State for Password Visibility
+    const [otpCode, setOtpCode] = useState('');
     const [showPassword, setShowPassword] = useState(false); 
 
-    // File Input References
+    const { isLoaded } = useJsApiLoader({
+        googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+        libraries: MAPS_LIBRARIES
+    });
+    const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+    const [isMapModalOpen, setMapModalOpen] = useState(false);
+    const [mapMarker, setMapMarker] = useState<{lat: number, lng: number} | null>(null);
+    const [geocoding, setGeocoding] = useState(false);
+
     const docPrimaryRef = useRef<HTMLInputElement>(null);
     const docSecondaryRef = useRef<HTMLInputElement>(null);
     const docProofRef = useRef<HTMLInputElement>(null);
     const mediaVideoRef = useRef<HTMLInputElement>(null);
     const mediaDocRef = useRef<HTMLInputElement>(null);
     
-    // Constants
     const YEARS = Array.from({length: 37}, (_, i) => (2026 - i).toString());
-    const USAGE_UNITS = ["Hours", "Km", "Miles"];
-    const RENT_PERIODS = ["Hour", "Day", "Week", "Month"];
     const CONDITIONS = ["New", "Used - Like New", "Used - Good", "Refurbished", "For Parts"];
     
-    // Seller State
     const [sellerIdentity, setSellerIdentity] = useState({ 
         phone: '', name: '', status: '', id: '', location: '', email: '', password: '', countryCode: '+254', 
         businessType: 'Company', regNumber: '',
@@ -210,29 +221,30 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         doc_primary_name: '', doc_secondary_name: '', doc_proof_name: ''
     });
     
-    // Listing Data
-    const [listingType, setListingType] = useState<'SALE' | 'RENT' | 'PART'>('SALE');
-    const [formData, setFormData] = useState({
+    const [listingType, setListingType] = useState<ListingType>('SALE');
+    
+    const [formData, setFormData] = useState<Record<string, any>>({
         listingTitle: '', category: 'Heavy Plant and Equipment', subCategory: '', 
-        brand: '', model: '', stockId: '', yom: '', condition: 'Used',
-        price: '', currency: 'KES', priceOnRequest: false, rentDry: '', rentWet: '', rentCurrency: 'KES', rentPeriod: 'Day', additionalCostTerms: '',
-        engineBrand: '', enginePower: '', fuelType: 'Diesel', emissionStandard: '', transmissionType: '', maxSpeed: '', 
-        dimLength: '', dimWidth: '', dimHeight: '', netWeight: '', trackWidth: '', tireSize: '', axles: '', residualTread: '',
-        auxHydraulics: 'No', hammerProtection: 'No', performanceSpecs: '', usage: '', usageUnit: 'Hours', runningHours: '',
-        partType: 'Original', partNumber: '', oemNumber: '', partWeight: '', applicableModels: '',
-        country: '', region: '', city: '', address: '', pickupLocation: '', availabilityDate: '',
-        images: [] as string[], videos: [] as string[], complianceDocs: [] as string[],
-        warranty: 'No', warrantyDetails: '', originalPaint: 'Yes', sellerTerms: '', shippingInfo: '', description: ''
+        brand: '', model: '', yom: '', condition: 'Used',
+        currency: 'KES', priceOnRequest: false,
+        
+        price: '', 
+        
+        country: '', region: '', city: '', address: '', lat: '', lng: '', availabilityDate: '',
+        
+        images: [] as (string | File)[], 
+        videos: [] as (string | File)[], 
+        complianceDocs: [] as (string | File)[],
+        warrantyDetails: '', originalPaint: 'Yes', sellerTerms: '', shippingInfo: '', description: ''
     });
 
-    // Populate data when Edit Mode opens
     useEffect(() => {
         if (editData) {
             setStage('WIZARD');
-            setStep(2); // Skip category selection block
+            setStep(2); 
             setListingType(editData.listing_type || 'SALE');
             
-            let parsedSpecs = {};
+            let parsedSpecs: Record<string, any> = {};
             try {
                 parsedSpecs = typeof editData.specs === 'string' ? JSON.parse(editData.specs) : (editData.specs || {});
             } catch(e) {}
@@ -246,7 +258,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 model: editData.model || prev.model,
                 price: editData.price ? editData.price.toString() : prev.price,
                 currency: editData.currency || prev.currency,
-                // @ts-ignore
                 listingTitle: parsedSpecs.listingTitle || `${editData.brand} ${editData.model}`
             }));
         }
@@ -257,33 +268,103 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
     // @ts-ignore
     const subCategories = formData.category ? (listingType === 'PART' ? CATEGORY_STRUCTURE[formData.category].parts : CATEGORY_STRUCTURE[formData.category].equipment) : [];
 
-    // Helper: File to Base64
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, field: any, isArray = false, arrayField = 'images') => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = () => { 
-                if (reader.result) { 
-                    if (isArray) { 
-                        // @ts-ignore
-                        setFormData(prev => ({...prev, [arrayField]: [...prev[arrayField], reader.result as string]})); 
-                    } else { 
-                        // @ts-ignore
+    // --- UPDATED: Strict TypeScript Fix & Removed Base64 for Listing Media ---
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, field: string | null, isArray = false, arrayField = 'images') => {
+        if (e.target.files && e.target.files.length > 0) {
+            if (isArray) {
+                // Keep the raw File object in state, NO Base64 conversion
+                const newFiles = Array.from(e.target.files);
+                setFormData(prev => ({...prev, [arrayField]: [...prev[arrayField], ...newFiles]})); 
+            } else if (field) {
+                // Explicitly cast to File to satisfy strict TS checks
+                const file = e.target.files[0] as File; 
+                
+                // KYC docs stay as Base64 for now, as they likely don't go to Supabase yet
+                const reader = new FileReader();
+                reader.onload = () => { 
+                    if (reader.result) { 
                         setSellerIdentity(prev => ({ ...prev, [`${field}_name`]: file.name, [field]: reader.result as string })); 
                     } 
-                } 
-            };
-            reader.readAsDataURL(file);
+                };
+                reader.readAsDataURL(file);
+            }
         }
     };
 
     const isStepValid = () => {
-        if (step === 2) return formData.listingTitle && formData.category && formData.subCategory && formData.brand;
-        if (step === 3) return true;
+        if (step === 2) return formData.listingTitle && formData.category && formData.subCategory && formData.brand && formData.city;
+        if (step === 3) return formData.price || formData.dailyRate || formData.hourlyRate; 
         if (step === 4) return formData.images.length > 0;
         return true;
     };
 
+    // --- Google Maps Event Handlers ---
+    const handlePlaceChanged = () => {
+        if (autocomplete !== null) {
+            const place = autocomplete.getPlace();
+            let country = '', region = '', city = '';
+
+            place.address_components?.forEach(component => {
+                if (component.types.includes('country')) country = component.long_name;
+                if (component.types.includes('administrative_area_level_1')) region = component.long_name;
+                if (component.types.includes('locality')) city = component.long_name;
+            });
+
+            setFormData(prev => ({
+                ...prev,
+                address: place.formatted_address || '',
+                country: country || prev.country,
+                region: region || prev.region,
+                city: city || prev.city,
+                lat: place.geometry?.location?.lat().toString() || '',
+                lng: place.geometry?.location?.lng().toString() || ''
+            }));
+            
+            if (place.geometry?.location) {
+                setMapMarker({ lat: place.geometry.location.lat(), lng: place.geometry.location.lng() });
+            }
+        }
+    };
+
+    const handleMapClick = (e: google.maps.MapMouseEvent) => {
+        if (e.latLng) {
+            setMapMarker({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+        }
+    };
+
+    const handleConfirmLocation = () => {
+        if (!mapMarker) return;
+        setGeocoding(true);
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: mapMarker }, (results, status) => {
+            setGeocoding(false);
+            if (status === 'OK' && results && results[0]) {
+                const place = results[0];
+                let country = '', region = '', city = '';
+
+                place.address_components?.forEach(component => {
+                    if (component.types.includes('country')) country = component.long_name;
+                    if (component.types.includes('administrative_area_level_1')) region = component.long_name;
+                    if (component.types.includes('locality')) city = component.long_name;
+                });
+
+                setFormData(prev => ({
+                    ...prev,
+                    address: place.formatted_address || '',
+                    country: country || prev.country,
+                    region: region || prev.region,
+                    city: city || prev.city,
+                    lat: mapMarker.lat.toString(),
+                    lng: mapMarker.lng.toString()
+                }));
+                setMapModalOpen(false);
+            } else {
+                alert("Could not fetch a readable address for this location. Please try another spot or enter manually.");
+            }
+        });
+    };
+
+    // --- Authentication & Submission ---
     const handleSecureLogin = async () => { 
         setLoading(true); 
         try { 
@@ -330,7 +411,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         if(!sellerIdentity.name || !sellerIdentity.email || !sellerIdentity.location || 
            !sellerIdentity.regNumber || !sellerIdentity.doc_primary || 
            !sellerIdentity.password || !sellerIdentity.phone) {
-            return alert("Please fill in ALL fields (Name, Email, Location, ID, Document, Password).");
+            return alert("Please fill in ALL fields.");
         }
         
         setLoading(true);
@@ -349,8 +430,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             const data = await res.json(); 
 
             if(res.ok) { 
-                alert("Submitted! Verification pending. Please Log In."); 
-                onClose(); 
+                setStage('OTP_VERIFY'); 
             } else {
                 console.error("Registration Validation Error:", data);
                 const errorMsg = Array.isArray(data.detail) 
@@ -367,6 +447,34 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         }
     };
 
+    const handleVerifyOtp = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: sellerIdentity.email, otp_code: otpCode })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                login(data.access_token, { id: data.user_id, username: data.username, role: data.role });
+                if (onLoginSuccess) onLoginSuccess(data.access_token);
+                setStage('WIZARD'); 
+            } else { alert(data.detail || "Verification failed"); }
+        } catch (err) { alert("Connection Error"); } finally { setLoading(false); }
+    };
+
+    const calculatePricing = () => {
+        const base = parseFloat(listingType === 'RENT' ? formData.dailyRate : formData.price) || 0;
+        const commission = base * COMMISSION_RATES[listingType];
+        const vat = base * VAT_RATE;
+        const finalPrice = base + vat;
+        return { base, commission, vat, finalPrice };
+    };
+
+    const pricingBreakdown = calculatePricing();
+
+    // --- UPDATED: The Supabase Processing Loop ---
     const handleSubmitListing = async () => { 
         setLoading(true); 
         
@@ -377,25 +485,61 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
             return;
         }
 
-        const finalPrice = listingType === 'SALE' || listingType === 'PART' ? parseFloat(formData.price) : parseFloat(formData.rentDry) || 0; 
-        
-        const payload = { 
-            listingType, 
-            title: formData.listingTitle, 
-            sellerName: sellerIdentity.name || "Seller", 
-            phone: sellerIdentity.phone || "0000000000", 
-            location: formData.city || sellerIdentity.location || "Kenya", 
-            category: formData.category, 
-            subCategory: formData.subCategory, 
-            brand: formData.brand, 
-            model: formData.model, 
-            price: finalPrice, 
-            currency: listingType === 'RENT' ? formData.rentCurrency : formData.currency, 
-            specs: { ...formData } 
-        }; 
-        
         try { 
-            // Determine endpoint and method based on edit Mode
+            // 1. Upload Images to Supabase
+            const uploadedImages: string[] = [];
+            for (const item of formData.images) {
+                if (typeof item === 'string') {
+                    uploadedImages.push(item); // Already a URL
+                } else {
+                    const url = await uploadImageToSupabase(item);
+                    uploadedImages.push(url);
+                }
+            }
+
+            // 2. Upload Videos to Supabase
+            const uploadedVideos: string[] = [];
+            for (const item of formData.videos) {
+                if (typeof item === 'string') {
+                    uploadedVideos.push(item);
+                } else {
+                    const url = await uploadImageToSupabase(item);
+                    uploadedVideos.push(url);
+                }
+            }
+
+            // 3. Upload Compliance Docs to Supabase
+            const uploadedDocs: string[] = [];
+            for (const item of formData.complianceDocs) {
+                if (typeof item === 'string') {
+                    uploadedDocs.push(item);
+                } else {
+                    const url = await uploadImageToSupabase(item);
+                    uploadedDocs.push(url);
+                }
+            }
+
+            // 4. Construct lightweight JSON payload
+            const payload = { 
+                listingType, 
+                title: formData.listingTitle, 
+                sellerName: sellerIdentity.name || "Seller", 
+                phone: sellerIdentity.phone || "0000000000", 
+                location: formData.city || sellerIdentity.location || "Kenya", 
+                category: formData.category, 
+                subCategory: formData.subCategory, 
+                brand: formData.brand, 
+                model: formData.model, 
+                price: pricingBreakdown.base, 
+                currency: formData.currency, 
+                specs: { 
+                    ...formData,
+                    images: uploadedImages,
+                    videos: uploadedVideos,
+                    complianceDocs: uploadedDocs
+                } 
+            }; 
+            
             const endpoint = editData 
                 ? `${API_URL}/api/marketplace/edit/${editData.id}` 
                 : `${API_URL}/api/marketplace/submit`;
@@ -416,10 +560,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                 setStep(5); 
             } else {
                 const err = await res.json();
-                alert(`Failed: ${err.detail || "Unknown Error"}`);
+                alert(`Backend Rejected: ${err.detail || "Unknown Error"}`);
             }
-        } catch { 
-            alert("Connection Error"); 
+        } catch (err: any) { 
+            console.error("Submission Error Pipeline:", err);
+            // ⚡ This will now show you the EXACT error (e.g., Supabase upload failed, Network Error, etc.)
+            alert(`Process Failed: ${err.message || err.toString()}`); 
         } finally { 
             setLoading(false); 
         } 
@@ -461,11 +607,11 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                              <p className="text-slate-400 mb-8">Access thousands of contractors and engineers.</p>
                              <div className="space-y-4">
                                  <button onClick={() => setStage('LOGIN')} className="w-full bg-yellow-500 text-slate-900 font-bold py-4 rounded-lg hover:bg-yellow-400 flex justify-between items-center px-6 group transition-all shadow-lg">
-                                    <span>Log In to Seller Dashboard</span><ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
+                                     <span>Log In to Seller Dashboard</span><ChevronRight size={20} className="group-hover:translate-x-1 transition-transform"/>
                                  </button>
                                  <div className="relative py-2"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div><div className="relative flex justify-center text-sm"><span className="px-2 bg-slate-900 text-slate-500">First time here?</span></div></div>
                                  <button onClick={() => setStage('GATE')} className="w-full bg-slate-800 text-white font-bold py-4 rounded-lg hover:bg-slate-700 border border-slate-700 flex justify-center items-center">
-                                    Create Seller Profile (KYC)
+                                     Create Seller Profile (KYC)
                                  </button>
                              </div>
                          </div>
@@ -488,12 +634,13 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                     <button onClick={() => setStage('WELCOME')} aria-label="Go Back" className="absolute top-4 left-4 text-slate-500 hover:text-white"><ChevronRight size={20} className="rotate-180"/></button>
                     <h2 className="text-2xl font-bold text-white mb-6 text-center">Dashboard Login</h2>
                     <div className="space-y-4">
-                        <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" 
+                        <input aria-label="Email Address" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" 
                             value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} />
-                        {/* Modern Password Input */}
+                        
                         <div className="relative">
                             <input 
                                 type={showPassword ? "text" : "password"}
+                                aria-label="Password"
                                 className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white pr-10" 
                                 placeholder="Password" 
                                 value={loginForm.password} 
@@ -529,7 +676,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
 
                     <button onClick={() => setStage('WELCOME')} aria-label="Go Back" className="absolute top-4 left-4 text-slate-500"><ChevronRight size={20} className="rotate-180"/></button>
                     <h2 className="text-2xl font-bold text-white mb-2">Seller Identification</h2>
-                    <input className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white text-center text-lg font-bold tracking-widest mb-4 mt-6" placeholder="07XX XXX XXX" value={sellerIdentity.phone} onChange={(e) => setSellerIdentity({...sellerIdentity, phone: e.target.value})} />
+                    <input aria-label="Phone Number" className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white text-center text-lg font-bold tracking-widest mb-4 mt-6" placeholder="07XX XXX XXX" value={sellerIdentity.phone} onChange={(e) => setSellerIdentity({...sellerIdentity, phone: e.target.value})} />
                     <button onClick={checkSeller} disabled={loading} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded-lg hover:bg-yellow-400 flex items-center justify-center">{loading ? <RefreshCw className="animate-spin mr-2"/> : "Continue"}</button>
                 </div>
             </div>
@@ -548,9 +695,9 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                     </div>
 
                     <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
-                        <input type="file" ref={docPrimaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_primary')} accept="image/*,.pdf" />
-                        <input type="file" ref={docSecondaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_secondary')} accept="image/*,.pdf" />
-                        <input type="file" ref={docProofRef} hidden onChange={(e) => handleFileSelect(e, 'doc_proof')} accept="image/*,.pdf" />
+                        <input aria-label="Primary Document" type="file" ref={docPrimaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_primary')} accept="image/*,.pdf" />
+                        <input aria-label="Secondary Document" type="file" ref={docSecondaryRef} hidden onChange={(e) => handleFileSelect(e, 'doc_secondary')} accept="image/*,.pdf" />
+                        <input aria-label="Proof Document" type="file" ref={docProofRef} hidden onChange={(e) => handleFileSelect(e, 'doc_proof')} accept="image/*,.pdf" />
                         
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <button onClick={() => setSellerIdentity({...sellerIdentity, businessType: 'Company'})} className={`p-4 rounded-xl border-2 text-left transition-all ${sellerIdentity.businessType === 'Company' ? 'bg-blue-900/20 border-blue-500' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}>
@@ -565,13 +712,14 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                         
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} onChange={e => setSellerIdentity({...sellerIdentity, name: e.target.value})} />
-                                <input className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" onChange={e => setSellerIdentity({...sellerIdentity, email: e.target.value})} />
+                                <input aria-label={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder={sellerIdentity.businessType === 'Company' ? "Company Name" : "Full Name"} onChange={e => setSellerIdentity({...sellerIdentity, name: e.target.value})} />
+                                <input aria-label="Email Address" className="bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Email Address" onChange={e => setSellerIdentity({...sellerIdentity, email: e.target.value})} />
                             </div>
 
                             <div className="relative">
                                 <input 
                                     type={showPassword ? "text" : "password"}
+                                    aria-label="Create Password"
                                     className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white pr-10" 
                                     placeholder="Create Password" 
                                     value={sellerIdentity.password} 
@@ -587,7 +735,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                 </button>
                             </div>
 
-                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Physical Address / Yard Location" onChange={e => setSellerIdentity({...sellerIdentity, location: e.target.value})} />
+                            <input aria-label="Physical Address" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Physical Address / Yard Location" onChange={e => setSellerIdentity({...sellerIdentity, location: e.target.value})} />
                             
                             <div className="bg-slate-800/50 p-4 rounded border border-slate-700 mt-6">
                                 <h4 className="text-white font-bold text-sm mb-4 flex items-center"><FileCheck size={16} className="mr-2 text-green-500"/> Required Documents</h4>
@@ -617,7 +765,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{sellerIdentity.businessType === 'Company' ? 'Registration No. / KRA PIN' : 'National ID Number'}</label>
-                                <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono tracking-wide" placeholder={sellerIdentity.businessType === 'Company' ? "P051..." : "12345678"} onChange={e => setSellerIdentity({...sellerIdentity, regNumber: e.target.value})} />
+                                <input aria-label={sellerIdentity.businessType === 'Company' ? 'Registration Number' : 'National ID'} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white font-mono tracking-wide" placeholder={sellerIdentity.businessType === 'Company' ? "P051..." : "12345678"} onChange={e => setSellerIdentity({...sellerIdentity, regNumber: e.target.value})} />
                             </div>
                             <button onClick={registerSeller} disabled={loading} className="w-full bg-green-600 text-white font-bold py-4 rounded hover:bg-green-500 mt-4 shadow-lg flex items-center justify-center">
                                 {loading ? <RefreshCw className="animate-spin mr-2"/> : <ShieldCheck className="mr-2"/>} Submit for Verification
@@ -629,22 +777,38 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
         );
     }
 
+    // --- VIEW 4.5: OTP VERIFICATION ---
+    if (stage === 'OTP_VERIFY') {
+        return (
+            <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-8 text-center shadow-2xl relative">
+                    <button onClick={onClose} aria-label="Close Modal" className="absolute top-4 right-4 z-20 p-2 bg-black/20 hover:bg-slate-800 rounded-full text-white transition-colors"><X size={20} /></button>
+                    <ShieldCheck size={48} className="text-yellow-500 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-white mb-2">Verify Your Account</h2>
+                    <p className="text-slate-400 text-sm mb-6">We've sent a 6-digit code to {sellerIdentity.email}</p>
+                    <input aria-label="OTP Code" className="w-full bg-slate-950 border border-slate-700 p-4 rounded-lg text-white text-center text-3xl tracking-[1em] font-mono mb-4" placeholder="••••••" maxLength={6} value={otpCode} onChange={(e) => setOtpCode(e.target.value)} />
+                    <button onClick={handleVerifyOtp} disabled={loading || otpCode.length !== 6} className="w-full bg-yellow-500 text-slate-900 font-bold py-3 rounded-lg hover:bg-yellow-400 disabled:opacity-50">
+                        {loading ? <RefreshCw className="animate-spin mx-auto"/> : "Verify & Enter Dashboard"}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (stage === 'WIZARD') {
         return (
             <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
                 <style>{`
-                    input[type=number]::-webkit-inner-spin-button, 
-                    input[type=number]::-webkit-outer-spin-button { 
-                        -webkit-appearance: none; margin: 0; 
-                    }
+                    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
                     input[type=number] { -moz-appearance: textfield; }
                     .custom-select { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 0.7rem top 50%; background-size: 0.65rem auto; }
+                    .custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
                 `}</style>
 
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col h-[90vh]">
                     
                     {/* Header */}
-                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl">
+                    <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 rounded-t-2xl shrink-0">
                         <div className="flex items-center gap-2"><BadgeCheck size={18} className="text-green-500"/><span className="text-white font-bold">{editData ? 'Edit Listing' : 'New Listing'}</span></div>
                         <button onClick={onClose} aria-label="Close Modal"><X className="text-slate-500 hover:text-white"/></button>
                     </div>
@@ -679,7 +843,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     {listingType === 'PART' ? 'Part Details & Location' : 'Primary Details & Location'}
                                 </h3>
                                 
-                                {/* Section 1: Core Identifiers */}
                                 <div className="space-y-4">
                                     <div>
                                         <label className="text-xs text-slate-500 font-bold block mb-1">Listing Title *</label>
@@ -703,7 +866,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                             <label className="text-xs text-slate-500 font-bold block mb-1">{listingType === 'PART' ? 'Component Type' : 'Machine Type'}</label>
                                             <select aria-label="Sub Category" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.subCategory} onChange={e => setFormData({...formData, subCategory: e.target.value})}>
                                                 <option value="">Select...</option>
-                                                {subCategories.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
+                                                {subCategories.map((sc: any) => <option key={sc} value={sc}>{sc}</option>)}
                                             </select>
                                         </div>
                                     </div>
@@ -726,7 +889,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                         )}
                                     </div>
 
-                                    {/* Year & Condition */}
                                     {listingType !== 'PART' && (
                                         <div className="grid grid-cols-2 gap-6">
                                             <div>
@@ -759,17 +921,48 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     )}
                                 </div>
 
-                                {/* Section 2: Location */}
                                 <div className="pt-4 border-t border-slate-800">
                                     <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><MapPin size={16} className="mr-2"/> Location</h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-xs text-slate-500 block mb-1">Country</label><input aria-label="Country" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Kenya" value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">Region / State</label><input aria-label="Region" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi County" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">City / Town</label><input aria-label="City" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Nairobi" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
-                                        <div><label className="text-xs text-slate-500 block mb-1">{listingType === 'RENT' ? 'Pickup Location' : 'Specific Address'}</label><input aria-label="Address" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Industrial Area, Road A" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
+                                    
+                                    <div className="relative group mb-4">
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Specific Address / Location</label>
+                                        <div className="relative">
+                                            {isLoaded ? (
+                                                <Autocomplete onLoad={setAutocomplete} onPlaceChanged={handlePlaceChanged}>
+                                                    <input 
+                                                        aria-label="Search Address" 
+                                                        className="w-full bg-slate-950 border border-slate-700 p-3 pr-14 rounded text-white focus:border-yellow-500 outline-none transition-all shadow-inner" 
+                                                        placeholder="Start typing address or click map pin..."
+                                                        value={formData.address}
+                                                        onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                                    />
+                                                </Autocomplete>
+                                            ) : (
+                                                <input aria-label="Search Address" disabled placeholder="Loading Maps..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-slate-500" />
+                                            )}
+                                            
+                                            <button 
+                                                type="button"
+                                                onClick={() => setMapModalOpen(true)}
+                                                className="absolute right-2 top-1.5 text-slate-400 hover:text-yellow-500 transition-colors p-1.5 bg-slate-900 border border-slate-800 rounded shadow-md"
+                                                title="Pick from Map"
+                                                aria-label="Pick location from interactive map"
+                                            >
+                                                <MapPin size={18}/>
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-yellow-500/80 mt-2 flex items-center cursor-pointer hover:text-yellow-400 w-fit font-medium transition-colors" onClick={() => setMapModalOpen(true)}>
+                                            <MapPin size={12} className="mr-1"/> Open interactive map to drop a pin
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-4 mt-6">
+                                        <div><label className="text-xs text-slate-500 block mb-1">Country</label><input aria-label="Country" disabled className="w-full bg-slate-900 border border-slate-800 p-3 rounded text-slate-400" value={formData.country} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">Region / State</label><input aria-label="Region or State" disabled className="w-full bg-slate-900 border border-slate-800 p-3 rounded text-slate-400" value={formData.region} /></div>
+                                        <div><label className="text-xs text-slate-500 block mb-1">City / Town</label><input aria-label="City or Town" disabled className="w-full bg-slate-900 border border-slate-800 p-3 rounded text-slate-400" value={formData.city} /></div>
                                     </div>
                                     {listingType === 'RENT' && (
-                                        <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Availability Start Date</label><input aria-label="Availability Date" type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.availabilityDate} onChange={e => setFormData({...formData, availabilityDate: e.target.value})} /></div>
+                                        <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Availability Start Date</label><input aria-label="Availability Start Date" type="date" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.availabilityDate} onChange={e => setFormData({...formData, availabilityDate: e.target.value})} /></div>
                                     )}
                                 </div>
                             </div>
@@ -779,123 +972,68 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                         {step === 3 && (
                             <div className="space-y-8 animate-in slide-in-from-right-4">
                                 
-                                {/* --- PRICING SECTION --- */}
-                                <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
-                                    <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><DollarSign size={16} className="mr-2"/> Pricing & Terms</h4>
+                                <div>
+                                    <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2 mb-4">
+                                        Dynamic Machine Specifications
+                                    </h4>
                                     
-                                    {listingType === 'SALE' || listingType === 'PART' ? (
-                                        <div className="space-y-4">
-                                            <div className="flex gap-4 items-end">
-                                                <div className="w-1/3">
-                                                    <label className="text-xs text-slate-500 block mb-1">Currency</label>
-                                                    <select 
-                                                        aria-label="Currency"
-                                                        className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold custom-select" 
-                                                        value={formData.currency} 
-                                                        onChange={e => setFormData({...formData, currency: e.target.value})}
-                                                    >
-                                                        {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div className="flex-1">
-                                                    <label className="text-xs text-slate-500 block mb-1">Selling Price</label>
-                                                    <input aria-label="Selling Price" type="number" disabled={formData.priceOnRequest} className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold text-lg disabled:opacity-50" placeholder="0.00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center">
-                                                <input type="checkbox" id="por" className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-yellow-500 focus:ring-yellow-500" checked={formData.priceOnRequest} onChange={e => setFormData({...formData, priceOnRequest: e.target.checked})} />
-                                                <label htmlFor="por" className="ml-2 text-sm text-slate-300">Price on Request (Hide Price)</label>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        /* RENT PRICING */
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 block mb-1">Dry Rate (Machine Only)</label>
-                                                    <div className="flex gap-2">
-                                                        <select 
-                                                            aria-label="Rent Currency Dry"
-                                                            className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" 
-                                                            value={formData.rentCurrency} 
-                                                            onChange={e => setFormData({...formData, rentCurrency: e.target.value})}
-                                                        >
-                                                            {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                                        </select>
-                                                        <input aria-label="Rent Rate Dry" type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentDry} onChange={e => setFormData({...formData, rentDry: e.target.value})} />
-                                                        <select aria-label="Rent Period Dry" className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 block mb-1">Wet Rate (With Operator/Fuel)</label>
-                                                    <div className="flex gap-2">
-                                                        <select 
-                                                            aria-label="Rent Currency Wet"
-                                                            className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" 
-                                                            value={formData.rentCurrency} 
-                                                            onChange={e => setFormData({...formData, rentCurrency: e.target.value})}
-                                                        >
-                                                            {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                                        </select>
-                                                        <input aria-label="Rent Rate Wet" type="number" className="flex-1 bg-slate-900 border border-slate-700 p-2 rounded text-white" placeholder="Rate" value={formData.rentWet} onChange={e => setFormData({...formData, rentWet: e.target.value})} />
-                                                        <select aria-label="Rent Period Wet" className="w-24 bg-slate-900 border border-slate-700 p-2 rounded text-white text-xs custom-select" value={formData.rentPeriod} onChange={e => setFormData({...formData, rentPeriod: e.target.value})}>{RENT_PERIODS.map(p => <option key={p}>/{p}</option>)}</select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="text-xs text-slate-500 block mb-1">Additional Cost Terms</label>
-                                                <input aria-label="Additional Cost Terms" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white text-sm" placeholder="e.g. Mobilization fee, min hours per day..." value={formData.additionalCostTerms} onChange={e => setFormData({...formData, additionalCostTerms: e.target.value})} />
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* 🚀 THE SCHEMA ENGINE IN ACTION */}
+                                    <DynamicFieldEngine 
+                                      listingType={listingType} 
+                                      subCategory={formData.subCategory} 
+                                      formData={formData} 
+                                      setFormData={setFormData} 
+                                    />
                                 </div>
 
-                                {/* --- TECHNICAL SPECS --- */}
-                                <div className="space-y-4">
-                                    <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider border-b border-yellow-500/30 pb-2">Technical Specifications</h4>
-                                    
-                                    {listingType === 'PART' ? (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div><label className="text-xs text-slate-500 block mb-1">Weight (kg)</label><input aria-label="Weight" type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.partWeight} onChange={e => setFormData({...formData, partWeight: e.target.value})} /></div>
-                                            <div><label className="text-xs text-slate-500 block mb-1">Dimensions (L x W x H)</label><input aria-label="Dimensions" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. 50x30x20 cm" value={formData.dimLength} onChange={e => setFormData({...formData, dimLength: e.target.value})} /></div>
+                                {/* BASE PRICING FOR SALE OR PART (Rent is handled in the engine fields) */}
+                                {listingType !== 'RENT' && (
+                                  <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
+                                      <h4 className="text-yellow-500 text-xs font-bold uppercase tracking-wider mb-4 flex items-center"><DollarSign size={16} className="mr-2"/> Outright Base Pricing</h4>
+                                      
+                                      <div className="flex gap-4 items-end mb-6">
+                                          <div className="w-1/3">
+                                              <label className="text-xs text-slate-500 block mb-1">Currency</label>
+                                              <select aria-label="Currency" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold custom-select" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>
+                                                  {WORLD_CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
+                                              </select>
+                                          </div>
+                                          <div className="flex-1">
+                                              <label className="text-xs text-slate-500 block mb-1">Total Asking Price (Without Fees)</label>
+                                              <input aria-label="Base Price" type="number" className="w-full bg-slate-900 border border-slate-700 p-3 rounded text-white font-bold text-lg" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+                                          </div>
+                                      </div>
+                                  </div>
+                                )}
+
+                                {/* TRANSPARENT ESCROW PREVIEW */}
+                                <div className="bg-blue-900/10 border border-blue-900/50 p-4 rounded-lg">
+                                    <div className="flex items-center text-blue-400 font-bold mb-2 text-sm"><Info size={16} className="mr-2"/> Platform Pricing Breakdown</div>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between text-slate-400"><span>Your Setup Price ({listingType === 'RENT' ? 'Daily' : 'Total'}):</span> <span>{formData.currency} {pricingBreakdown.base.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                        <div className="flex justify-between text-slate-400"><span>Platform Escrow/Comm ({(COMMISSION_RATES[listingType]*100).toFixed(0)}% Deducted later):</span> <span className="text-red-400">- {formData.currency} {pricingBreakdown.commission.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                        <div className="flex justify-between text-slate-400"><span>VAT ({(VAT_RATE*100).toFixed(0)}% added on top):</span> <span>+ {formData.currency} {pricingBreakdown.vat.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                        <div className="border-t border-slate-700 my-2 pt-2 flex justify-between text-white font-bold text-lg">
+                                            <span>Final Displayed {listingType === 'RENT' ? 'Daily Rate' : 'Price'}:</span> <span>{formData.currency} {pricingBreakdown.finalPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                         </div>
-                                    ) : (
-                                        <>
-                                            {/* Engine & Power */}
-                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                                <div><label className="text-xs text-slate-500 block mb-1">Engine Brand</label><input aria-label="Engine Brand" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Cummins" value={formData.engineBrand} onChange={e => setFormData({...formData, engineBrand: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Power</label><input aria-label="Engine Power" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="kW / HP" value={formData.enginePower} onChange={e => setFormData({...formData, enginePower: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Fuel Type</label><select aria-label="Fuel Type" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}><option>Diesel</option><option>Petrol</option><option>Electric</option></select></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Emission</label><select aria-label="Emission Standard" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.emissionStandard} onChange={e => setFormData({...formData, emissionStandard: e.target.value})}><option value="">Standard</option><option>Euro 3</option><option>Euro 4</option><option>Euro 5</option><option>Tier 4F</option></select></div>
-                                            </div>
-
-                                            {/* Usage & Dimensions */}
-                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                                                <div className="col-span-2 flex gap-2">
-                                                    <div className="flex-1"><label className="text-xs text-slate-500 block mb-1">Usage / Mileage</label><input aria-label="Usage" type="number" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.usage} onChange={e => setFormData({...formData, usage: e.target.value})} /></div>
-                                                    <div className="w-24"><label className="text-xs text-slate-500 block mb-1">Unit</label><select aria-label="Usage Unit" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white custom-select" value={formData.usageUnit} onChange={e => setFormData({...formData, usageUnit: e.target.value})}>{USAGE_UNITS.map(u => <option key={u}>{u}</option>)}</select></div>
-                                                </div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Net Weight (kg)</label><input aria-label="Net Weight" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" value={formData.netWeight} onChange={e => setFormData({...formData, netWeight: e.target.value})} /></div>
-                                                <div><label className="text-xs text-slate-500 block mb-1">Axles / Tracks</label><input aria-label="Axles Tracks" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="Config" value={formData.axles} onChange={e => setFormData({...formData, axles: e.target.value})} /></div>
-                                            </div>
-
-                                            {/* Performance */}
-                                            <div className="mt-4"><label className="text-xs text-slate-500 block mb-1">Performance Specs</label><input aria-label="Performance Specs" className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white" placeholder="e.g. Dig Depth: 6m, Lift: 4T, Bucket Cap: 1.2m3" value={formData.performanceSpecs} onChange={e => setFormData({...formData, performanceSpecs: e.target.value})} /></div>
-                                        </>
-                                    )}
+                                    </div>
                                 </div>
+                                
+                                {(listingType === 'SALE' || listingType === 'PART') && (
+                                    <div className="flex items-center mt-4">
+                                        <input type="checkbox" id="por" className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-yellow-500 focus:ring-yellow-500" checked={formData.priceOnRequest} onChange={e => setFormData({...formData, priceOnRequest: e.target.checked})} />
+                                        <label htmlFor="por" className="ml-2 text-sm text-slate-300">Price on Request (Hide Price from Public View)</label>
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {/* STEP 4: MEDIA, DOCS & EXTRAS */}
                         {step === 4 && (
                             <div className="space-y-8 animate-in slide-in-from-right-4">
-                                
-                                {/* Media Section */}
                                 <div>
                                     <h4 className="text-white font-bold mb-4 flex items-center"><Camera className="mr-2 text-yellow-500"/> Media Gallery</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Photos */}
                                         <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
                                             <input type="file" multiple id="listingImages" hidden onChange={(e) => handleFileSelect(e, null, true, 'images')} accept="image/*" />
                                             <label htmlFor="listingImages" className="cursor-pointer block">
@@ -903,11 +1041,22 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                                 <span className="text-white font-bold text-sm block">Upload Photos *</span>
                                                 <span className="text-xs text-slate-500">Min 1 required. Max 10.</span>
                                             </label>
-                                            {formData.images.length > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{formData.images.slice(0,4).map((src, i) => <img key={i} src={src} alt={`Uploaded ${i}`} className="h-12 w-full object-cover rounded border border-slate-700" />)}</div>}
+                                            {/* --- UPDATED: Safe object URL rendering for raw Files --- */}
+                                            {formData.images.length > 0 && (
+                                              <div className="mt-4 grid grid-cols-4 gap-2">
+                                                {formData.images.slice(0,4).map((item: string | File, i: number) => (
+                                                  <img 
+                                                    key={i} 
+                                                    src={typeof item === 'string' ? item : URL.createObjectURL(item as File)} 
+                                                    alt={`Uploaded ${i}`} 
+                                                    className="h-12 w-full object-cover rounded border border-slate-700" 
+                                                  />
+                                                ))}
+                                              </div>
+                                            )}
                                         </div>
-                                        {/* Videos */}
                                         <div className="border-2 border-dashed border-slate-700 rounded-xl p-6 text-center hover:bg-slate-900 transition-colors">
-                                            <input type="file" ref={mediaVideoRef} hidden onChange={(e) => handleFileSelect(e, null, true, 'videos')} accept="video/*" />
+                                            <input aria-label="Upload Video" type="file" ref={mediaVideoRef} hidden onChange={(e) => handleFileSelect(e, null, true, 'videos')} accept="video/*" />
                                             <button onClick={() => mediaVideoRef.current?.click()} className="w-full h-full flex flex-col items-center justify-center">
                                                 <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-2"><Video size={24} className="text-slate-400"/></div>
                                                 <span className="text-white font-bold text-sm block">Add Video (Optional)</span>
@@ -917,7 +1066,6 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                     </div>
                                 </div>
 
-                                {/* Documents Section */}
                                 <div>
                                     <h4 className="text-white font-bold mb-4 flex items-center"><FileText className="mr-2 text-blue-500"/> Documentation</h4>
                                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex items-center justify-between">
@@ -925,13 +1073,12 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                                             <div className="text-sm font-bold text-white">Compliance & Manuals</div>
                                             <div className="text-xs text-slate-500">Upload service history, logbooks, or specs (PDF).</div>
                                         </div>
-                                        <input type="file" ref={mediaDocRef} hidden accept=".pdf" onChange={(e) => handleFileSelect(e, null, true, 'complianceDocs')} />
+                                        <input aria-label="Upload Compliance Document" type="file" ref={mediaDocRef} hidden accept=".pdf" onChange={(e) => handleFileSelect(e, null, true, 'complianceDocs')} />
                                         <button onClick={() => mediaDocRef.current?.click()} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-xs font-bold flex items-center"><UploadCloud size={14} className="mr-2"/> Upload PDF</button>
                                     </div>
                                     {formData.complianceDocs.length > 0 && <div className="mt-2 text-xs text-green-500 flex items-center"><Check size={12} className="mr-1"/> {formData.complianceDocs.length} Document(s) Attached</div>}
                                 </div>
 
-                                {/* Additional Info */}
                                 <div>
                                     <h4 className="text-white font-bold mb-4 flex items-center"><List className="mr-2 text-green-500"/> Additional Details</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
@@ -975,8 +1122,7 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
 
                     {/* FOOTER NAV */}
                     {step < 5 && (
-                        <div className="p-6 border-t border-slate-800 flex justify-between bg-slate-950 rounded-b-2xl">
-                            {/* If editing, they can only go back to step 2 since step 1 is listing type selection */}
+                        <div className="p-6 border-t border-slate-800 flex justify-between bg-slate-950 rounded-b-2xl shrink-0">
                             {(editData ? step > 2 : step > 1) ? <button onClick={() => setStep(step-1)} className="text-slate-400 font-bold px-6 hover:text-white transition-colors">Back</button> : <div></div>}
                             {step < 4 ? (
                                 <button onClick={() => setStep(step+1)} disabled={!isStepValid()} className="bg-white text-slate-900 font-bold py-3 px-8 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next Step</button>
@@ -986,9 +1132,89 @@ export const SellItemModal: React.FC<SellItemModalProps> = ({ onClose, onLoginSu
                         </div>
                     )}
                 </div>
+                
+                {/* --- GOOGLE MAPS PINPOINT MODAL --- */}
+                {isMapModalOpen && (
+                    <div className="fixed inset-0 z-[110] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col h-[80vh]">
+                            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                                <h3 className="text-white font-bold flex items-center"><MapPin className="text-yellow-500 mr-2"/> Pinpoint Equipment Location</h3>
+                                
+                                <button 
+                                    onClick={() => setMapModalOpen(false)} 
+                                    aria-label="Close map modal"
+                                    title="Close map modal"
+                                    className="text-slate-500 hover:text-white transition-colors"
+                                >
+                                    <X size={20}/>
+                                </button>
+                            </div>
+                            
+                            <div className="flex-1 relative bg-slate-800">
+                                {!isLoaded ? (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-900">
+                                        <Loader2 className="animate-spin text-yellow-500 mb-2" size={32}/>
+                                        <span>Loading Map Engine...</span>
+                                    </div>
+                                ) : (
+                                    <GoogleMap
+                                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                                        center={mapMarker || { lat: -0.3031, lng: 36.0800 }} 
+                                        zoom={13}
+                                        onClick={handleMapClick}
+                                        options={{ 
+                                            mapTypeControl: false, 
+                                            streetViewControl: false,
+                                            styles: [ 
+                                              { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                                              { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                                              { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                                              { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                                              { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+                                              { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+                                              { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+                                              { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+                                              { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+                                              { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+                                              { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+                                              { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+                                              { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+                                            ]
+                                        }}
+                                    >
+                                        {mapMarker && <Marker position={mapMarker} />}
+                                    </GoogleMap>
+                                )}
+                                
+                                {!mapMarker && isLoaded && (
+                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg border border-slate-700 animate-pulse pointer-events-none">
+                                        Click anywhere on the map to drop a pin
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="p-4 bg-slate-950 border-t border-slate-800 flex justify-end gap-3">
+                                <button 
+                                    onClick={() => setMapModalOpen(false)} 
+                                    className="px-6 py-2 rounded-lg font-bold text-slate-400 hover:text-white transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleConfirmLocation} 
+                                    disabled={!mapMarker || geocoding} 
+                                    className="bg-yellow-500 hover:bg-yellow-400 text-slate-900 px-6 py-2 rounded-lg font-bold flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                                >
+                                    {geocoding ? <Loader2 className="animate-spin mr-2" size={18}/> : <CheckCircle className="mr-2" size={18}/>}
+                                    Confirm Location
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         );
     }
-
     return null; 
 };

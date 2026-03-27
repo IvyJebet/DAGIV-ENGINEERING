@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Trash2, ShoppingCart, ArrowRight, Loader2, AlertCircle, Lock, Download } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext'; // <-- ADDED: Import Auth Context
+import { useAuth } from '@/context/AuthContext'; 
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -23,17 +23,30 @@ interface CartItem {
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
-    const { token } = useAuth(); // <-- ADDED: Pull the reliable token from global state
+    const { buyerToken, sellerToken, token: defaultToken, logout } = useAuth(); 
     
+    // BULLETPROOF TOKEN RESOLVER - Memoized to prevent infinite re-render loops
+    const getCleanToken = useCallback(() => {
+        let rawToken = buyerToken || sellerToken || defaultToken || 
+                       localStorage.getItem('dagiv_buyer_token') || 
+                       localStorage.getItem('dagiv_seller_token') || 
+                       localStorage.getItem('dagiv_token');
+        
+        if (!rawToken || rawToken === 'null' || rawToken === 'undefined') return null;
+        return rawToken.replace(/['"]+/g, '');
+    }, [buyerToken, sellerToken, defaultToken]);
+
     const [items, setItems] = useState<CartItem[]>([]);
     const [summary, setSummary] = useState({ item_count: 0, total_value: 0, currency: 'KES' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDownloading, setIsDownloading] = useState(false);
 
-    const fetchCart = async () => {
-        // FIX: Use the global token instead of manual localStorage lookups
-        if (!token) {
+    // Memoized fetch to safely use inside useEffect
+    const fetchCart = useCallback(async () => {
+        const activeToken = getCleanToken();
+        
+        if (!activeToken) {
             setLoading(false);
             return;
         }
@@ -42,8 +55,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
             setLoading(true);
             setError(null); 
             const res = await fetch(`${API_URL}/api/cart`, {
-                headers: { 'Authorization': `Bearer ${token}` } // FIX: Use the global token
+                headers: { 'Authorization': `Bearer ${activeToken}` } 
             });
+            
+            if (res.status === 401) {
+                console.warn("Session expired fetching cart");
+                if (logout) logout('ALL');
+                setError("Your session has expired. Please log in again.");
+                return;
+            }
+
             if (res.ok) {
                 const data = await res.json();
                 setItems(data.items || []);
@@ -61,23 +82,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [getCleanToken, logout]);
 
+    // Safe Effect execution
     useEffect(() => {
         if (isOpen) {
             fetchCart();
         }
-    }, [isOpen, token]); // Added token to dependency array
+    }, [isOpen, fetchCart]); 
 
     const handleRemove = async (listingId: string) => {
-        if (!token) return; // Fail safe
+        const activeToken = getCleanToken();
+        if (!activeToken) return; 
         
         try {
+            // Optimistic UI update
             setItems(prev => prev.filter(i => i.listing_id !== listingId));
+            
             await fetch(`${API_URL}/api/cart/remove/${listingId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` } // FIX: Use global token
+                headers: { 'Authorization': `Bearer ${activeToken}` } 
             });
+            
             fetchCart();
             window.dispatchEvent(new Event('cartUpdated'));
         } catch (error) {
@@ -86,13 +112,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose }) => {
     };
 
     const handleDownloadQuotation = async () => {
-        if (!token) return; // Fail safe
+        const activeToken = getCleanToken();
+        if (!activeToken) return; 
 
         try {
             setIsDownloading(true);
             const res = await fetch(`${API_URL}/api/cart/quotation`, {
                 method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` } // FIX: Use global token
+                headers: { 'Authorization': `Bearer ${activeToken}` } 
             });
 
             if (!res.ok) {

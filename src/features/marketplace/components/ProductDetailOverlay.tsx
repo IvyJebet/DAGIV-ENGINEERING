@@ -14,31 +14,28 @@ interface ProductDetailOverlayProps {
 
 export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item, onClose }) => {
     const navigate = useNavigate(); 
-    // Pull explicit tokens and the logout function from AuthContext
     const { buyerToken, sellerToken, logout } = useAuth(); 
     
     const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SPECS' | 'SELLER'>('SPECS'); 
     const [currentImageIdx, setCurrentImageIdx] = useState(0);
     
-    // Cart State
     const [addingToCart, setAddingToCart] = useState(false);
     const [added, setAdded] = useState(false);
     const [buyingNow, setBuyingNow] = useState(false); 
 
-    const nextImage = () => setCurrentImageIdx((prev) => (prev + 1) % item.images.length);
-    const prevImage = () => setCurrentImageIdx((prev) => (prev - 1 + item.images.length) % item.images.length);
+    const hasImages = item.images && item.images.length > 0;
+    const safeImages = hasImages ? item.images : ["https://via.placeholder.com/600?text=No+Image+Available"];
 
-    // BULLETPROOF TOKEN RESOLVER
+    const nextImage = () => setCurrentImageIdx((prev) => (prev + 1) % safeImages.length);
+    const prevImage = () => setCurrentImageIdx((prev) => (prev - 1 + safeImages.length) % safeImages.length);
+
     const getCleanToken = () => {
         let rawToken = buyerToken || sellerToken || 
                        localStorage.getItem('dagiv_buyer_token') || 
                        localStorage.getItem('dagiv_seller_token') || 
                        localStorage.getItem('dagiv_token');
         
-        // Return null if empty or if it's literally the string "null" or "undefined"
         if (!rawToken || rawToken === 'null' || rawToken === 'undefined') return null;
-        
-        // Strip any accidental JSON.stringify quotes that might corrupt the JWT
         return rawToken.replace(/['"]+/g, '');
     };
 
@@ -62,7 +59,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
             });
 
             if (res.status === 401) {
-                // Completely wipe bad states if backend rejects the token
                 logout('ALL');
                 alert("Your session has expired or is invalid. Please log in again.");
                 setAddingToCart(false);
@@ -104,7 +100,6 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
             });
 
             if (res.status === 401) {
-                // Completely wipe bad states if backend rejects the token
                 logout('ALL');
                 alert("Your session has expired or is invalid. Please log in again.");
                 setBuyingNow(false);
@@ -126,6 +121,52 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
         } 
     };
 
+    // --- ⚡ FORMATTING UPDATES ---
+    const formatLabel = (key: string) => {
+        // Explicitly format "yom" into a professional label
+        if (key.toLowerCase() === 'yom') return 'Year of Manufacture';
+        
+        const result = key.replace(/([A-Z])/g, " $1");
+        return result.charAt(0).toUpperCase() + result.slice(1);
+    };
+
+    const formatValue = (val: any) => {
+        if (Array.isArray(val)) return val.join(", ");
+        if (typeof val === 'boolean') return val ? "Yes" : "No";
+        return String(val);
+    };
+
+    const EXCLUDED_KEYS = [
+        'images', 'videos', 'complianceDocs', 'financials', 'description', 
+        'listingTitle', 'listingStatus', 'category', 'subCategory', 'brand', 
+        'model', 'price', 'currency', 'lat', 'lng', 'address', 'rentDry', 
+        'dailyRate', 'shippingInfo', 'sellerTerms', 'availabilityDate'
+    ];
+
+    // --- ⚡ ORDERED SPECS PIPELINE ---
+    // 1. Define the exact order you want the prioritized items to appear
+    const PRIORITIZED_KEYS = ['country', 'region', 'city', 'yom', 'usageUnit', 'usage'];
+    
+    // 2. Build the final array of specs to render
+    const orderedSpecs: { label: string, value: string }[] = [];
+    const specsObj = item.specs || {};
+
+    // Step A: Pluck out the prioritized keys first, in order
+    PRIORITIZED_KEYS.forEach(key => {
+        const val = specsObj[key];
+        if (val !== '' && val !== null && val !== undefined) {
+            orderedSpecs.push({ label: formatLabel(key), value: formatValue(val) });
+        }
+    });
+
+    // Step B: Loop through all remaining keys and add them underneath
+    Object.entries(specsObj).forEach(([k, v]) => {
+        // Skip it if it was already handled in the priority list, is excluded, or is empty
+        if (!PRIORITIZED_KEYS.includes(k) && !EXCLUDED_KEYS.includes(k) && v !== '' && v !== null && v !== undefined) {
+            orderedSpecs.push({ label: formatLabel(k), value: formatValue(v) });
+        }
+    });
+
     return (
         <div className="fixed inset-0 z-[70] bg-slate-950 flex flex-col lg:flex-row overflow-hidden animate-in slide-in-from-right-10">
             
@@ -146,19 +187,19 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                     
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         <img 
-                            src={item.images[currentImageIdx]}
+                            src={safeImages[currentImageIdx]}
                             alt="Background blur effect"
                             className="w-full h-full object-cover opacity-30 blur-3xl scale-125" 
                         />
                     </div>
 
                     <img 
-                        src={item.images[currentImageIdx]} 
+                        src={safeImages[currentImageIdx]} 
                         className="w-full h-full object-contain relative z-10 transition-transform duration-500" 
                         alt={item.title}
                     />
                     
-                    {item.images.length > 1 && (
+                    {safeImages.length > 1 && (
                         <>
                             <button onClick={prevImage} aria-label="Previous Image" className="absolute left-6 top-1/2 -translate-y-1/2 z-20 bg-slate-950/60 hover:bg-yellow-500 hover:text-black text-white p-3 rounded-full backdrop-blur-md transition-all opacity-0 group-hover/stage:opacity-100 border border-slate-700 hover:border-yellow-500 shadow-lg">
                                 <ChevronLeft size={24} />
@@ -172,12 +213,12 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                     {item.promoted && <div className="absolute top-6 right-6 z-20 bg-yellow-500 text-slate-900 text-[10px] font-black tracking-wider px-4 py-1.5 rounded-full shadow-lg">FEATURED</div>}
                     
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-slate-950/80 px-4 py-1.5 rounded-full text-white text-xs font-mono backdrop-blur-md border border-slate-700 shadow-lg">
-                        {currentImageIdx + 1} / {item.images.length}
+                        {currentImageIdx + 1} / {safeImages.length}
                     </div>
                 </div>
 
                 <div className="h-24 bg-slate-900 rounded-2xl border border-slate-800 p-2 flex gap-2 overflow-x-auto custom-scrollbar shadow-lg shrink-0">
-                    {item.images.map((img, i) => (
+                    {safeImages.map((img, i) => (
                         <button 
                             key={i} 
                             aria-label={`View thumbnail ${i+1}`}
@@ -195,7 +236,7 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                 
                 <div className="p-6 border-b border-slate-800 bg-slate-950/50">
                     <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                        <span className="text-yellow-500">{item.category}</span> <ChevronRight size={12}/> <span>{item.subCategory}</span>
+                        <span className="text-yellow-500">{item.brand || item.category}</span> <ChevronRight size={12}/> <span>{item.model || item.subCategory}</span>
                     </div>
                     <h1 className="text-2xl font-black text-white mb-2 leading-tight">{item.title}</h1>
                     <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
@@ -219,34 +260,49 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                             <div className="flex justify-between items-end border-b border-slate-800 pb-6 mb-6">
                                 <div>
-                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Asking Price</div>
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Final Display Price</div>
                                     <div className="text-3xl font-bold text-white flex items-baseline gap-1">
                                         <span className="text-sm text-yellow-500">{item.currency}</span>
-                                        {item.price.toLocaleString()}
+                                        {item.price.toLocaleString(undefined, {minimumFractionDigits: 2})}
                                     </div>
+                                    {item.listingType === 'RENT' && <span className="text-xs text-slate-500 block mt-1">(Calculated Daily Rate)</span>}
                                 </div>
-                                {item.negotiable && <div className="text-xs font-bold text-green-500 border border-green-900 bg-green-900/10 px-2 py-1 rounded">Negotiable</div>}
+                                {item.specs?.priceOnRequest && <div className="text-xs font-bold text-green-500 border border-green-900 bg-green-900/10 px-2 py-1 rounded">Negotiable / POR</div>}
                             </div>
 
-                            {item.specifications.map((group, idx) => (
-                                <div key={idx} className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
-                                    <div className="bg-slate-900/50 px-4 py-2 border-b border-slate-800 font-bold text-white text-xs uppercase tracking-wider text-yellow-500/80">
-                                        {group.groupName}
-                                    </div>
-                                    <div className="divide-y divide-slate-800/50">
-                                        {group.items.map((spec, sIdx) => (
-                                            <div key={sIdx} className="flex justify-between px-4 py-3 text-sm hover:bg-slate-900 transition-colors">
-                                                <span className="text-slate-500">{spec.label}</span>
-                                                <span className="text-slate-200 font-medium text-right">{spec.value} {spec.unit}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                            {/* ⚡ RENDER THE ORDERED SPECS */}
+                            <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                                <div className="bg-slate-900/50 px-4 py-2 border-b border-slate-800 font-bold text-white text-xs uppercase tracking-wider text-yellow-500/80">
+                                    Technical Specifications
                                 </div>
-                            ))}
+                                <div className="divide-y divide-slate-800/50">
+                                    {orderedSpecs.map((spec, idx) => (
+                                        <div key={idx} className="flex justify-between px-4 py-3 text-sm hover:bg-slate-900 transition-colors">
+                                            <span className="text-slate-500">{spec.label}</span>
+                                            <span className="text-slate-200 font-medium text-right max-w-[60%] leading-tight break-words">
+                                                {spec.value}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                             
-                            <button className="w-full py-3 border border-dashed border-slate-700 rounded-lg text-slate-400 text-sm hover:border-yellow-500 hover:text-yellow-500 transition-colors flex items-center justify-center">
-                                <Download size={16} className="mr-2"/> Download Compliance Docs
-                            </button>
+                            {/* COMPLIANCE DOCS */}
+                            {item.specs?.complianceDocs && item.specs.complianceDocs.length > 0 && (
+                                <div className="mt-6 space-y-2">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-2">Available Documentation</div>
+                                    {item.specs.complianceDocs.map((docBase64: string, idx: number) => (
+                                        <a 
+                                            key={idx} 
+                                            href={docBase64} 
+                                            download={`Dagiv_Document_${idx+1}.pdf`}
+                                            className="w-full py-3 border border-dashed border-slate-700 rounded-lg text-slate-400 text-sm hover:border-yellow-500 hover:text-yellow-500 transition-colors flex items-center justify-center cursor-pointer bg-slate-950"
+                                        >
+                                            <Download size={16} className="mr-2"/> Download Compliance Doc {idx + 1}
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -255,17 +311,20 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                             <div>
                                 <h3 className="text-white font-bold mb-3 flex items-center"><FileText size={18} className="mr-2 text-yellow-500"/> Seller Description</h3>
                                 <p className="text-slate-400 text-sm leading-relaxed whitespace-pre-wrap bg-slate-950 p-4 rounded border border-slate-800">
-                                    {item.description}
+                                    {item.specs?.description || "No additional description provided by the seller."}
                                 </p>
                             </div>
 
-                            <div className="bg-slate-800/30 p-4 rounded border border-slate-800">
-                                <h4 className="text-white font-bold text-sm mb-3 flex items-center"><Truck size={16} className="mr-2 text-blue-500"/> Logistics & Delivery</h4>
-                                <div className="grid grid-cols-2 gap-4 text-xs">
-                                    <div><span className="text-slate-500 block">Method</span><span className="text-slate-300 font-bold">{item.deliveryOptions}</span></div>
-                                    <div><span className="text-slate-500 block">Availability</span><span className="text-slate-300 font-bold">{item.estimatedMobTime}</span></div>
+                            {(item.specs?.shippingInfo || item.specs?.sellerTerms || item.specs?.availabilityDate) && (
+                                <div className="bg-slate-800/30 p-4 rounded border border-slate-800">
+                                    <h4 className="text-white font-bold text-sm mb-3 flex items-center"><Truck size={16} className="mr-2 text-blue-500"/> Logistics & Seller Terms</h4>
+                                    <div className="grid grid-cols-1 gap-4 text-sm">
+                                        {item.specs.shippingInfo && <div><span className="text-slate-500 block text-xs">Shipping / Pickup</span><span className="text-slate-300 font-bold">{item.specs.shippingInfo}</span></div>}
+                                        {item.specs.sellerTerms && <div><span className="text-slate-500 block text-xs">Terms & Conditions</span><span className="text-slate-300 font-bold">{item.specs.sellerTerms}</span></div>}
+                                        {item.specs.availabilityDate && <div><span className="text-slate-500 block text-xs">Availability Date</span><span className="text-slate-300 font-bold">{item.specs.availabilityDate}</span></div>}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
@@ -286,8 +345,8 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                                             {item.seller?.verified && <CheckCircle size={18} className="text-green-500 fill-green-500/20" title="Verified Seller" />}
                                         </h3>
                                         <div className="text-slate-400 text-sm mt-1 flex items-center gap-3">
-                                            <span className="flex items-center gap-1"><MapPin size={14} className="text-slate-500"/> {item.seller?.location}</span>
-                                            <span className="flex items-center gap-1"><Tag size={14} className="text-slate-500"/> {item.seller?.type}</span>
+                                            <span className="flex items-center gap-1"><MapPin size={14} className="text-slate-500"/> {item.seller?.location || item.location}</span>
+                                            <span className="flex items-center gap-1"><Tag size={14} className="text-slate-500"/> {item.seller?.type || 'Business'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -302,7 +361,7 @@ export const ProductDetailOverlay: React.FC<ProductDetailOverlayProps> = ({ item
                                     </div>
                                     <div className="bg-slate-950 p-4 text-center hover:bg-slate-900 transition-colors">
                                         <div className="text-[15px] sm:text-lg font-bold text-white mb-1 truncate px-1">
-                                            {item.seller?.joinedDate}
+                                            {item.seller?.joinedDate ? item.seller.joinedDate.split('T')[0] : '2026'}
                                         </div>
                                         <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Member Since</div>
                                     </div>

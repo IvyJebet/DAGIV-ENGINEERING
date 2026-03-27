@@ -8,7 +8,7 @@ import {
   ChevronRight, Lock, Loader2, MapPin, CheckCircle, Copy, AlertCircle, X, CalendarDays, Droplets, Wrench
 } from 'lucide-react';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
-import { useAuth } from '../context/AuthContext'; // Adjust this import path to match your project structure
+import { useAuth } from '../context/AuthContext'; 
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -29,7 +29,7 @@ type CheckoutStep = 'LEASE_CONFIG' | 'SHIPPING' | 'PAYMENT' | 'CONFIRMATION';
 
 export default function Checkout() {
     const navigate = useNavigate();
-    const { token } = useAuth(); // Wired into the useAuth hook to automatically provide the correct session token
+    const { token } = useAuth(); 
     
     const [step, setStep] = useState<CheckoutStep>('SHIPPING');
     const [loading, setLoading] = useState(true);
@@ -79,13 +79,11 @@ export default function Checkout() {
                     } else {
                         setCart(data);
                         
-                        // Check if any item is a lease to initialize configuration step
                         const leaseItems = data.items.filter((i: any) => i.listing_type === 'RENT' || i.category === 'Leasing');
                         if (leaseItems.length > 0) {
                             setHasLeases(true);
                             setStep('LEASE_CONFIG');
                             
-                            // Initialize default lease configs
                             const initConfigs: any = {};
                             const today = new Date().toISOString().split('T')[0];
                             leaseItems.forEach((item: any) => {
@@ -108,7 +106,7 @@ export default function Checkout() {
             }
         };
         fetchCart();
-    }, [navigate, token]); // Added token to the dependency array
+    }, [navigate, token]);
 
     // Google Maps Handlers
     const handleMapClick = (e: google.maps.MapMouseEvent) => {
@@ -140,7 +138,6 @@ export default function Checkout() {
     };
 
     const handleContinueToShipping = () => {
-        // 🛠️ FIX: Cast the entire array first, then run .some() 
         const leaseValues = Object.values(leaseConfigs) as Array<{ days: number }>;
         const invalidLease = leaseValues.some(config => config.days < 1);
         
@@ -176,14 +173,14 @@ export default function Checkout() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` // Uses the token provided by useAuth
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     payment_method: paymentMethod,
                     mpesa_phone: formattedMpesaPhone,
                     shipping_details: {
                         ...shippingData,
-                        lease_configurations: hasLeases ? leaseConfigs : null // Inject lease info to backend
+                        lease_configurations: hasLeases ? leaseConfigs : null 
                     }
                 })
             });
@@ -205,23 +202,26 @@ export default function Checkout() {
         }
     };
 
-    // --- DYNAMIC CALCULATIONS ---
+    // --- UPDATED DYNAMIC CALCULATIONS ---
     const getDynamicTotals = () => {
         let subtotal = 0;
         cart.items.forEach((item: any) => {
+            // MAPPED TO NEW SCHEMA: Pull dailyRate and operatorCost safely
+            const baseRate = parseFloat(item.specs?.dailyRate || item.price || 0);
+            const operatorCost = parseFloat(item.specs?.operatorCost || item.wet_rate_price || 0);
+
             if (item.listing_type === 'RENT' || item.category === 'Leasing') {
                 const config = leaseConfigs[item.listing_id];
                 if (config) {
                     const days = config.days || 1;
-                    // If WET rate is selected and available, add the surcharge to the daily price
-                    // We assume `item.wet_rate_price` comes from the backend. If missing, it defaults to 0.
-                    const wetSurcharge = (config.type === 'WET' && item.wet_rate_price) ? item.wet_rate_price : 0;
-                    subtotal += (item.price + wetSurcharge) * days * item.quantity;
+                    const wetSurcharge = (config.type === 'WET' && operatorCost > 0) ? operatorCost : 0;
+                    subtotal += (baseRate + wetSurcharge) * days * item.quantity;
                 } else {
-                    subtotal += item.price * item.quantity;
+                    subtotal += baseRate * item.quantity;
                 }
             } else {
-                subtotal += item.price * item.quantity;
+                // Outright sale or parts fallback
+                subtotal += parseFloat(item.price || 0) * item.quantity;
             }
         });
         
@@ -243,14 +243,12 @@ export default function Checkout() {
 
     const { subtotal, shippingCost, escrowFee, total, currency } = getDynamicTotals();
 
-    // Determine visual steps based on cart contents
     const visualSteps = hasLeases 
         ? [{ id: 'LEASE_CONFIG', label: 'Lease Details' }, { id: 'SHIPPING', label: 'Logistics' }, { id: 'PAYMENT', label: 'Payment' }, { id: 'CONFIRMATION', label: 'Done' }]
         : [{ id: 'SHIPPING', label: 'Shipping' }, { id: 'PAYMENT', label: 'Payment' }, { id: 'CONFIRMATION', label: 'Done' }];
 
     const currentStepIndex = visualSteps.findIndex(s => s.id === step);
 
-    // 🛠️ FIX 4: Helper function to convert progress percentage to Tailwind class, removing the inline style
     const getProgressWidthClass = (index: number, totalSteps: number) => {
         if (totalSteps === 3) return ['w-1/3', 'w-2/3', 'w-full'][index] || 'w-full';
         if (totalSteps === 4) return ['w-1/4', 'w-1/2', 'w-3/4', 'w-full'][index] || 'w-full';
@@ -290,7 +288,7 @@ export default function Checkout() {
                     {/* LEFT COLUMN: DYNAMIC FORMS */}
                     <div className="flex-1 space-y-8">
                         
-                        {/* --- NEW STEP: LEASE CONFIGURATION --- */}
+                        {/* --- LEASE CONFIGURATION --- */}
                         {step === 'LEASE_CONFIG' && hasLeases && (
                             <div className="bg-slate-900 rounded-2xl border border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.1)] overflow-hidden animate-in fade-in slide-in-from-left-4">
                                 <div className="bg-slate-950 p-6 border-b border-slate-800">
@@ -305,8 +303,10 @@ export default function Checkout() {
                                         const config = leaseConfigs[item.listing_id];
                                         if (!config) return null;
                                         
-                                        // Does the seller offer a wet rate? (Assume backend passes wet_rate_price if true)
-                                        const offersWetRate = item.wet_rate_price !== undefined && item.wet_rate_price !== null;
+                                        // UPDATED TO NEW SCHEMA LOGIC
+                                        const baseRate = parseFloat(item.specs?.dailyRate || item.price || 0);
+                                        const operatorCost = parseFloat(item.specs?.operatorCost || item.wet_rate_price || 0);
+                                        const offersWetRate = operatorCost > 0;
 
                                         return (
                                             <div key={item.listing_id} className="bg-slate-950 border border-slate-800 rounded-xl p-6">
@@ -315,13 +315,12 @@ export default function Checkout() {
                                                     <div>
                                                         <div className="text-xs text-yellow-500 font-bold uppercase tracking-wider">{item.brand}</div>
                                                         <div className="text-lg font-black text-white">{item.model}</div>
-                                                        <div className="text-sm text-slate-400">Base Rate: {currency} {item.price.toLocaleString()} / day</div>
+                                                        <div className="text-sm text-slate-400">Base Rate: {currency} {baseRate.toLocaleString()} / day</div>
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
                                                     <div>
-                                                        {/* 🛠️ FIX 2: Added htmlFor to match the input's ID */}
                                                         <label htmlFor={`duration-${item.listing_id}`} className="text-xs font-bold text-slate-500 uppercase mb-2 block">Duration (Days)</label>
                                                         <input 
                                                             id={`duration-${item.listing_id}`}
@@ -333,7 +332,6 @@ export default function Checkout() {
                                                         />
                                                     </div>
                                                     <div>
-                                                        {/* 🛠️ FIX 3: Added htmlFor to match the input's ID */}
                                                         <label htmlFor={`start-date-${item.listing_id}`} className="text-xs font-bold text-slate-500 uppercase mb-2 block">Project Start Date</label>
                                                         <input 
                                                             id={`start-date-${item.listing_id}`}
@@ -364,7 +362,7 @@ export default function Checkout() {
                                                             >
                                                                 <Droplets size={24} className="mb-2"/>
                                                                 <span className="font-bold text-sm">Wet Rate</span>
-                                                                <span className="text-[10px] mt-1 text-center">+ Operator & Fuel (+{currency} {item.wet_rate_price?.toLocaleString()})</span>
+                                                                <span className="text-[10px] mt-1 text-center">+ Operator (+{currency} {operatorCost.toLocaleString()}/day)</span>
                                                             </button>
                                                         </div>
                                                     ) : (
@@ -910,9 +908,12 @@ export default function Checkout() {
                                             const config = leaseConfigs[item.listing_id];
                                             const isLease = item.listing_type === 'RENT' || item.category === 'Leasing';
                                             const days = isLease && config ? config.days : 1;
-                                            const isWet = isLease && config?.type === 'WET';
-                                            // Ensure price math is exact
-                                            const effectivePrice = isWet && item.wet_rate_price ? (item.price + item.wet_rate_price) : item.price;
+                                            
+                                            // 🚀 UPDATED MAPPING TO SYNC WITH SCHEMAS
+                                            const baseRate = parseFloat(item.specs?.dailyRate || item.price || 0);
+                                            const operatorCost = parseFloat(item.specs?.operatorCost || item.wet_rate_price || 0);
+                                            const isWet = isLease && config?.type === 'WET' && operatorCost > 0;
+                                            const effectivePrice = isWet ? (baseRate + operatorCost) : baseRate;
 
                                             return (
                                             <div key={item.listing_id} className="flex gap-3 group">
@@ -991,7 +992,7 @@ export default function Checkout() {
                                 ) : (
                                     <GoogleMap
                                         mapContainerStyle={{ width: '100%', height: '100%' }}
-                                        center={mapMarker || { lat: -1.286389, lng: 36.817223 }} // Defaults to Nairobi
+                                        center={mapMarker || { lat: -0.3031, lng: 36.0800 }} // Defaults to Nakuru
                                         zoom={13}
                                         onClick={handleMapClick}
                                         options={{ 

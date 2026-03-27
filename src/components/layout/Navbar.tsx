@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Menu, X, User, ShoppingCart, Truck, Wrench, 
@@ -14,13 +14,25 @@ export const Navbar: React.FC = () => {
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const location = useLocation();
   
-  const { user, token, logout, setShowAuthModal } = useAuth();
+  // Extract all potential tokens to feed the resolver
+  const { user, token: defaultToken, buyerToken, sellerToken, logout, setShowAuthModal } = useAuth();
   
   // Explicitly determine if the active user is Staff (Admin/Support)
   const isStaff = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'SUPPORT';
   
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+
+  // BULLETPROOF TOKEN RESOLVER - Memoized to prevent infinite re-render loops
+  const getCleanToken = useCallback(() => {
+      let rawToken = buyerToken || sellerToken || defaultToken || 
+                     localStorage.getItem('dagiv_buyer_token') || 
+                     localStorage.getItem('dagiv_seller_token') || 
+                     localStorage.getItem('dagiv_token');
+      
+      if (!rawToken || rawToken === 'null' || rawToken === 'undefined') return null;
+      return rawToken.replace(/['"]+/g, '');
+  }, [buyerToken, sellerToken, defaultToken]);
 
   // Standard Links for Buyers/Guests
   const navItems = [
@@ -38,16 +50,27 @@ export const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
   const isMarketActive = marketDropdownItems.some(item => location.pathname === item.path);
 
-  const fetchCartCount = async () => {
-      const currentToken = token; 
-      if (!currentToken || isStaff) { // Staff don't need carts
+  // Memoized fetch function
+  const fetchCartCount = useCallback(async () => {
+      const activeToken = getCleanToken(); 
+      
+      // Stop execution immediately if no token or if the user is staff
+      if (!activeToken || isStaff) { 
           setCartCount(0);
           return;
       }
+      
       try {
           const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/cart`, {
-              headers: { 'Authorization': `Bearer ${currentToken}` }
+              headers: { 'Authorization': `Bearer ${activeToken}` }
           });
+          
+          if (res.status === 401) {
+              console.warn("Session expired or invalid for cart count.");
+              setCartCount(0);
+              return; // Silently fail and stop loop, let main dashboard handle the hard logout
+          }
+          
           if (res.ok) {
               const data = await res.json();
               setCartCount(data.summary?.item_count || 0);
@@ -55,13 +78,14 @@ export const Navbar: React.FC = () => {
       } catch (e) {
           console.warn("Backend not reachable for cart count");
       }
-  };
+  }, [getCleanToken, isStaff]);
 
+  // Safe Effect execution
   useEffect(() => {
       fetchCartCount();
       window.addEventListener('cartUpdated', fetchCartCount);
       return () => window.removeEventListener('cartUpdated', fetchCartCount);
-  }, [token, isStaff]);
+  }, [fetchCartCount]);
 
   return (
     <>

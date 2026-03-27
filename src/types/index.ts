@@ -78,6 +78,7 @@ export interface MarketItem {
   subCategory: string;
   type: 'Equipment' | 'Part';
   listingType: 'Sale' | 'Rent'; 
+  specs?: Record<string, any>;
   
   // Commercial
   price: number;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { 
@@ -64,9 +64,19 @@ const CATEGORY_COLORS: Record<string, string> = {
 const COLORS = ['#DD9C00', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#ec4899'];
 
 export const BuyerDashboard = () => {
-  const { user, token } = useAuth();
+  const { buyerToken, sellerToken, token: defaultToken, user } = useAuth();
   const navigate = useNavigate();
   
+  // BULLETPROOF TOKEN RESOLVER - Memoized
+  const getCleanToken = useCallback(() => {
+      let rawToken = buyerToken || sellerToken || defaultToken || 
+                     localStorage.getItem('dagiv_buyer_token') || 
+                     localStorage.getItem('dagiv_seller_token') || 
+                     localStorage.getItem('dagiv_token');
+      if (!rawToken || rawToken === 'null' || rawToken === 'undefined') return null;
+      return rawToken.replace(/['"]+/g, '');
+  }, [buyerToken, sellerToken, defaultToken]);
+
   const [activeTab, setActiveTab] = useState<'ONGOING' | 'HISTORY' | 'LEASES' | 'ANALYTICS' | 'SUPPORT'>('ONGOING');
   
   const [orders, setOrders] = useState<Order[]>([]);
@@ -91,17 +101,14 @@ export const BuyerDashboard = () => {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  useEffect(() => {
-    if (token) {
-      fetchOrders();
-    }
-  }, [token]);
+  const fetchOrders = useCallback(async () => {
+    const activeToken = getCleanToken();
+    if (!activeToken) return;
 
-  const fetchOrders = async () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/buyer/orders`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${activeToken}` }
       });
       
       if (response.ok) {
@@ -200,14 +207,25 @@ export const BuyerDashboard = () => {
         setLoading(false);
       }, 800);
     }
-  };
+  }, [getCleanToken]);
+
+  // Strict check on token before running effect
+  useEffect(() => {
+    const activeToken = getCleanToken();
+    if (activeToken) {
+      fetchOrders();
+    }
+  }, [fetchOrders, getCleanToken]);
 
   const handleSourcingSubmit = async (data: SourcingFormValues) => {
+    const activeToken = getCleanToken();
+    if (!activeToken) return;
+
     setIsSubmittingSourcing(true);
     try {
       const response = await fetch(`${API_URL}/api/sourcing-requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}` },
         body: JSON.stringify(data)
       });
       
@@ -219,7 +237,6 @@ export const BuyerDashboard = () => {
         throw new Error('Failed to submit');
       }
     } catch (e) {
-      // Mock success if backend isn't connected
       showNotification('Request dispatched (Mock Mode). Our engineers will contact you shortly.', 'success');
       setIsSourcingOpen(false);
       reset();
@@ -229,11 +246,14 @@ export const BuyerDashboard = () => {
   };
 
   const handleReorder = async (item: OrderItem) => {
+    const activeToken = getCleanToken();
+    if (!activeToken) return;
+
     setActionLoading(`reorder-${item.id}`);
     try {
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${activeToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ listing_id: item.id, quantity: 1 })
       });
 
@@ -253,10 +273,13 @@ export const BuyerDashboard = () => {
   };
 
   const handleDownloadInvoice = async (order: Order) => {
+    const activeToken = getCleanToken();
+    if (!activeToken) return;
+
     setActionLoading(`invoice-${order.id}`);
     try {
       const response = await fetch(`${API_URL}/api/orders/${order.id}/invoice`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${activeToken}` }
       });
       
       if (response.ok) {
@@ -307,11 +330,14 @@ export const BuyerDashboard = () => {
   };
 
   const handleExtendLease = async (item: OrderItem) => {
+    const activeToken = getCleanToken();
+    if (!activeToken) return;
+
     setExtendingLease(item.id);
     try {
       const response = await fetch(`${API_URL}/api/lease-request`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeToken}` },
         body: JSON.stringify({
           machineName: item.model,
           machineId: item.id,
@@ -413,7 +439,8 @@ export const BuyerDashboard = () => {
     );
   };
 
-  if (!token) {
+  // Safe fail-fast check
+  if (!getCleanToken()) {
     return <Navigate to="/" />;
   }
 
@@ -858,40 +885,44 @@ export const BuyerDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-lg flex flex-col">
+                  <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-lg flex flex-col min-h-[400px]">
                     <div className="text-sm font-black text-slate-500 uppercase tracking-widest mb-6 border-b border-slate-800 pb-4">Spend by Asset Category</div>
-                    <div className="flex-1 min-h-[300px]">
+                    
+                    {/* Recharts Error Fix: Ensure the parent container has absolute layout/sizing */}
+                    <div className="flex-1 relative w-full h-[300px]">
                       {pieData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={pieData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={90}
-                              outerRadius={130}
-                              paddingAngle={5}
-                              dataKey="value"
-                              nameKey="name"
-                              stroke="none"
-                            >
-                              {pieData.map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={CATEGORY_COLORS[entry.name] || COLORS[index % COLORS.length]} 
-                                />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip 
-                              formatter={(value: number, name: string) => [`KES ${value.toLocaleString()}`, name]}
-                              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px', fontWeight: 'bold' }}
-                              itemStyle={{ color: '#f8fafc' }}
-                            />
-                            <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }} />
-                          </PieChart>
-                        </ResponsiveContainer>
+                        <div className="absolute inset-0">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={80}
+                                outerRadius={120}
+                                paddingAngle={5}
+                                dataKey="value"
+                                nameKey="name"
+                                stroke="none"
+                              >
+                                {pieData.map((entry, index) => (
+                                  <Cell 
+                                    key={`cell-${index}`} 
+                                    fill={CATEGORY_COLORS[entry.name] || COLORS[index % COLORS.length]} 
+                                  />
+                                ))}
+                              </Pie>
+                              <RechartsTooltip 
+                                formatter={(value: number, name: string) => [`KES ${value.toLocaleString()}`, name]}
+                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc', borderRadius: '8px', fontWeight: 'bold' }}
+                                itemStyle={{ color: '#f8fafc' }}
+                              />
+                              <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
                       ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
                           <BarChart3 size={48} className="text-slate-800 mb-4"/>
                           <span className="font-bold">No spend data available yet</span>
                         </div>

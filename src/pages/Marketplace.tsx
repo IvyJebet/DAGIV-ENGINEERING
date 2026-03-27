@@ -124,6 +124,9 @@ const transformApiListing = (apiItem: any): MarketItem => {
     description: specs.description || `Premium ${apiItem.brand} ${apiItem.model} available for immediate delivery.`,
     specifications: specifications, 
 
+    // ⚡ FIX: Pass the raw specs payload directly to the overlay for rendering
+    specs: apiItem.specs,
+
     images: (specs.images && specs.images.length > 0) 
       ? specs.images 
       : ["https://via.placeholder.com/800x600?text=No+Image+Available"],
@@ -140,6 +143,11 @@ const transformApiListing = (apiItem: any): MarketItem => {
   };
 };
 
+// --- ⚡ LIGHTWEIGHT IN-MEMORY CACHE ---
+// We define this OUTSIDE the component so it survives when the user navigates away and comes back!
+let globalListingsCache: MarketItem[] | null = null;
+let isFetching = false; // Prevents duplicate network calls if the user clicks around too fast
+
 const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellClick, isSpareParts = false }) => {
   const [selectedMainCat, setSelectedMainCat] = useState<string>('All');
   const [selectedSubCat, setSelectedSubCat] = useState<string>('All');
@@ -152,26 +160,52 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
   const [viewItem, setViewItem] = useState<MarketItem | null>(null);
 
   useEffect(() => {
-    const fetchListings = async () => {
+    const fetchListings = async (isBackground = false) => {
+        // Prevent overlapping background requests
+        if (isFetching) return;
+        isFetching = true;
+
         try {
-            setLoading(true);
+            // Only trigger the loading overlay if this is NOT a background request
+            if (!isBackground) {
+                setLoading(true);
+            }
             setError(null);
+            
             const res = await fetch(`${API_URL}/api/marketplace/listings`);
             if (res.ok) {
                 const rawData = await res.json();
                 const transformedItems = rawData.map(transformApiListing);
+                
+                // Update the screen AND update our global cache
                 setItems(transformedItems);
+                globalListingsCache = transformedItems; 
             } else {
-                setError("Could not load listings.");
+                if (!isBackground) setError("Could not load listings.");
             }
         } catch (err) {
             console.error(err);
-            setError("Connection failed.");
+            if (!isBackground) setError("Connection failed.");
         } finally {
-            setLoading(false);
+            if (!isBackground) {
+                setLoading(false);
+            }
+            isFetching = false;
         }
     };
-    fetchListings();
+
+    // --- SWR (Stale-While-Revalidate) EXECUTION ---
+    if (globalListingsCache) {
+        // 1. INSTANT LOAD: Show the cached data immediately. No spinner!
+        setItems(globalListingsCache);
+        setLoading(false);
+        
+        // 2. BACKGROUND SYNC: Silently ping the server for new listings
+        fetchListings(true); 
+    } else {
+        // 1st time opening the app. We have no cache, so show the loading spinner.
+        fetchListings(false);
+    }
   }, []); 
 
   const filteredItems = items.filter(item => {
@@ -268,6 +302,7 @@ const MarketplaceLayout: React.FC<MarketplaceProps> = ({ mode, setPage, onSellCl
                 <div className="text-center py-20 bg-slate-900/50 rounded-xl border border-slate-800 border-dashed">
                     <p className="text-slate-500 text-lg mb-2">No active listings found.</p>
                     <p className="text-slate-600 text-sm">Be the first to list in this category.</p>
+                    <p className="text-slate-600 text-sm mt-2 font-mono text-xs">Troubleshooting? Try clearing your cache or refreshing.</p>
                     <button onClick={onSellClick} className="mt-6 bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-full font-bold transition-colors">
                         Post a Listing
                     </button>

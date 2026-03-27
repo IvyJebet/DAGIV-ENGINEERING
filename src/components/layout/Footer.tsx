@@ -62,10 +62,11 @@ export const Footer = () => {
           <div>
             <h3 className="text-white font-bold mb-6 uppercase tracking-wider text-sm">Services</h3>
             <ul className="space-y-4">
-              <li><Link to="/services" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Site Inspections</Link></li>
-              <li><Link to="/erp" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Fleet ERP System</Link></li>
-              <li><span className="text-slate-400 hover:text-yellow-500 transition-colors text-sm cursor-pointer">Escrow Payments</span></li>
-              <li><span className="text-slate-400 hover:text-yellow-500 transition-colors text-sm cursor-pointer">Logistics Tracking</span></li>
+              <li><Link to="/services" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Computer Diagnosis</Link></li>
+              <li><Link to="/services" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Maintenance & Repairs</Link></li>
+              <li><Link to="/services" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Pre-purchase Inspections & Commissioning</Link></li>
+              <li><Link to="/services" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Logistics & Leasing</Link></li>
+              <li><Link to="/services" className="text-slate-400 hover:text-yellow-500 transition-colors text-sm">Welding & Fabrication</Link></li>
             </ul>
           </div>
 
